@@ -6,24 +6,26 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
+
 #include "tree-reading/cmd_reader.h"
 #include "tree-reading/times_reader.h"
+#include "tree-reading/tree_reader.h"
 
 int task_reader(const char* path, uint16_t task_id){
+
     //construction of the path
-    char* pathcpy = malloc(pathconf("/", _PC_PATH_MAX)); // for getting maximum size of a linux path
-
+    char* pathcpy = make_path(path, "tasks");
     if(pathcpy == NULL){
-        perror("malloc");
-        return 1;
+        return -1;
     }
-    strcat(strcpy(pathcpy, path), "tasks");
-
     //Converting task_id to string :
-    char id[UINT_MAX];
+    char id[sizeof(uint16_t) + 1];
     sprintf(id, "%i", task_id);
 
-    return task_finder(pathcpy, id);
+    size_t result = task_finder(pathcpy, id);
+    free(pathcpy);
+    pathcpy = NULL;
+    return result;
 }
 
 int task_finder(char* path, char* task_id){
@@ -34,7 +36,7 @@ int task_finder(char* path, char* task_id){
         return 1;
     }
 
-    size_t result = 0;
+    int result = 0;
     struct dirent* entry;
     bool is_task_found = false;
 
@@ -43,30 +45,36 @@ int task_finder(char* path, char* task_id){
         if(entry -> d_name[0] == '.') continue;
 
         if(strcmp(entry -> d_name, task_id) == 0){
-            snprintf(path, pathconf("/", _PC_PATH_MAX), "%s/%s", task_id);
-            result = extract_task_information(path);
+            //Construction of the path to the task
+            char* newpath = make_path(path, entry -> d_name);
+            if(newpath == NULL){
+                result = -1;
+                goto error;
+            }
+            result = extract_task_information(newpath);
             is_task_found = true;
             break;
         }
     }
     if(!is_task_found){
-        dprintf(stderr, "The task with the id %d couldn't be find :/", task_id);
-        return 1;
+        dprintf(STDERR_FILENO, "The task with the id %d couldn't be find :/", task_id);
+        return -1;
     }
+    error:
     if(closedir(dirp) != 0){
         perror("closedir");
-        result = 1;
+        result = -1;
     }
     return result;
 }
 
 int extract_task_information(const char* path){
-    size_t result = 0;
+    int result = 0;
     DIR* dirp = opendir(path);
 
     if(dirp == NULL){
         perror("opendir for tasks tree reading");
-        return 1;
+        return -1;
     }
     struct dirent* entry;
 
@@ -74,20 +82,71 @@ int extract_task_information(const char* path){
     while ((entry=readdir(dirp))){
         if(entry -> d_name[0] == '.') continue;
 
-        if(strcmp(entry -> d_name, "cmd")){
-            cmd_reader(/*TODO put the path*/);
+        if(strcmp(entry -> d_name, "cmd") == 0){
+            //Construction of the path to the cmd folder
+            char* cmd_path = make_path(path, "cmd");
+            if(cmd_path == NULL){
+                result = -1;
+                goto error;
+            }
+            if(cmd_reader(cmd_path) == -1){
+                dprintf(STDERR_FILENO, "Error while reading cmd folder of task at path %s\n", path);
+                result = -1;
+                goto error;
+            }
             continue;
         }
-        else if(strcmp(entry -> d_name, "times_exitcodes")){
-            //TODO gather times exit information
+        else if(strcmp(entry -> d_name, "times_exitcodes") == 0){
+            //Construction of the path to the times_exitcodes file
+            char* times_exitcodes_path = make_path(path, "times_exitcodes");
+            if(times_exitcodes_path == NULL){
+                result = -1;
+                goto error;
+            }
+            if(times_exitcodes_reader(times_exitcodes_path) == -1){
+                dprintf(STDERR_FILENO, "Error while reading times_exitcodes file of task at path %s\n", path);
+                result = -1;
+                goto error;
+            }
         }
-        else if(strcmp(entry -> d_name, "timing")){
-            //TODO gather timing information
+        else if(strcmp(entry -> d_name, "timing") == 0){
+            //Construction of the path to the timing file
+            char* timing_path = make_path(path, "timing");
+            if(timing_path == NULL){
+                result = -1;
+                goto error;
+            }
+            if(timing_reader(timing_path) == -1){
+                dprintf(STDERR_FILENO, "Error while reading timing file of task at path %s\n", path);
+                result = -1;
+                goto error;
+            }
         }
     }
+    error:
     if(closedir(dirp) != 0){
         perror("closedir");
-        result = 1;
+        result = -1;
     }
     return result;
+}
+
+int buffer_init(char** buffer) {
+    *buffer = malloc(BUFFER_SIZE);
+    if (*buffer == NULL) {
+        perror("malloc");
+        return -1;
+    }
+    return 0;
+}
+
+char* make_path(const char* og_path, const char* folder_name){
+    char* pathcpy = malloc(MAX_PATH);
+
+    if(pathcpy == NULL){
+        perror("malloc");
+        return NULL;
+    }
+    snprintf(pathcpy, MAX_PATH, "%s/%s", og_path, folder_name); //Concatenation of og_path and folder_name
+    return pathcpy;
 }
