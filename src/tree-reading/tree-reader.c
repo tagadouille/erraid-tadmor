@@ -10,8 +10,9 @@
 #include "tree-reading/cmd_reader.h"
 #include "tree-reading/times_reader.h"
 #include "tree-reading/tree_reader.h"
+#include "tree-reading/output_reader.h"
 
-int task_reader(const char* path, uint16_t task_id){
+int task_reader(const char* path, uint16_t task_id, Action_type action){
 
     //construction of the path
     char* pathcpy = make_path(path, "tasks");
@@ -22,14 +23,14 @@ int task_reader(const char* path, uint16_t task_id){
     char id[sizeof(uint16_t) + 1];
     sprintf(id, "%i", task_id);
 
-    size_t result = task_finder(pathcpy, id);
+    size_t result = task_finder(pathcpy, id, action);
     free(pathcpy);
     pathcpy = NULL;
     return result;
 }
 
 int all_tasks_reader(const char* path){
-    printf("Reading all the tasks in the tree at path %s\n", path);
+    printf("\nReading all the tasks in the tree at path %s\n", path);
     int result = 0;
     DIR* dirp = opendir(path);
 
@@ -50,7 +51,7 @@ int all_tasks_reader(const char* path){
             result = -1;
             goto error;
         }
-        result = extract_task_information(newpath, true);
+        result = extract_task_information(newpath, LIST, true);
         free(newpath);
         newpath = NULL;
     }
@@ -61,7 +62,7 @@ int all_tasks_reader(const char* path){
     }
     return result;
 }
-int task_finder(char* path, char* task_id){
+int task_finder(char* path, char* task_id, Action_type action){
     DIR* dirp = opendir(path);
 
     if(dirp == NULL){
@@ -85,7 +86,7 @@ int task_finder(char* path, char* task_id){
                 goto error;
             }
             printf("Task with id %s found at path %s\n", task_id, newpath);
-            result = extract_task_information(newpath, false);
+            result = extract_task_information(newpath, action, false);
             is_task_found = true;
             break;
         }
@@ -102,8 +103,8 @@ int task_finder(char* path, char* task_id){
     return result;
 }
 
-int extract_task_information(const char* path, bool is_sequence){
-    printf("Extracting task information at path %s\n", path);
+int extract_task_information(const char* path, Action_type action, bool is_sequence){
+    printf("\nExtracting task information at path %s\n", path);
     int result = 0;
     DIR* dirp = opendir(path);
 
@@ -125,21 +126,35 @@ int extract_task_information(const char* path, bool is_sequence){
                 goto error;
             }
         }else{
-            if(strcmp(entry -> d_name, "cmd") == 0){
-                //Construction of the path to the cmd folder
-                char* cmd_path = make_path(path, "cmd");
-                if(cmd_path == NULL){
-                    result = -1;
-                    goto error;
+            if(action == LIST){
+                if(action == LIST && strcmp(entry -> d_name, "cmd") == 0){
+                    //Construction of the path to the cmd folder
+                    char* cmd_path = make_path(path, "cmd");
+                    if(cmd_path == NULL){
+                        result = -1;
+                        goto error;
+                    }
+                    if(cmd_reader(cmd_path) == -1){
+                        dprintf(STDERR_FILENO, "Error while reading cmd folder of task at path %s\n", path);
+                        result = -1;
+                        goto error;
+                    }
+                    continue;
                 }
-                if(cmd_reader(cmd_path) == -1){
-                    dprintf(STDERR_FILENO, "Error while reading cmd folder of task at path %s\n", path);
-                    result = -1;
-                    goto error;
+                if(strcmp(entry -> d_name, "timing") == 0){
+                    //Construction of the path to the timing file
+                    char* timing_path = make_path(path, "timing");
+                    if(timing_path == NULL){
+                        result = -1;
+                        goto error;
+                    }
+                    if(timing_reader(timing_path) == -1){
+                        dprintf(STDERR_FILENO, "Error while reading timing file of task at path %s\n", path);
+                        result = -1;
+                        goto error;
+                    }
                 }
-                continue;
-            }
-            else if(strcmp(entry -> d_name, "times_exitcodes") == 0){
+            }else if(action == TIME_EXIT && strcmp(entry -> d_name, "times_exitcodes") == 0){
                 //Construction of the path to the times_exitcodes file
                 char* times_exitcodes_path = make_path(path, "times_exitcodes");
                 if(times_exitcodes_path == NULL){
@@ -151,16 +166,27 @@ int extract_task_information(const char* path, bool is_sequence){
                     result = -1;
                     goto error;
                 }
-            }
-            else if(strcmp(entry -> d_name, "timing") == 0){
-                //Construction of the path to the timing file
-                char* timing_path = make_path(path, "timing");
-                if(timing_path == NULL){
+            }else if(action == OUTPUT && strcmp(entry -> d_name, "stdout") == 0){
+                //Construction of the path to the stdout file
+                char* stdout_path = make_path(path, "stdout");
+                if(stdout_path == NULL){
                     result = -1;
                     goto error;
                 }
-                if(timing_reader(timing_path) == -1){
-                    dprintf(STDERR_FILENO, "Error while reading timing file of task at path %s\n", path);
+                if(standard_output_reader(stdout_path) == -1){
+                    dprintf(STDERR_FILENO, "Error while reading stdout file of task at path %s\n", path);
+                    result = -1;
+                    goto error;
+                }
+            }else if(action == ERR && strcmp(entry -> d_name, "stderr") == 0){
+                //Construction of the path to the stderr file
+                char* stderr_path = make_path(path, "stderr");
+                if(stderr_path == NULL){
+                    result = -1;
+                    goto error;
+                }
+                if(error_output_reader(stderr_path) == -1){
+                    dprintf(STDERR_FILENO, "Error while reading stderr file of task at path %s\n", path);
                     result = -1;
                     goto error;
                 }
