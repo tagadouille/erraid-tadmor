@@ -12,9 +12,28 @@ int main() {
     printf("Multiply of 4 and 6 is: %d\n", multiply(4, 6));
 
     printf("Running tests...\n");
-    uint16_t task = 0;
-    printf("Test of task_reader for task %i \n", task);
-    int result = task_reader(TASKPATH DIR1 SUBDIR, task);
-    printf("Test of task_reader for task %i \n Return value : %i\n", task, result);
+
+    test_tree_reader();
+
+    printf("All tests done.\n");
     return 0;
+}
+
+void test_tree_reader() {
+    uint16_t task = 0;
+    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR1 SUBDIR, task));
+    printf("\n");
+
+    task = 1;
+    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR1 SUBDIR, task));
+    printf("Test of task reader for more complex tasks\n");
+    printf("\n");
+
+    task = 4;
+    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR2 SUBDIR, task));
+    printf("\n");
+
+    task = 15;
+    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR3 SUBDIR, task));
+    printf("\n");
 }

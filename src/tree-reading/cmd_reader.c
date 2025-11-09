@@ -8,7 +8,9 @@
 #include "tree-reading/tree_reader.h"
 #include "tree-reading/cmd_reader.h"
 
-int cmd_reader(char* path){
+int cmd_reader(const char* path){
+    printf("Reading cmd folder at path %s\n", path);
+
     DIR* dirp = opendir(path);
 
     if(dirp == NULL){
@@ -21,43 +23,23 @@ int cmd_reader(char* path){
     //Finding all the file and extracting some informations
     while ((entry=readdir(dirp))){
         if(entry -> d_name[0] == '.') continue;
-        
-        if(strcmp(entry -> d_name, "argv") == 0){
-            //Construction of the path to the argv file
-            char* argv_path = make_path(path, "argv");
-            if(argv_path == NULL){
-                result = -1;
-                goto error;
-            }
-            if(argv_reader(argv_path) == 1){
-                dprintf(STDERR_FILENO, "Error while reading argv file of task at path %s\n", path);
-                result = -1;
-                free(argv_path);
-                argv_path = NULL;
-                goto error;
-            }
-            free(argv_path);
-            argv_path = NULL;
-        }
-        else if (strcmp(entry -> d_name, "type") == 0){
-            //Construction of the path to the type file
-            char* type_path = make_path(path, "type");
 
-            if(type_path == NULL){
-                result = -1;
-                goto error;
-            }
-            if(type_reader(type_path) == 1){
+        if (strcmp(entry -> d_name, "type") == 0){
+        
+            if(type_reader(path) == 1){
                 dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", path);
                 result = -1;
-                free(type_path);
-                type_path = NULL;
                 goto error;
             }
-            free(type_path);
-            type_path = NULL;
         }
-        
+        else if(strcmp(entry -> d_name, "argv") == 0){
+            
+            if(argv_reader(path) == 1){
+                dprintf(STDERR_FILENO, "Error while reading argv file of task at path %s\n", path);
+                result = -1;
+                goto error;
+            }
+        }
     }
     error:
     if(closedir(dirp) != 0){
@@ -76,8 +58,18 @@ int argv_reader(const char* path){
     }
     unsigned int buffer_size = BUFFER_SIZE;
 
+    //Construction of the path to the argv file
+    char* argv_path = make_path(path, "argv");
+    if(argv_path == NULL){
+        result = -1;
+        goto error;
+    }
+    
     //Reading the type file
-    int fd = open(path, O_RDONLY);
+    int fd = open(argv_path, O_RDONLY);
+
+    free(argv_path);
+    argv_path = NULL;
 
     if(fd < 0){
         perror("open type file");
@@ -120,7 +112,8 @@ int argv_reader(const char* path){
     error:
     free(buffer);
     buffer = NULL;
-    if(close(fd) != 0){
+
+    if(fd != -1 && close(fd) != 0){
         perror("close");
         result = -1;
     }
@@ -134,8 +127,18 @@ int type_reader(const char* path){
     if(buffer_init(&buffer) == 1){
         return -1;
     }
+    //Construction of the path to the type file
+    char* type_path = make_path(path, "type");
+
+    if(type_path == NULL){
+        result = -1;
+        goto error;
+    }
     //Reading the type file
-    int fd = open(path, O_RDONLY);
+    int fd = open(type_path, O_RDONLY);
+
+    free(type_path);
+    type_path = NULL;
 
     if(fd < 0){
         perror("open type file");
@@ -160,7 +163,17 @@ int type_reader(const char* path){
                 result = -1;
                 goto error;
             }
-            // TODO do smth with type
+            if(type == SI){
+                dprintf(STDOUT_FILENO, "The task is an individual task\n");
+            }
+            //For the complex tasks
+            else{
+                if(all_tasks_reader(path) == -1){
+                    dprintf(STDERR_FILENO, "Error while reading all the sub-tasks\n");
+                    result = -1;
+                    goto error;
+                }
+            }
         }else{
             result = -1;
             goto error;
@@ -169,7 +182,7 @@ int type_reader(const char* path){
     error:
     free(buffer);
     buffer = NULL;
-    if(close(fd) != 0){
+    if(fd != -1 && close(fd) != 0){
         perror("close");
         result = -1;
     }
