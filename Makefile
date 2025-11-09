@@ -5,7 +5,7 @@ SRC = $(shell find src -name "*.c")
 OBJ = $(SRC:.c=.o)
 INC = -I include
 
-EXEC = main
+EXEC = erraid
 
 all: $(EXEC)
 
