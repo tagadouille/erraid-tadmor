@@ -12,13 +12,14 @@ int cmd_reader(const char* path){
     printf("Reading cmd folder at path %s\n", path);
 
     DIR* dirp = opendir(path);
+    int result = 0;
 
     if(dirp == NULL){
         perror("opendir");
-        return -1;
+        result = -1;
+        goto ret;
     }
     struct dirent* entry;
-    int result = 0;
 
     //Finding all the file and extracting some informations
     while ((entry=readdir(dirp))){
@@ -46,12 +47,17 @@ int cmd_reader(const char* path){
         perror("closedir");
         return -1;
     }
+    ret:
+    if(result == -1){
+        dprintf(STDERR_FILENO, "Error while reading cmd folder of task at path %s\n", path);
+    }
     return result;
 }
 
 int argv_reader(const char* path){
     char* buffer = NULL;
     int result = 0;
+    int fd = -1;
 
     if(buffer_init(&buffer) == 1){
         return -1;
@@ -66,16 +72,16 @@ int argv_reader(const char* path){
     }
     
     //Reading the type file
-    int fd = open(argv_path, O_RDONLY);
-
-    free(argv_path);
-    argv_path = NULL;
+    fd = open(argv_path, O_RDONLY);
 
     if(fd < 0){
         perror("open type file");
         result = -1;
         goto error;
     }
+    free(argv_path);
+    argv_path = NULL;
+
     //Reading the argv file and extracting the information
     unsigned int multiplicator = 0;
     unsigned int buf_ptr = 0; //Pointer to the current position in the buffer
@@ -94,6 +100,7 @@ int argv_reader(const char* path){
             buffer = new_buffer;
             buffer_size = (BUFFER_SIZE * multiplicator)*2;
         }
+        //Reading from the file
         ssize_t nread = read(fd, buffer + buf_ptr, buffer_size - buf_ptr);
 
         if(nread < 0){
@@ -103,9 +110,10 @@ int argv_reader(const char* path){
         }else if(nread == 0){
             break;
         }else{
-            buf_ptr += nread; 
+            buf_ptr += nread;
         }
     }
+    //TODO parse the file and display the content
     buffer[buf_ptr] = '\0';
     dprintf(STDOUT_FILENO, "argv content : %s \n", buffer); // (provisional msg)
 
@@ -123,6 +131,7 @@ int argv_reader(const char* path){
 int type_reader(const char* path){
     char* buffer = NULL;
     int result = 0;
+    int fd = 0;
 
     if(buffer_init(&buffer) == 1){
         return -1;
@@ -135,7 +144,7 @@ int type_reader(const char* path){
         goto error;
     }
     //Reading the type file
-    int fd = open(type_path, O_RDONLY);
+    fd = open(type_path, O_RDONLY);
 
     free(type_path);
     type_path = NULL;
@@ -152,14 +161,14 @@ int type_reader(const char* path){
         result = -1;
         goto error;
     }else{
-        //Dectection of an anomaly
+        //Detection of an anomaly
         if(nread == 2){
             buffer[nread] = '\0';
             dprintf(STDOUT_FILENO, "type of the given task : %s \n", buffer); // (provisional msg)
             int type = type_interpreter(buffer);
 
             if(type == -1){
-                dprintf(STDERR_FILENO, "Error : unknown type %s\n", buffer);
+                dprintf(STDERR_FILENO, "Error : unknown type found %s\n", buffer);
                 result = -1;
                 goto error;
             }
@@ -176,6 +185,7 @@ int type_reader(const char* path){
             }
         }else{
             result = -1;
+            dprintf(STDERR_FILENO, "Error : type file has an invalid size\n");
             goto error;
         }
     }  

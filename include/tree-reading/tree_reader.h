@@ -1,3 +1,6 @@
+#ifndef TREE_READER_H
+#define TREE_READER_H
+
 #include <limits.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -24,30 +27,73 @@ enum Action_type {
 };
 typedef enum Action_type Action_type;
 
-/*Read the given task tree according to the path, the task_id
-arguments and the action argument which specify the action to do while reading the task.
-return 0 if success, -1 if failure*/
+/**
+* @brief Read the given task tree located at path argument for the task with the id task_id
+* @param path the path to the task tree
+* @param task_id the number of the task
+* @param action specify the action to do while reading the task.
+* @return 0 if success, -1 if failure
+*/
 int task_reader(const char* path, uint16_t task_id, Action_type action);
 
-/*Extract the information of all the tasks at the direcory path and for all the sub-tasks
-Return 0 if success, -1 otherwise*/
+/**
+* @brief Extract the information of all the tasks at the direcory path and for all the sub-tasks
+* @param path the path to the directory containing the tasks
+* @return 0 if success, -1 otherwise
+*/
 int all_tasks_reader(const char* path);
 
-/*Find the task according to the path and task_id
-arguments, the action argument specify the action to do while reading the task
-return 0 if the task is found, -1 if not or if a error occured (an error message will be display in
-that case)*/
+/**
+* @brief Find the task according to the path and task_id arguments
+* @param path the path to the directory containing the tasks
+* @param task_id the number of the task
+* @param action specify the action to do while reading the task
+* @return 0 if the task is found, -1 if not or if a error occured (an error message will be display in
+*that case)
+*/
 int task_finder(char* path, char* task_id, Action_type action);
 
-/*Extract the information of the specified task which is stored at path argument according to the action argument.
-The is_sequence argument specify if the task is a sequence of tasks of not
-return 0 if success, -1 if failure*/
+/**
+* @brief Extract the information of the specified task which is stored at path argument according to the action argument.
+* @param path the path to the task
+* @param action specify the action to do while reading the task
+* @param is_sequence argument specify if the task is a sequence of tasks of not
+* @return 0 if success, -1 if failure
+*/
 int extract_task_information(const char* path, Action_type action, bool is_sequence);
 
-/*Initialise the buffer with a size of BUFFER_SIZE
-return 0 if succes, -1 if failure*/
+/**
+* @brief  the buffer with a size of BUFFER_SIZE
+* @param buffer the buffer to initialize
+* @return 0 if succes, -1 if failure
+*/
 int buffer_init(char** buffer);
 
-/*Make the path by concat og_path with /folder_name
-Return the concatenation, NULL if failure */
+/**
+* Make the path by concatenate og_path with "/folder_name"
+* @param og_path the original path
+* @param folder_name the folder name to concatenate
+* @return the concatenation, NULL if failure 
+*/
 char* make_path(const char* og_path, const char* folder_name);
+
+/**
+ * @brief Auxiliary function to extract information from a file located in folder_name inside path
+ * @param path the path to the task
+ * @param folder_name the folder name containing the file to read
+ * @param func pointer to the function to use to read the file
+ * @return 0 if success, -1 if failure
+ */
+int aux_extract(const char* path, char* folder_name, int (*func)(const char*));
+
+/**
+ * @brief Auxiliary function to extract information from a file located in folder_name inside path
+ * @param path the path to the task
+ * @param folder_name the folder name containing the file to read
+ * @param func pointer to the output_reader function to use to read the file
+ * @param is_stderr boolean to specify if we read stderr or stdout
+ * @return 0 if success, -1 if failure
+ */
+int aux_extract2(const char* path, char* folder_name, int (*func)(const char*, bool), bool is_stderr);
+
+#endif

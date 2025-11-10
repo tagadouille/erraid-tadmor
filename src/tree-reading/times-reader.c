@@ -5,7 +5,9 @@
 
 #include "tree-reading/tree_reader.h"
 
-int timing_reader(char* path){
+//TODO Factorise the two functions below since they are very similar
+
+int timing_reader(const char* path){
 
     char* buffer = NULL;
     int result = 0;
@@ -25,7 +27,6 @@ int timing_reader(char* path){
         result = -1;
         goto error;
     }else{
-        //Dectection of an anomaly
         if(nread > 0){
             buffer[nread] = '\0';
             dprintf(STDOUT_FILENO, "timing of the given task : %s \n", buffer); // (provisional msg)
@@ -43,7 +44,7 @@ int timing_reader(char* path){
     }
     return result;
 }
-int times_exitcodes_reader(char* path){
+int times_exitcodes_reader(const char* path){
 
     char* buffer = NULL;
     int result = 0;
@@ -63,7 +64,6 @@ int times_exitcodes_reader(char* path){
         result = -1;
         goto error;
     }else{
-        //Dectection of an anomaly
         if(nread > 0){
             buffer[nread] = '\0';
             dprintf(STDOUT_FILENO, "times-exitcodes of the given task : %s \n", buffer); // (provisional msg)

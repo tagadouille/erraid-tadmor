@@ -121,73 +121,34 @@ int extract_task_information(const char* path, Action_type action, bool is_seque
         //If the task is a sequence, we only use cmd_reader
         if(is_sequence){
             if(cmd_reader(path) == -1){
-                dprintf(STDERR_FILENO, "Error while reading cmd folder of task at path %s\n", path);
                 result = -1;
                 goto error;
             }
         }else{
-            if(action == LIST){
-                if(action == LIST && strcmp(entry -> d_name, "cmd") == 0){
-                    //Construction of the path to the cmd folder
-                    char* cmd_path = make_path(path, "cmd");
-                    if(cmd_path == NULL){
-                        result = -1;
-                        goto error;
-                    }
-                    if(cmd_reader(cmd_path) == -1){
-                        dprintf(STDERR_FILENO, "Error while reading cmd folder of task at path %s\n", path);
-                        result = -1;
-                        goto error;
-                    }
-                    continue;
+            //Calling the appropriate reader depending on the action and the file name
+            if(action == LIST && strcmp(entry -> d_name, "cmd") == 0){
+                if(aux_extract(path, "cmd", cmd_reader) != 0){
+                    goto error;
                 }
-                if(strcmp(entry -> d_name, "timing") == 0){
-                    //Construction of the path to the timing file
-                    char* timing_path = make_path(path, "timing");
-                    if(timing_path == NULL){
-                        result = -1;
-                        goto error;
-                    }
-                    if(timing_reader(timing_path) == -1){
-                        dprintf(STDERR_FILENO, "Error while reading timing file of task at path %s\n", path);
-                        result = -1;
-                        goto error;
-                    }
+            }else if(action == LIST && strcmp(entry -> d_name, "timing") == 0){
+                if(aux_extract(path, "timing", timing_reader) < 0){
+                    dprintf(STDERR_FILENO, "Error while reading timing file of task at path %s\n", path);
+                    goto error;
                 }
             }else if(action == TIME_EXIT && strcmp(entry -> d_name, "times_exitcodes") == 0){
-                //Construction of the path to the times_exitcodes file
-                char* times_exitcodes_path = make_path(path, "times_exitcodes");
-                if(times_exitcodes_path == NULL){
-                    result = -1;
-                    goto error;
-                }
-                if(times_exitcodes_reader(times_exitcodes_path) == -1){
+                if(aux_extract(path, "times_exitcodes", times_exitcodes_reader) < 0){
                     dprintf(STDERR_FILENO, "Error while reading times_exitcodes file of task at path %s\n", path);
-                    result = -1;
                     goto error;
                 }
-            }else if(action == OUTPUT && strcmp(entry -> d_name, "stdout") == 0){
-                //Construction of the path to the stdout file
-                char* stdout_path = make_path(path, "stdout");
-                if(stdout_path == NULL){
-                    result = -1;
-                    goto error;
-                }
-                if(standard_output_reader(stdout_path) == -1){
+            }
+            else if(action == OUTPUT && strcmp(entry -> d_name, "stdout") == 0){
+                if(aux_extract2(path, "stdout", output_reader, false) < 0){
                     dprintf(STDERR_FILENO, "Error while reading stdout file of task at path %s\n", path);
-                    result = -1;
                     goto error;
                 }
-            }else if(action == ERR && strcmp(entry -> d_name, "stderr") == 0){
-                //Construction of the path to the stderr file
-                char* stderr_path = make_path(path, "stderr");
-                if(stderr_path == NULL){
-                    result = -1;
-                    goto error;
-                }
-                if(error_output_reader(stderr_path) == -1){
-                    dprintf(STDERR_FILENO, "Error while reading stderr file of task at path %s\n", path);
-                    result = -1;
+            }else if(action == ERR && strcmp(entry -> d_name, "times_exitcodes") == 0){
+                if(aux_extract2(path, "times_exitcodes", output_reader, true) < 0){
+                    dprintf(STDERR_FILENO, "Error while reading times_exitcodes file of task at path %s\n", path);
                     goto error;
                 }
             }
@@ -199,6 +160,29 @@ int extract_task_information(const char* path, Action_type action, bool is_seque
         result = -1;
     }
     return result;
+}
+
+int aux_extract(const char* path, char* folder_name, int (*func)(const char*)){
+    //Construction of the path to the file
+    char* new_path = make_path(path, folder_name);
+    if(new_path == NULL){
+        return -1;
+    }
+    if(func(new_path) == -1){
+        return -1;
+    }
+    return 0;
+}
+int aux_extract2(const char* path, char* folder_name, int (*func)(const char*, bool), bool is_stderr){
+    //Construction of the path to the file
+    char* new_path = make_path(path, folder_name);
+    if(new_path == NULL){
+        return -1;
+    }
+    if(func(new_path, is_stderr) == -1){
+        return -1;
+    }
+    return 0;
 }
 
 int buffer_init(char** buffer) {

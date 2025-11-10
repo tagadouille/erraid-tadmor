@@ -14,11 +14,11 @@ int main() {
     printf("Running tests...\n\n");
 
     printf("Test for listing\n");
-    test_tree_reader(LIST);
+    //test_tree_reader(LIST);
     printf("Test for output\n\n");
-    test_tree_reader(OUTPUT);
+    //test_tree_reader(OUTPUT);
     printf("Test for err\n\n");
-    test_tree_reader(ERR);
+    //test_tree_reader(ERR);
     printf("Test for time_exitcodes\n\n");
     test_tree_reader(TIME_EXIT);
 

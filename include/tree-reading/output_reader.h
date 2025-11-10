@@ -1,7 +1,11 @@
-/*Read the stdout file and write the content to STDOUT
-Return 0 if succes, -1 otherwise*/
-int standard_output_reader(char* path);
+#ifndef OUTPUT_READER_H
+#define OUTPUT_READER_H
 
-/*Read the stderr file and write the content to STDOUT
-Return 0 if succes, -1 otherwise*/
-int error_output_reader(char* path);
+/**
+* @brief Read the standard output file and write the content to STDOUT_FILENO
+* @param path the path to the standard output file
+* @param is_stderr specify if the file to read is stderr or stdout
+* @return 0 if succes, -1 otherwise*/
+int output_reader(const char* path, bool is_stderr);
+
+#endif
