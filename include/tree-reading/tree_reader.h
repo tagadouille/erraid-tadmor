@@ -94,6 +94,14 @@ int aux_extract(const char* path, char* folder_name, int (*func)(const char*));
  * @param is_stderr boolean to specify if we read stderr or stdout
  * @return 0 if success, -1 if failure
  */
-int aux_extract2(const char* path, char* folder_name, int (*func)(const char*, bool), bool is_stderr);
+int aux_extract_output(const char* path, char* folder_name, int (*func)(const char*, bool), bool is_stderr);
+
+/**
+ * @brief Auxiliary function to extract timing or times-exitcodes information from a file located in folder_name inside path
+ * @param path the path to the task
+ * @param folder_name the folder name containing the file to read
+ * @return 0 if success, -1 if failure
+ */
+int aux_extract_time(const char* path, char* folder_name);
 
 #endif

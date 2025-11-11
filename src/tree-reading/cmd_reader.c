@@ -131,7 +131,7 @@ int argv_reader(const char* path){
 int type_reader(const char* path){
     char* buffer = NULL;
     int result = 0;
-    int fd = 0;
+    int fd = -1;
 
     if(buffer_init(&buffer) == 1){
         return -1;
