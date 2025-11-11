@@ -2,19 +2,18 @@
 #define TIME_EXITCODE_H
 
 #include <stdint.h>
-#include <stdlib.h>
+#include <stdbool.h>
 
 /**
  * @brief Represents a single execution record (timestamp + exit code).
- * Serialization format: TIME <uint64> (BE) | EXITCODE <int32> (BE)
+ * Serialization format: TIME <uint64_t> | EXITCODE <int32_t>
  */
 typedef struct 
 {
-    uint64_t time;     // Execution time (seconds since Epoch)
-    int32_t exitcode;  // Exit status of the executed command
+    uint64_t time;     // timestamp of execution
+    int32_t exitcode;  // Exit status of the task
 } time_exitcode_t;
 
-/* --- Prototypes des fonctions --- */
 
 /**
  * @brief Allocates a new time_exitcode_t structure.

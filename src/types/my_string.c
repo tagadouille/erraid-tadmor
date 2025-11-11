@@ -4,11 +4,6 @@
 #include <stdlib.h>
 #include <errno.h>
 
-/**
- * @brief Read exactly 'count' bytes from 'fd' to 'buf'.
- *
- * @return 0 when Succeed, -1 when Error
- */
 static int read_all(int fd, void *buf, size_t count)
 {
     size_t bytes_read = 0;
@@ -32,11 +27,6 @@ static int read_all(int fd, void *buf, size_t count)
     return 0;
 }
 
-/**
- * @brief Write exactly 'count' bytes from 'buf' to 'fd'.
- *
- * @return 0 Succeed, -1 Error
- */
 static int write_all(int fd, const void *buf, size_t count)
 {
     size_t bytes_written = 0;
