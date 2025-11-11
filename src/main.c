@@ -4,13 +4,13 @@
 #include <unistd.h>
 #include <time.h>
 
-#include "types/time_exitcode.h"
-#include "types/timing.h"
+#include "../include/types/time_exitcode.h"
+#include "../include/types/timing.h"
 
 int main() {
-    /*timing_t t;
+    timing_t t;
 
-    // Étape 1️⃣ — Création manuelle d'un timing
+    // Étape 1 — Création manuelle d'un timing
     // Exemple : minutes 0–10, heures 8 et 18, jours lundi à vendredi
     t.minutes = 0;
     for (int i = 0; i <= 10; i++)
@@ -23,14 +23,14 @@ int main() {
     printf("=== Timing initial ===\n");
     timing_print(&t);
 
-    // Étape 2️⃣ — Écriture dans un fichier binaire
+    // Étape 2 — Écriture dans un fichier binaire
     if (!timing_write("test_timing.bin", &t)) {
         perror("timing_write");
         return 1;
     }
-    printf("\n✅ Timing écrit dans test_timing.bin\n");
+    printf("\n Timing écrit dans test_timing.bin\n");
 
-    // Étape 3️⃣ — Lecture depuis le fichier
+    // Étape 3 — Lecture depuis le fichier
     timing_t t2;
     if (!timing_read("test_timing.bin", &t2)) {
         perror("timing_read");
@@ -39,7 +39,7 @@ int main() {
     printf("\n=== Timing relu depuis le fichier ===\n");
     timing_print(&t2);
 
-    // Étape 4️⃣ — Vérification : moment actuel
+    // Étape 4 — Vérification : moment actuel
     printf("\n=== Vérification de l'heure actuelle ===\n");
     time_t now = time(NULL);
     struct tm *tm_now = localtime(&now);
@@ -47,10 +47,12 @@ int main() {
            tm_now->tm_hour, tm_now->tm_min, tm_now->tm_wday);
 
     if (timing_match_now(&t2))
-        printf("✅ C'est le moment d'exécuter la tâche !\n");
+        printf(" C'est le moment d'exécuter la tâche !\n");
     else
-        printf("⏳ Ce n'est PAS encore le moment.\n");
-    return 0;*/
+        printf(" Ce n'est PAS encore le moment.\n");
+    return 0;
+
+
     time_exitcode_t record;
 
     record.time = time(NULL);
