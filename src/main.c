@@ -4,10 +4,11 @@
 #include <unistd.h>
 #include <time.h>
 
-#include "./include/types/timing.h"
+#include "types/time_exitcode.h"
+#include "types/timing.h"
 
 int main() {
-    timing_t t;
+    /*timing_t t;
 
     // Étape 1️⃣ — Création manuelle d'un timing
     // Exemple : minutes 0–10, heures 8 et 18, jours lundi à vendredi
@@ -49,5 +50,17 @@ int main() {
         printf("✅ C'est le moment d'exécuter la tâche !\n");
     else
         printf("⏳ Ce n'est PAS encore le moment.\n");
+    return 0;*/
+    time_exitcode_t record;
+
+    record.time = time(NULL);
+    record.exitcode = 0; // exemple : succès
+
+    if (!time_exitcode_append("times-exitcodes", &record)) {
+        perror("append");
+        return 1;
+    }
+
+    time_exitcode_show("times-exitcodes");
     return 0;
 }

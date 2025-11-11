@@ -1,56 +1,51 @@
 #include "time_exitcode.h"
-#include "int_types.h"
 
-#include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
+#include <time.h>
+#include <unistd.h>
+#include <fcntl.h>
+//#include <endian.h>
 
+bool time_exitcode_append(const char *path, const time_exitcode_t *record) {
+    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644); // 0644 : rw-r--r--
+    if (fd < 0) return false;
 
-time_exitcode_t* time_exitcode_new(void) {
-    time_exitcode_t* record = (time_exitcode_t*)malloc(sizeof(time_exitcode_t));
-    if (record == NULL) return NULL;
-    
-    record->time = 0;
-    record->exitcode = 0;
-    
-    return record;
+    // Convert to big-endian before writing (on inverse l'ordre des octets)
+    uint64_t t = htobe64(record->time); 
+    int32_t  c = htobe32(record->exitcode);
+
+    // Write timestamp and exitcode
+    if (write(fd, &t, sizeof(t)) != sizeof(t)) { close(fd); return false; }
+    if (write(fd, &c, sizeof(c)) != sizeof(c)) { close(fd); return false; }
+
+    close(fd);
+    return true;
 }
 
-void free_time_exitcode(time_exitcode_t* record) {
-    free(record);
-}
+bool time_exitcode_show(const char *path) {
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) return false;
 
+    time_exitcode_t record;
+    uint64_t t;
+    int32_t c;
 
-time_exitcode_t* read_time_exitcode(int fd) {
-    time_exitcode_t* record = time_exitcode_new();
-    if (record == NULL) return NULL;
-    
-    // 1. Read TIME (uint64)
-    if (read_uint64(fd, &record->time) == -1) {
-        free_time_exitcode(record);
-        return NULL;
+    printf("=== Past executions ===\n");
+
+    while (read(fd, &t, sizeof(t)) == sizeof(t) &&
+           read(fd, &c, sizeof(c)) == sizeof(c)) {
+        // Convert from big-endian 
+        record.time = be64toh(t);
+        record.exitcode = be32toh(c);
+
+        // Convert timestamp to human-readable format
+        char buffer[64];
+        struct tm *tm_info = localtime((time_t *)&record.time);
+        strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", tm_info); // Format time 
+        printf("[%s] → Exit code: %d\n", buffer, record.exitcode);
+        // ? Exemple d'affichage : [2024-10-05 14:23:01] → Exit code: 0
     }
 
-    // 2. Read EXITCODE (int32)
-    if (read_int32(fd, &record->exitcode) == -1) {
-        free_time_exitcode(record);
-        return NULL;
-    }
-
-    return record;
-}
-
-int write_time_exitcode(int fd, const time_exitcode_t* record) {
-    if (record == NULL) return -1;
-    
-    // 1. Write TIME (uint64)
-    if (write_uint64(fd, record->time) == -1) {
-        return -1;
-    }
-
-    // 2. Write EXITCODE (int32)
-    if (write_int32(fd, record->exitcode) == -1) {
-        return -1;
-    }
-
-    return 0;
+    close(fd);
+    return true;
 }
