@@ -22,15 +22,22 @@ bool time_exitcode_append(const char *path, const time_exitcode_t *record) {
     return true;
 }
 
-bool time_exitcode_show(const char *path) {
+char *time_exitcode_show(const char *path) {
     int fd = open(path, O_RDONLY);
-    if (fd < 0) return false;
+    if (fd < 0) {
+        perror("open");
+        return NULL;
+    }
+
+    printf("=== Past executions ===\n");
+    char *output = malloc(1024);
+    if (!output) return NULL;
+    output[0] = '\0';
 
     time_exitcode_t record;
     uint64_t t;
     int32_t c;
-
-    printf("=== Past executions ===\n");
+    char line[128];
 
     while (read(fd, &t, sizeof(t)) == sizeof(t) &&
            read(fd, &c, sizeof(c)) == sizeof(c)) {
@@ -39,13 +46,27 @@ bool time_exitcode_show(const char *path) {
         record.exitcode = be32toh(c);
 
         // Convert timestamp to human-readable format
-        char buffer[64];
-        struct tm *tm_info = localtime((time_t *)&record.time);
-        strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", tm_info); // Format time 
-        printf("[%s] → Exit code: %d\n", buffer, record.exitcode);
-        // ? Exemple d'affichage : [2024-10-05 14:23:01] → Exit code: 0
+        time_t ts = (time_t)record.time;
+        struct tm *tm_info = localtime(&ts);
+
+        char time_str[64];
+        if (tm_info) {
+            strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
+            // ? Exemple d'affichage : [2024-10-05 14:23:01] → Exit code: 0
+        } else {
+            snprintf(time_str, sizeof(time_str), "Invalid time");
+        }
+
+        // Add a line to output
+        snprintf(line, sizeof(line), "[%s] → Exit code: %d\n", time_str, record.exitcode);
+        strcat(output, line);
     }
 
     close(fd);
-    return true;
+
+    // If no records, indicate that
+    if (strlen(output) == 0)
+        strcpy(output, "(No previous executions)\n");
+    
+    return strdup(output);
 }

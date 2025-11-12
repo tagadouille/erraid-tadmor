@@ -1,10 +1,12 @@
 #include "timing.h"
 
 #include <unistd.h>
+#include <fcntl.h>
 //#include <endian.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <time.h>
-#include <fcntl.h>
 
 bool timing_read(const char *path, timing_t *t) {
     int fd = open(path, O_RDONLY);
@@ -20,6 +22,7 @@ bool timing_read(const char *path, timing_t *t) {
 
     close(fd);
 
+    // Convert from big-endian to host byte order
     t->minutes = be64toh(m);
     t->hours = be32toh(h);
     t->daysofweek = d;
@@ -64,25 +67,53 @@ bool timing_match_now(const timing_t *t) {
     return true;
 }
 
-void timing_print(const timing_t *t) {
-    printf("Minutes: ");
+char *timing_show(const char *path) {
+    timing_t t;
+    if (!timing_read(path, &t)) {
+        fprintf(stderr, "Failed to read timing from %s\n", path);
+        return NULL;
+    }
+
+    char *output = malloc(1024);
+    if (!output) return NULL;
+    output[0] = '\0';
+
+    // Minutes (1ère version de l'affichage)
+    strncat(output, "Minutes: ", 1024 - strlen(output) - 1);
     for (int i = 0; i < minutes_count; i++) {
-        if (t->minutes & (1ULL << i)) {
-            printf("%d ", i);
+        if (t.minutes & (1ULL << i)) {
+            char tmp[8];
+            snprintf(tmp, sizeof(tmp), "%d ", i);
+            strncat(output, tmp, sizeof(output) - strlen(output) - 1);
         }
     }
-    printf("\nHours: ");
+
+    // Hours
+    strncat(output, "| Hours: ", 1024 - strlen(output) - 1);
     for (int i = 0; i < hours_count; i++) {
-        if (t->hours & (1U << i)) {
-            printf("%d ", i);
+        if (t.hours & (1U << i)) {
+            char tmp[8];
+            snprintf(tmp, sizeof(tmp), "%d ", i);
+            strncat(output, tmp, sizeof(output) - strlen(output) - 1);
         }
     }
-    printf("\nDays of Week: ");
-    const char *days[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-    for (int i = 0; i < days_count; i++) {
-        if (t->daysofweek & (1U << i)) {
-            printf("%s ", days[i]);
+
+    // Days of Week
+    strncat(output, "| Days of Week: ", 1024 - strlen(output) - 1);
+    const char *day_names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+    for (int i = 0; i < days_count; i++) { 
+        if (t.daysofweek & (1U << i)) {
+            char tmp[8];
+            snprintf(tmp, sizeof(tmp), "%s ", day_names[i]);
+            strncat(output, tmp, sizeof(output) - strlen(output) - 1);
         }
     }
-    printf("\n");
+
+    char *result = strdup(output);
+    if (!result) {
+        fprintf(stderr, "Memory allocation failed in timing_show()\n");
+        return NULL;
+    }
+
+    return result;
 }
