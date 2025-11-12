@@ -1,4 +1,5 @@
 #include "erraid.h"
+#include "tree-reading/tree_reader.h"
 
 static volatile int running = 1;
 
@@ -43,12 +44,25 @@ int daemon_init(void) {
 void daemon_run(void) {
     write_log("Erraid daemon started.");
 
+    const char *task_root = TASK_PATH DIR1 SUBDIR;  
+
     while (running) {
-        // (plus tard) lecture de l’arborescence et exécution des tâches
-        write_log("Daemon is alive...");
+        write_log("Erraid scanning task tree...");
+
+        // Reading the task tree
+        int result = task_reader(task_root, 1, LIST);
+        if (result < 0) {
+            write_log("Error while reading task tree.");
+        } else {
+            write_log("Task tree successfully read.");
+        }
+
         sleep(SLEEP_INTERVAL);
     }
+
+    write_log("Erraid daemon stopped.");
 }
+
 
 void daemon_cleanup(void) {
     write_log("Erraid daemon stopped.");
