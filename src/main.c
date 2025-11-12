@@ -4,8 +4,9 @@
 #include <unistd.h>
 #include <time.h>
 
-#include "../include/types/time_exitcode.h"
-#include "../include/types/timing.h"
+#include "types/time_exitcode.h"
+#include "types/timing.h"
+#include "types/argument.h"
 
 int main() {
     timing_t t;
@@ -21,7 +22,6 @@ int main() {
         t.daysofweek |= (1U << i);  // lundi(1) à vendredi(5)
 
     printf("=== Timing initial ===\n");
-    timing_print(&t);
 
     // Étape 2 — Écriture dans un fichier binaire
     if (!timing_write("test_timing.bin", &t)) {
@@ -37,7 +37,7 @@ int main() {
         return 1;
     }
     printf("\n=== Timing relu depuis le fichier ===\n");
-    timing_print(&t2);
+
 
     // Étape 4 — Vérification : moment actuel
     printf("\n=== Vérification de l'heure actuelle ===\n");
@@ -50,9 +50,8 @@ int main() {
         printf(" C'est le moment d'exécuter la tâche !\n");
     else
         printf(" Ce n'est PAS encore le moment.\n");
-    return 0;
 
-
+    /* ! Pas d'affichage du timing pour l'instant
     time_exitcode_t record;
 
     record.time = time(NULL);
@@ -63,6 +62,25 @@ int main() {
         return 1;
     }
 
-    time_exitcode_show("times-exitcodes");
+    time_exitcode_show("times-exitcodes");*/
+
+
+    // Test de arguments_parse
+    unsigned char buf[] = {
+    0x00,0x00,0x00,0x03,
+    0x00,0x00,0x00,0x04,'t','e','s','t',
+    0x00,0x00,0x00,0x03,'a','r','g',
+    0x00,0x00,0x00,0x05,'v','a','l','u','e'
+    };
+
+    char* parsed = arguments_parse((const char*)buf, sizeof(buf));
+    if (parsed) {
+        printf("Parsed arguments: %s\n", parsed);
+        free(parsed);
+    } else {
+        printf("Failed to parse arguments\n");
+    }
+    printf("Done.\n");
+
     return 0;
 }

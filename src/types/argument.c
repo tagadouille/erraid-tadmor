@@ -1,25 +1,31 @@
-#include "argument.h"
+#define _DEFAULT_SOURCE
+#define _GNU_SOURCE
+
+#include "types/argument.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-//#include <endian.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <endian.h>
 
-char *arguments_parse(const unsigned char *buffer, unsigned int size) {
+char *arguments_parse(const char *buffer, unsigned int size) {
     if (buffer == NULL || size < 4) {
-        fprintf(stderr, "Invalid buffer\n");
+        dprintf(STDERR_FILENO, "Invalid buffer\n");
         return NULL;
     }
     unsigned int offset = 0;
 
     // --- Read ARGC ---
-    uint32_t argc_be;
-    memcpy(&argc_be, buffer + offset, sizeof(argc_be));
+    uint32_t argc_be; //Number of arguments
+    memcpy(&argc_be, buffer, sizeof(uint32_t));
+
     uint32_t argc = be32toh(argc_be);
     offset += sizeof(argc_be);
 
-    if (argc < 1 || argc > 1000) {
-        fprintf(stderr, "Invalid ARGC value: %u\n", argc);
+    if (argc < 1) {
+        dprintf(STDERR_FILENO, "Invalid ARGC value: %u\n", argc);
         return NULL;
     }
 
@@ -32,25 +38,29 @@ char *arguments_parse(const unsigned char *buffer, unsigned int size) {
 
     unsigned int total_length = 0;
 
-    // --- Read each string ---
+    // --- Read each arguments ---
     for (uint32_t i = 0; i < argc; i++) {
-        if (offset + 4 > size) {
-            fprintf(stderr, "Buffer too small for string length\n");
+        if (offset + sizeof(uint32_t) > size) {
+            dprintf(STDERR_FILENO, "Buffer too small for argument length\n");
             goto error;
         }
 
+        // Calcul length of the argument
         uint32_t len_be;
-        memcpy(&len_be, buffer + offset, sizeof(len_be));
+        memcpy(&len_be, buffer + offset, sizeof(uint32_t));
         uint32_t len = be32toh(len_be);
-        offset += sizeof(len_be);
+        offset += sizeof(uint32_t);
 
         if (offset + len > size) {
-            fprintf(stderr, "Buffer too small for string data\n");
+            dprintf(STDERR_FILENO, "Buffer too small for data\n");
             goto error;
         }
 
         argv[i] = malloc(len + 1);
-        if (!argv[i]) goto error;
+        if (!argv[i]){
+            perror("malloc");
+            goto error;
+        }
 
         memcpy(argv[i], buffer + offset, len);
         argv[i][len] = '\0';
@@ -61,7 +71,10 @@ char *arguments_parse(const unsigned char *buffer, unsigned int size) {
 
     // --- Build a single string ---
     char *joined = malloc(total_length + 1);
-    if (!joined) goto error;
+    if (!joined){
+        perror("malloc");
+        goto error;
+    }
 
     joined[0] = '\0';
     for (uint32_t i = 0; i < argc; i++) {
@@ -80,4 +93,15 @@ error:
         if (argv[i]) free(argv[i]);
     free(argv);
     return NULL;
+}
+
+void arguments_free(arguments_t *args) {
+    if (args == NULL) return;
+
+    for (uint32_t i = 0; i < args->argc; i++) {
+        free(args->argv[i]);
+    }
+    free(args->argv);
+    args->argc = 0;
+    args->argv = NULL;
 }

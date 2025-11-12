@@ -3,14 +3,15 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
-#define minutes_count 60
-#define hours_count 24
-#define days_count 7
+#define MINUTES_COUNT 60
+#define HOURS_COUNT 24
+#define DAYS_COUNT 7
 
-#define all_minutes ((1ULL << minutes_count) - 1)
-#define all_hours ((1ULL << hours_count) - 1)
-#define all_days ((1ULL << days_count) - 1)
+#define ALL_MINUTES ((1ULL << MINUTES_COUNT) - 1)
+#define ALL_HOURS ((1ULL << HOURS_COUNT) - 1)
+#define ALL_DAYS ((1ULL << DAYS_COUNT) - 1)
 
 /**
  * @brief Reprensent type 'timing' 
@@ -49,9 +50,10 @@ bool timing_write(const char *path, const timing_t *t);
 bool timing_match_now(const timing_t *t);
 
 /**
- * @brief Print the timing_t structure.
- * @param t Pointer to the timing_t structure to print.
+ * @brief Read and interpret a binary timing file into a readable string.
+ * @param path Path to the timing file.
+ * @return Newly allocated string (must be freed by caller), or NULL on failure.
  */
-void timing_print(const timing_t *t);
+char *timing_show(const char *path);
 
 #endif

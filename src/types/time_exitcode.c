@@ -1,10 +1,14 @@
-#include "time_exitcode.h"
+#define _DEFAULT_SOURCE
+#define _GNU_SOURCE
+#include "types/time_exitcode.h"
 
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
 #include <fcntl.h>
-//#include <endian.h>
+#include <string.h>
+#include <stdlib.h>
+#include <endian.h>
 
 bool time_exitcode_append(const char *path, const time_exitcode_t *record) {
     int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644); // 0644 : rw-r--r--
@@ -41,32 +45,29 @@ char *time_exitcode_show(const char *path) {
 
     while (read(fd, &t, sizeof(t)) == sizeof(t) &&
            read(fd, &c, sizeof(c)) == sizeof(c)) {
-        // Convert from big-endian 
         record.time = be64toh(t);
         record.exitcode = be32toh(c);
 
-        // Convert timestamp to human-readable format
         time_t ts = (time_t)record.time;
         struct tm *tm_info = localtime(&ts);
 
         char time_str[64];
         if (tm_info) {
             strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
-            // ? Exemple d'affichage : [2024-10-05 14:23:01] → Exit code: 0
         } else {
             snprintf(time_str, sizeof(time_str), "Invalid time");
         }
 
-        // Add a line to output
         snprintf(line, sizeof(line), "[%s] → Exit code: %d\n", time_str, record.exitcode);
-        strcat(output, line);
+
+        if (strlen(output) + strlen(line) < 1023)
+            strcat(output, line);
     }
 
     close(fd);
 
-    // If no records, indicate that
     if (strlen(output) == 0)
         strcpy(output, "(No previous executions)\n");
-    
-    return strdup(output);
+
+    return output;
 }
