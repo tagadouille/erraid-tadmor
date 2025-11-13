@@ -58,7 +58,7 @@ char *time_exitcode_show(const char *path) {
             snprintf(time_str, sizeof(time_str), "Invalid time");
         }
 
-        snprintf(line, sizeof(line), "[%s] → Exit code: %d\n", time_str, record.exitcode);
+        snprintf(line, sizeof(line), "%s %d\n", time_str, record.exitcode);
 
         if (strlen(output) + strlen(line) < 1023)
             strcat(output, line);
@@ -70,4 +70,18 @@ char *time_exitcode_show(const char *path) {
         strcpy(output, "(No previous executions)\n");
 
     return output;
+}
+
+void time_exitcode_print(const time_exitcode_t *record) {
+    time_t ts = (time_t)record->time;
+    struct tm *tm_info = localtime(&ts);
+
+    char time_str[64];
+    if (tm_info) {
+        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
+    } else {
+        snprintf(time_str, sizeof(time_str), "Invalid time");
+    }
+
+    printf("[%s] → Exit code: %d\n", time_str, record->exitcode);
 }

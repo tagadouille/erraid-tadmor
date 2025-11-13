@@ -51,18 +51,13 @@ int main() {
     else
         printf(" Ce n'est PAS encore le moment.\n");
 
-    /* ! Pas d'affichage du timing pour l'instant
+    
     time_exitcode_t record;
 
     record.time = time(NULL);
     record.exitcode = 0; // exemple : succès
 
-    if (!time_exitcode_append("times-exitcodes", &record)) {
-        perror("append");
-        return 1;
-    }
-
-    time_exitcode_show("times-exitcodes");*/
+    time_exitcode_print(&record);
 
 
     // Test de arguments_parse

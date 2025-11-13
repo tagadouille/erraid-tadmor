@@ -29,5 +29,11 @@ bool time_exitcode_append(const char *path, const time_exitcode_t *record);
  */
 char *time_exitcode_show(const char *path);
 
+/**
+ * @brief Print a single time_exitcode_t record in human-readable format.
+ * @param record Pointer to the record to print.
+ */
+void time_exitcode_print(const time_exitcode_t *record);
+
 
 #endif
