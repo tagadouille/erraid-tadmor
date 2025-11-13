@@ -19,7 +19,7 @@ typedef struct {
  * @param str C string to initialize from
  * @return my_string_t Initialized my_string_t instance
  */
-my_string_t my_string_init(const char* str);
+my_string_t my_string_create(const char* str);
 
 /**
  * @brief Free the memory allocated for a my_string_t.
