@@ -83,14 +83,14 @@ int argv_reader(const char* path){
     argv_path = NULL;
 
     //Reading the argv file and extracting the information
-    unsigned int multiplicator = 0;
+    unsigned int multiplicator = 1;
     unsigned int buf_ptr = 0; //Pointer to the current position in the buffer
 
     while(1){
-        multiplicator++;
         //Reallocation of the buffer if needed
-        if(buf_ptr + BUFFER_SIZE > buffer_size){
-            char* new_buffer = realloc(buffer, (BUFFER_SIZE * multiplicator)*2);
+        if(multiplicator * BUFFER_SIZE > buffer_size){
+            size_t new_size = (BUFFER_SIZE * multiplicator)*2;
+            char* new_buffer = realloc(buffer, new_size);
 
             if(new_buffer == NULL){
                 perror("realloc");
@@ -98,7 +98,7 @@ int argv_reader(const char* path){
                 goto error;
             }
             buffer = new_buffer;
-            buffer_size = (BUFFER_SIZE * multiplicator)*2;
+            buffer_size = new_size;
         }
         //Reading from the file
         ssize_t nread = read(fd, buffer + buf_ptr, buffer_size - buf_ptr);
@@ -111,7 +111,9 @@ int argv_reader(const char* path){
             break;
         }else{
             buf_ptr += nread;
+            multiplicator++;
         }
+
     }
     //TODO parse the file and display the content
     buffer[buf_ptr] = '\0';
