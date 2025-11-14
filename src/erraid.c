@@ -15,42 +15,41 @@ int daemon_init(void) {
         perror("fork failed");
         return -1;
     }
+
+    // Parent process exits
     if (pid > 0) {
         exit(EXIT_SUCCESS);
     }
 
+    // Child process continues
     sid = setsid();
     if (sid < 0) {
         perror("setsid failed");
         return -1;
     }
 
-    if (chdir("/") < 0) {
-        perror("chdir failed");
-        return -1;
-    }
+    umask(0);
 
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
 
     signal(SIGTERM, handle_signal);
-    signal(SIGINT, handle_signal);
 
-    write_log("Erraid daemon initialized.");
+    write_log("Daemon initialized.");
     return 0;
 }
 
 void daemon_run(void) {
-    write_log("Erraid daemon started.");
+    write_log("Daemon started.");
 
-    const char *task_root = TASK_PATH DIR1 SUBDIR;  
+    const char *task_root = "../Consignes/exemples-arborescences/exemple-arborescence-1/";  
 
     while (running) {
-        write_log("Erraid scanning task tree...");
+        write_log("Scanning task tree...");
 
         // Reading the task tree
-        int result = task_reader(task_root, 1, LIST);
+        int result = task_reader(task_root, 0, LIST); 
         if (result < 0) {
             write_log("Error while reading task tree.");
         } else {
