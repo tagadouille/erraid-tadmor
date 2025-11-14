@@ -111,7 +111,6 @@ char *arguments_parse(const char *buffer, unsigned int size)
             strcat(result, " "); // Add space between arguments
         }
     }
-
     // Free allocated arguments structure
     arguments_free(&args);
 

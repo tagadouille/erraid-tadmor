@@ -1,87 +1,7 @@
 #define _DEFAULT_SOURCE
 #define _GNU_SOURCE
+
 #include "types/timing.h"
-
-#include <unistd.h>
-#include <fcntl.h>
-#include <endian.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-bool timing_read(const char *data, timing_t *t)
-{
-    int fd = open(data, O_RDONLY);
-    if (fd < 0)
-        return false;
-
-    uint64_t m;
-    uint32_t h;
-    uint8_t d;
-
-    // Read minutes
-    if (read(fd, &m, sizeof(m)) != sizeof(m))
-    {
-        close(fd);
-        return false;
-    }
-    // Read hours
-    if (read(fd, &h, sizeof(h)) != sizeof(h))
-    {
-        close(fd);
-        return false;
-    }
-    // Read days of week
-    if (read(fd, &d, sizeof(d)) != sizeof(d))
-    {
-        close(fd);
-        return false;
-    }
-
-    close(fd);
-
-    // Convert from big-endian to host byte order
-    t->minutes = be64toh(m);
-    t->hours = be32toh(h);
-    t->daysofweek = d;
-    return true;
-}
-
-bool timing_write(const char *data, const timing_t *t)
-{
-    // Open file for writing (create if not exists, truncate if exists)
-    int fd = open(data, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd < 0)
-        return false;
-
-    // Convert values to big-endian before writing
-    uint64_t m = (uint64_t)htobe64(t->minutes);
-    uint32_t h = (uint32_t)htobe32(t->hours);
-    uint8_t d = t->daysofweek;
-
-    // Write minutes
-    if (write(fd, &m, sizeof(m)) != sizeof(m))
-    {
-        close(fd);
-        return false;
-    }
-    // Write hours
-    if (write(fd, &h, sizeof(h)) != sizeof(h))
-    {
-        close(fd);
-        return false;
-    }
-    // Write days of week
-    if (write(fd, &d, sizeof(d)) != sizeof(d))
-    {
-        close(fd);
-        return false;
-    }
-
-    close(fd);
-    return true;
-}
 
 // ! Les commentaires sont à enlever plus tard
 bool timing_match_now(const timing_t *t)
@@ -114,70 +34,83 @@ bool timing_match_now(const timing_t *t)
     return true;
 }
 
-char *timing_show(const char *data)
+char *timing_show(const char *data, ssize_t size)
 {
-    timing_t t;
-    // Load timing from file
-    if (!timing_read(data, &t))
-    {
-        dprintf(STDERR_FILENO, "Failed to read timing from %s\n", data);
+    // A timing is exactly 13 bytes (8 + 4 + 1)
+    const ssize_t TIMING_BIN_SIZE = 8 + 4 + 1;
+
+    if (data == NULL || size < TIMING_BIN_SIZE) {
+        dprintf(STDERR_FILENO, "timing_show: buffer too small or NULL\n");
         return NULL;
     }
 
-    // Temporary output buffer
-    char *output = malloc(1024);
+    timing_t t;
+    ssize_t offset = 0;
+
+    uint64_t m_be;
+    uint32_t h_be;
+    uint8_t  d;
+
+    // ---- minutes ----
+    memcpy(&m_be, data + offset, sizeof(uint64_t));
+    t.minutes = be64toh(m_be);
+    offset += sizeof(uint64_t);
+
+    // ---- hours ----
+    memcpy(&h_be, data + offset, sizeof(uint32_t));
+    t.hours = be32toh(h_be);
+    offset += sizeof(uint32_t);
+
+    // ---- days ----
+    memcpy(&d, data + offset, sizeof(uint8_t));
+    t.daysofweek = d;
+
+    // ---- allocate output ----
+    char *output = malloc(2048);
     if (!output)
         return NULL;
+
     output[0] = '\0';
 
-    // Display minutes list (1ère version de l'affichage)
-    strncat(output, "Minutes: ", 1024 - strlen(output) - 1);
-    for (int i = 0; i < MINUTES_COUNT; i++)
-    {
-        if (t.minutes & (1ULL << i))
-        {
+    // ---- Minutes ----
+    strncat(output, "Minutes: ", 2048 - strlen(output) - 1);
+    for (int i = 0; i < MINUTES_COUNT; i++) {
+        if (t.minutes & (1ULL << i)) {
             char tmp[8];
             snprintf(tmp, sizeof(tmp), "%d ", i);
-            strncat(output, tmp, 1024 - strlen(output) - 1);
+            strncat(output, tmp, 2048 - strlen(output) - 1);
         }
     }
 
-    // Display hours list
-    strncat(output, "| Hours: ", 1024 - strlen(output) - 1);
-    for (int i = 0; i < HOURS_COUNT; i++)
-    {
-        if (t.hours & (1U << i))
-        {
+    // ---- Hours ----
+    strncat(output, "| Hours: ", 2048 - strlen(output) - 1);
+    for (int i = 0; i < HOURS_COUNT; i++) {
+        if (t.hours & (1U << i)) {
             char tmp[8];
             snprintf(tmp, sizeof(tmp), "%d ", i);
-            strncat(output, tmp, 1024 - strlen(output) - 1);
+            strncat(output, tmp, 2048 - strlen(output) - 1);
         }
     }
 
-    // Display days of week list
-    strncat(output, "| Days of Week: ", 1024 - strlen(output) - 1);
+    // ---- Days ----
+    strncat(output, "| Days of Week: ", 2048 - strlen(output) - 1);
     const char *day_names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-    for (int i = 0; i < DAYS_COUNT; i++)
-    {
-        if (t.daysofweek & (1U << i))
-        {
+    for (int i = 0; i < DAYS_COUNT; i++) {
+        if (t.daysofweek & (1U << i)) {
             char tmp[8];
             snprintf(tmp, sizeof(tmp), "%s ", day_names[i]);
-            strncat(output, tmp, 1024 - strlen(output) - 1);
+            strncat(output, tmp, 2048 - strlen(output) - 1);
         }
     }
 
-    // Allocate final result string
     char *result = malloc(strlen(output) + 1);
-    if (!result)
-    {
-        dprintf(STDERR_FILENO, "Memory allocation failed in timing_show()\n");
+    if (!result) {
         free(output);
         return NULL;
     }
+
     strcpy(result, output);
     free(output);
-    output = NULL;
 
     return result;
 }

@@ -87,6 +87,9 @@ int task_finder(char* path, char* task_id, Action_type action){
             }
             printf("Task with id %s found at path %s\n", task_id, newpath);
             result = extract_task_information(newpath, action, false);
+            
+            free(newpath);
+            newpath = NULL;
             is_task_found = true;
             break;
         }
@@ -171,6 +174,8 @@ int aux_extract(const char* path, char* folder_name, int (*func)(const char*)){
     if(func(new_path) == -1){
         return -1;
     }
+    free(new_path);
+    new_path = NULL;
     return 0;
 }
 
@@ -183,6 +188,8 @@ int aux_extract_output(const char* path, char* folder_name, int (*func)(const ch
     if(func(new_path, is_stderr) == -1){
         return -1;
     }
+    free(new_path);
+    new_path = NULL;
     return 0;
 }
 
@@ -192,7 +199,7 @@ int aux_extract_time(const char* path, char* folder_name){
     if(new_path == NULL){
         return -1;
     }
-    if(strcmp(folder_name, "timing")){
+    if(strcmp(folder_name, "timing") == 0){
         if(timing_reader(new_path, timing_interpreter) == -1){
             return -1;
         }
@@ -201,6 +208,8 @@ int aux_extract_time(const char* path, char* folder_name){
             return -1;
         }
     }
+    free(new_path);
+    new_path = NULL;
     return 0;
 }
 

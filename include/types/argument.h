@@ -3,9 +3,11 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "my_string.h"
 
 typedef struct {
     uint32_t argc;   // Number of arguments
+    char *command; // Command name
     char **argv;     // Array of argument strings
 } arguments_t;
 

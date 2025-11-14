@@ -4,11 +4,14 @@
 #include <unistd.h>
 
 #include "tree-reading/tree_reader.h"
+#include "types/timing.h"
+#include "types/time_exitcode.h"
 
 int timing_reader(const char* path, int (*interpreter)(char*, ssize_t)){
-
+    printf("Reading timing/exitcodes file at path %s\n", path);
     char* buffer = NULL;
     int result = 0;
+
     if(buffer_init(&buffer) == -1){
         return -1;
     }
@@ -43,8 +46,10 @@ int timing_reader(const char* path, int (*interpreter)(char*, ssize_t)){
 int times_exitcodes_interpreter(char* data, const char* path, ssize_t size){
     if(size > 0){
         data[size] = '\0';
-        dprintf(STDOUT_FILENO, "times-exitcodes of the given task : %s \n", data); // (provisional msg)
-        //TODO : interpret the times-exitcodes information
+        char* output =time_exitcode_show(data, size);
+        dprintf(STDOUT_FILENO, "times-exitcodes of the given task : %s \n", output); // (provisional msg)
+        free(output);
+        output = NULL;
     }else{
         dprintf(STDOUT_FILENO, "times-exitcodes file is empty at path %s\n", path);
     }
@@ -53,8 +58,10 @@ int times_exitcodes_interpreter(char* data, const char* path, ssize_t size){
 int timing_interpreter(char* data, const char* path, ssize_t size){
     if(size > 0){
         data[size] = '\0';
-        dprintf(STDOUT_FILENO, "timing of the given task : %s \n", data); // (provisional msg)
-        //TODO : interpret the timing information
+        char* output = timing_show(data, size);
+        dprintf(STDOUT_FILENO, "timing of the given task : %s \n", output); // (provisional msg)
+        free(output);
+        output = NULL;
     }else{
         dprintf(STDOUT_FILENO, "timing file is empty at path %s\n", path);
     }
