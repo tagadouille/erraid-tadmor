@@ -3,79 +3,40 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <time.h>
+#include <stdint.h>
 
-#include "types/time_exitcode.h"
-#include "types/timing.h"
-#include "types/argument.h"
 
 int main() {
-    timing_t t;
+    printf("Running tests...\n\n");
 
-    // Étape 1 — Création manuelle d'un timing
-    // Exemple : minutes 0–10, heures 8 et 18, jours lundi à vendredi
-    t.minutes = 0;
-    for (int i = 0; i <= 10; i++)
-        t.minutes |= (1ULL << i);  // active bits 0–10
-    t.hours = (1U << 8) | (1U << 18); // 8h et 18h
-    t.daysofweek = 0;
-    for (int i = 1; i <= 5; i++)
-        t.daysofweek |= (1U << i);  // lundi(1) à vendredi(5)
+    printf("Test for listing\n");
+    test_tree_reader(LIST);
+    printf("Test for output\n\n");
+    test_tree_reader(OUTPUT);
+    printf("Test for err\n\n");
+    test_tree_reader(ERR);
+    printf("Test for time_exitcodes\n\n");
+    test_tree_reader(TIME_EXIT);
 
-    printf("=== Timing initial ===\n");
-
-    // Étape 2 — Écriture dans un fichier binaire
-    if (!timing_write("test_timing.bin", &t)) {
-        perror("timing_write");
-        return 1;
-    }
-    printf("\n Timing écrit dans test_timing.bin\n");
-
-    // Étape 3 — Lecture depuis le fichier
-    timing_t t2;
-    if (!timing_read("test_timing.bin", &t2)) {
-        perror("timing_read");
-        return 1;
-    }
-    printf("\n=== Timing relu depuis le fichier ===\n");
-
-
-    // Étape 4 — Vérification : moment actuel
-    printf("\n=== Vérification de l'heure actuelle ===\n");
-    time_t now = time(NULL);
-    struct tm *tm_now = localtime(&now);
-    printf("Il est actuellement %02d:%02d, jour de la semaine : %d\n",
-           tm_now->tm_hour, tm_now->tm_min, tm_now->tm_wday);
-
-    if (timing_match_now(&t2))
-        printf(" C'est le moment d'exécuter la tâche !\n");
-    else
-        printf(" Ce n'est PAS encore le moment.\n");
-
-    
-    time_exitcode_t record;
-
-    record.time = time(NULL);
-    record.exitcode = 0; // exemple : succès
-
-    time_exitcode_print(&record);
-
-
-    // Test de arguments_parse
-    unsigned char buf[] = {
-    0x00,0x00,0x00,0x03,
-    0x00,0x00,0x00,0x04,'t','e','s','t',
-    0x00,0x00,0x00,0x03,'a','r','g',
-    0x00,0x00,0x00,0x05,'v','a','l','u','e'
-    };
-
-    char* parsed = arguments_parse((const char*)buf, sizeof(buf));
-    if (parsed) {
-        printf("Parsed arguments: %s\n", parsed);
-        free(parsed);
-    } else {
-        printf("Failed to parse arguments\n");
-    }
-    printf("Done.\n");
-
+    printf("All tests done.\n");
     return 0;
+}
+
+void test_tree_reader(Action_type action) {
+    uint16_t task = 0;
+    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR1 SUBDIR, task, action));
+    printf("\n\n");
+
+    task = 1;
+    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR1 SUBDIR, task, action));
+    printf("Test of task reader for more complex tasks\n");
+    printf("\n\n");
+
+    task = 4;
+    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR2 SUBDIR, task, action));
+    printf("\n\n");
+
+    task = 15;
+    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR3 SUBDIR, task, action));
+    printf("\n\n");
 }
