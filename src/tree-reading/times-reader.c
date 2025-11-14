@@ -15,25 +15,50 @@ int timing_reader(const char* path, int (*interpreter)(char*, ssize_t)){
     if(buffer_init(&buffer) == -1){
         return -1;
     }
-    //Reading the file
+    //Opening the file
     int fd = open(path, O_RDONLY);
     if(fd < 0){
         perror("open the timing/exitcodes file");
         result = -1;
         goto error;
     }
-    ssize_t nread = read(fd, buffer, BUFFER_SIZE);
-    if(nread < 0){
-        perror("nread");
-        result = -1;
-        goto error;
-    }else{
-        if(interpreter(buffer, nread) < 0){
-            //TODO display an error message
+    //Reading the file
+    unsigned int multiplicator = 1;
+    ssize_t buffer_size = BUFFER_SIZE;
+    unsigned int buf_ptr = 0; //Pointer to the current position in the buffer
+
+    while(1){
+        //Reallocation of the buffer if needed
+        if(multiplicator * BUFFER_SIZE > buffer_size){
+            size_t new_size = (BUFFER_SIZE * multiplicator)*2;
+            char* new_buffer = realloc(buffer, new_size);
+
+            if(new_buffer == NULL){
+                perror("realloc");
+                result = -1;
+                goto error;
+            }
+            buffer = new_buffer;
+            buffer_size = new_size;
+        }
+
+        //Reading from the file
+        ssize_t nread = read(fd, buffer + buf_ptr, buffer_size - buf_ptr);
+
+        if(nread < 0){
+            perror("nread");
             result = -1;
             goto error;
+        }else if(nread == 0){
+            break;
+        }else{
+            buf_ptr += nread;
+            multiplicator++;
         }
     }
+    //Interpreting the read data
+    result = interpreter(buffer, buf_ptr);
+
     error:
     free(buffer);
     buffer = NULL;
