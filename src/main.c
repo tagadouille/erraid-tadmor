@@ -5,6 +5,8 @@
 #include <time.h>
 #include <stdint.h>
 
+#include "tree_reader.h"
+
 
 int main() {
     printf("Running tests...\n\n");

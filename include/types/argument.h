@@ -2,11 +2,21 @@
 #define ARGUMENT_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef struct {
     uint32_t argc;   // Number of arguments
     char **argv;     // Array of argument strings
 } arguments_t;
+
+/**
+ * @brief Parse into an arguments_t structure.
+ * @param buffer Pointer to the buffer containing the serialized arguments.
+ * @param size Size of the buffer.
+ * @param args Pointer to the arguments_t structure to fill.
+ * @return true on success, false on failure.
+ */
+bool arguments_parse_struct(const char *buffer, unsigned int size, arguments_t *args);
 
 /**
  * @brief Parse a binary buffer containing serialized arguments
