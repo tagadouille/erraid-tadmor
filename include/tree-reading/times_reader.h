@@ -8,7 +8,7 @@
  * @param interpreter A pointer to the interpreter function that processes the read data.
  * @return 0 on success, -1 on failure.
  */
-int timing_reader(const char* path, int (*interpreter)(char*, ssize_t));
+int timing_reader(const char* path, int (*interpreter)(char* data, const char* path, ssize_t size));
 
 /**
  * @brief Interprets the timing data read from a file.

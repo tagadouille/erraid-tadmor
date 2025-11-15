@@ -111,6 +111,5 @@ char *timing_show(const char *data, ssize_t size)
 
     strcpy(result, output);
     free(output);
-
     return result;
 }

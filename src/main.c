@@ -12,7 +12,7 @@
 int main() {
     printf("Running tests...\n\n");
 
-    //printf("Test for listing\n");
+    printf("Test for listing\n");
     test_tree_reader(LIST);
     /*printf("Test for output\n\n");
     test_tree_reader(OUTPUT);

@@ -7,7 +7,7 @@
 #include "types/timing.h"
 #include "types/time_exitcode.h"
 
-int timing_reader(const char* path, int (*interpreter)(char*, ssize_t)){
+int timing_reader(const char* path, int (*interpreter)(char* data, const char* path, ssize_t size)){
     printf("Reading timing/exitcodes file at path %s\n", path);
     char* buffer = NULL;
     int result = 0;
@@ -23,15 +23,16 @@ int timing_reader(const char* path, int (*interpreter)(char*, ssize_t)){
         goto error;
     }
     //Reading the file
-    unsigned int multiplicator = 1;
     ssize_t buffer_size = BUFFER_SIZE;
     unsigned int buf_ptr = 0; //Pointer to the current position in the buffer
+    unsigned int filesize = lseek(fd, 0, SEEK_END);
+    lseek(fd, 0, SEEK_SET); //Resetting the file descriptor to the beginning of the file
 
-    while(1){
+    while(buf_ptr < filesize){
         //Reallocation of the buffer if needed
-        if(multiplicator * BUFFER_SIZE > buffer_size){
-            size_t new_size = (BUFFER_SIZE * multiplicator)*2;
-            char* new_buffer = realloc(buffer, new_size);
+        if (buf_ptr == buffer_size){
+            buffer_size *= 2;
+            char* new_buffer = realloc(buffer, buffer_size);
 
             if(new_buffer == NULL){
                 perror("realloc");
@@ -39,7 +40,6 @@ int timing_reader(const char* path, int (*interpreter)(char*, ssize_t)){
                 goto error;
             }
             buffer = new_buffer;
-            buffer_size = new_size;
         }
 
         //Reading from the file
@@ -53,11 +53,10 @@ int timing_reader(const char* path, int (*interpreter)(char*, ssize_t)){
             break;
         }else{
             buf_ptr += nread;
-            multiplicator++;
         }
     }
     //Interpreting the read data
-    result = interpreter(buffer, buf_ptr);
+    result = interpreter(buffer, path, buf_ptr);
 
     error:
     free(buffer);
@@ -70,9 +69,8 @@ int timing_reader(const char* path, int (*interpreter)(char*, ssize_t)){
 }
 int times_exitcodes_interpreter(char* data, const char* path, ssize_t size){
     if(size > 0){
-        data[size] = '\0';
-        char* output =time_exitcode_show(data, size);
-        dprintf(STDOUT_FILENO, "times-exitcodes of the given task : %s \n", output); // (provisional msg)
+        char* output = time_exitcode_show(data, size);
+        dprintf(STDOUT_FILENO, "times-exitcodes of the given task : \n %s \n", output); // (provisional msg)
         free(output);
         output = NULL;
     }else{
@@ -82,7 +80,6 @@ int times_exitcodes_interpreter(char* data, const char* path, ssize_t size){
 }
 int timing_interpreter(char* data, const char* path, ssize_t size){
     if(size > 0){
-        data[size] = '\0';
         char* output = timing_show(data, size);
         dprintf(STDOUT_FILENO, "timing of the given task : %s \n", output); // (provisional msg)
         free(output);

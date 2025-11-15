@@ -134,12 +134,12 @@ int extract_task_information(const char* path, Action_type action, bool is_seque
                     goto error;
                 }
             }else if(action == LIST && strcmp(entry -> d_name, "timing") == 0){
-                if(aux_extract_time(path, "timing") < 0){
+                if(aux_extract_time(path, entry -> d_name) < 0){
                     dprintf(STDERR_FILENO, "Error while reading timing file of task at path %s\n", path);
                     goto error;
                 }
-            }else if(action == TIME_EXIT && strcmp(entry -> d_name, "times_exitcodes") == 0){
-                if(aux_extract_time(path, "times_exitcodes") < 0){
+            }else if(action == TIME_EXIT && strcmp(entry -> d_name, "times-exitcodes") == 0){
+                if(aux_extract_time(path, entry -> d_name) < 0){
                     dprintf(STDERR_FILENO, "Error while reading times_exitcodes file of task at path %s\n", path);
                     goto error;
                 }
@@ -200,10 +200,12 @@ int aux_extract_time(const char* path, char* folder_name){
         return -1;
     }
     if(strcmp(folder_name, "timing") == 0){
+        printf("Calling timing_reader\n");
         if(timing_reader(new_path, timing_interpreter) == -1){
             return -1;
         }
     }else{
+        printf("Calling times_exitcodes_reader\n");
         if(timing_reader(new_path, times_exitcodes_interpreter) == -1){
             return -1;
         }

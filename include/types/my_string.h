@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <unistd.h>
 
 /**
  * @brief Represent a custom string type with dynamic length.
@@ -11,22 +12,42 @@
 typedef struct {
     char* data;
     uint32_t length;
-} my_string_t;
+} string_t;
 
 
 /**
- * @brief Initialize a my_string_t from a C string.
+ * @brief Initialize a string_t from a C string.
  * @param str C string to initialize from
- * @return my_string_t Initialized my_string_t instance
+ * @return string_t Initialized string_t instance
  */
-my_string_t my_string_create(const char* str);
+string_t string_create(const char* str, ssize_t length);
 
 /**
- * @brief Free the memory allocated for a my_string_t.
- * @param str Pointer to my_string_t to free
+ * @brief Append two string_t instances.
+ * @param str1 First string_t
+ * @param str2 Second string_t
+ * @return string_t New string_t containing the concatenation of str1 and str2
  */
-void my_string_free(my_string_t* str);
+string_t string_append(const string_t* str1, const string_t* str2);
 
+/**
+ * @brief Concatenate a string_t with a C string.
+ * @param str1 string_t instance
+ * @param str2 C string to concatenate
+ * @return string_t New string_t containing the concatenation of str1 and str2
+ */
+string_t string_concat(const string_t* str1, const char* str2);
 
+/**
+ * @brief Free the memory allocated for a string_t.
+ * @param str Pointer to string_t to free
+ */
+void string_free(string_t* str);
+
+/**
+ * @brief Free the memory allocated for a string_t on the heap.
+ * @param str Pointer to string_t to free
+ */
+void string_free_heap(string_t* str);
 
 #endif
