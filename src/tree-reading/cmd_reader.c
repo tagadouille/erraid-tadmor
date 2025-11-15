@@ -7,6 +7,7 @@
 
 #include "tree-reading/tree_reader.h"
 #include "tree-reading/cmd_reader.h"
+#include "types/argument.h"
 
 int cmd_reader(const char* path){
     printf("Reading cmd folder at path %s\n", path);
@@ -59,7 +60,7 @@ int argv_reader(const char* path){
     int result = 0;
     int fd = -1;
 
-    if(buffer_init(&buffer) == 1){
+    if(buffer_init(&buffer) < 0){
         return -1;
     }
 
@@ -85,10 +86,6 @@ int argv_reader(const char* path){
     ssize_t buffer_size = BUFFER_SIZE;
     unsigned int buf_ptr = 0; //Pointer to the current position in the buffer
     unsigned int filesize = lseek(fd, 0, SEEK_END);
-    if (filesize < 0)
-    {
-        filesize = 0;
-    }
     lseek(fd, 0, SEEK_SET); //Resetting the file descriptor to the beginning of the file
 
     while(buf_ptr < filesize){

@@ -12,7 +12,7 @@ void command_execute(const command_t *cmd)
         if (cmd->u.simple.argc > 0) // On vérifie qu'il y a au moins un argument
         {
                 // nom de la commande    // arguments
-            execvp(cmd->u.simple.argv[0], cmd->u.simple.argv + 1);
+            execvp(cmd->u.simple.command->data, cmd->u.simple.argv);
             perror("execvp failed"); // Si execvp échoue, on affiche une erreur
         }
     }
@@ -26,6 +26,8 @@ void command_execute(const command_t *cmd)
     }
     command_free((command_t *)cmd); // Free the command after execution
 }
+
+/*char *command_string(command_t )*/
 
 void command_free(command_t *cmd)
 {
