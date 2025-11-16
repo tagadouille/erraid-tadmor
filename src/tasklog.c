@@ -45,7 +45,7 @@ static int format_time_rfc(time_t t, char *buf, size_t buflen) {
 }
 
 // Adds a line "YYYY-MM-DD HH:MM:SS EXIT_CODE\n" to tasks/<id>/times-exitcodes
-int log_add_execution(int taskid, time_t when, int exit_code) {
+int log_add_execution(uint16_t taskid, time_t when, int exit_code) {
     char path[PATH_MAX];
     if (build_task_path(path, sizeof(path), taskid, "times-exitcodes") != 0) return -1;
 
@@ -56,16 +56,16 @@ int log_add_execution(int taskid, time_t when, int exit_code) {
 
     // Open file for appending
     int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644);
-    if (fd < 0) return -1;
+    if (fd < 0) return -1; 
 
-    char timestr[32];
+    char timestr[34];
     if (format_time_rfc(when, timestr, sizeof(timestr)) != 0) {
         close(fd);
         return -1;
     }
 
     // Prepare line to write
-    char line[256];
+    char line[sizeof(timestr) + sizeof(int) + 3]; // space, newline, null
     int n = snprintf(line, sizeof(line), "%s %d\n", timestr, exit_code);
     if (n < 0) { close(fd); errno = EIO; return -1; }
 
@@ -83,7 +83,7 @@ int log_add_execution(int taskid, time_t when, int exit_code) {
 }
 
 // Helper: atomic replace of a file
-static int atomic_replace_file(int taskid, const char *fname, const char *buf, size_t len) {
+static int atomic_replace_file(uint16_t taskid, const char *fname, const char *buf, size_t len) {
     char taskdir[PATH_MAX];
     const char *base = g_run_dir ? g_run_dir : ".";
     if (snprintf(taskdir, sizeof(taskdir), "%s/tasks/%d", base, taskid) < 0) { return -1; }
@@ -126,12 +126,12 @@ static int atomic_replace_file(int taskid, const char *fname, const char *buf, s
     return 0;
 }
 
-int log_write_stdout(int taskid, const char *buf, size_t len) {
+int log_write_stdout(uint16_t taskid, const char *buf, size_t len) {
     if (!buf && len != 0) { return -1; }
     return atomic_replace_file(taskid, "stdout", buf ? buf : "", len);
 }
 
-int log_write_stderr(int taskid, const char *buf, size_t len) {
+int log_write_stderr(uint16_t taskid, const char *buf, size_t len) {
     if (!buf && len != 0) { return -1; }
     return atomic_replace_file(taskid, "stderr", buf ? buf : "", len);
 }

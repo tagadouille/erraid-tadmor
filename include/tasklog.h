@@ -3,6 +3,7 @@
 
 #include <time.h>
 #include <stddef.h>
+#include <stdint.h>
 
 /*
  * Module for managing per-task log files (milestone 1).
@@ -19,12 +20,12 @@
 int tasklog_set_rundir(const char *run_dir);
 
 // Adds an execution entry to tasks/<id>/executions log.
-int log_add_execution(int taskid, time_t when, int exit_code);
+int log_add_execution(uint16_t taskid, time_t when, int exit_code);
 
 // Replaces atomically tasks/<id>/stdout by the content buf[0..len-1].
-int log_write_stdout(int taskid, const char *buf, size_t len);
+int log_write_stdout( uint16_t taskid, const char *buf, size_t len);
 
 // Replaces atomically tasks/<id>/stderr by the content buf[0..len-1].
-int log_write_stderr(int taskid, const char *buf, size_t len);
+int log_write_stderr( uint16_t taskid, const char *buf, size_t len);
 
 #endif 
