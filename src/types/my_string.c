@@ -67,6 +67,26 @@ string_t string_concat(const string_t* str1, const char* str2) {
     return result;
 }
 
+string_t* string_copy(const string_t* src){
+    if (!src || !src->data) return NULL;
+
+    string_t* dst = malloc(sizeof(string_t));
+    if (!dst) return NULL;
+
+    dst->length = src->length;
+    dst->data = malloc(dst->length + 1); // +1 for null terminator
+    if (!dst->data){
+        free(dst);
+        return NULL;
+    }
+
+    memcpy(dst->data, src->data, dst->length);
+    dst->data[dst->length] = '\0';
+
+    return dst;
+}
+
+
 void string_free(string_t* str) {
     if (!str) return;
     if (str->data) {

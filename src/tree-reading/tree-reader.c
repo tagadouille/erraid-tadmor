@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <limits.h>
 #include <dirent.h>
 #include <string.h>
@@ -19,18 +21,30 @@ int task_reader(const char* path, uint16_t task_id, Action_type action){
     if(pathcpy == NULL){
         return -1;
     }
+    curr_task = task_create(task_id);
+
+    if(curr_task == NULL){
+        dprintf(STDERR_FILENO, "Error while creating task with id %u\n", task_id);
+        return -1;
+    }
+
     //Converting task_id to string :
     char id[6];
     snprintf(id, sizeof(id), "%u", task_id);
 
-    size_t result = task_finder(pathcpy, id, action);
+    int result = task_finder(pathcpy, id, action);
+
+    //If an error occured while finding the task, we free curr_task
+    if(result == -1){
+        task_destroy(curr_task);
+        curr_task = NULL;
+    }
     free(pathcpy);
     pathcpy = NULL;
     return result;
 }
 
-int all_tasks_reader(const char* path){
-    printf("\nReading all the tasks in the tree at path %s\n", path);
+int all_tasks_reader(const char* path, command_t* cmd){
     int result = 0;
     DIR* dirp = opendir(path);
 
@@ -51,7 +65,7 @@ int all_tasks_reader(const char* path){
             result = -1;
             goto error;
         }
-        result = extract_task_information(newpath, LIST, true);
+        result = extract_task_information(newpath, LIST, cmd, true);
         free(newpath);
         newpath = NULL;
     }
@@ -85,8 +99,7 @@ int task_finder(char* path, char* task_id, Action_type action){
                 result = -1;
                 goto error;
             }
-            printf("Task with id %s found at path %s\n", task_id, newpath);
-            result = extract_task_information(newpath, action, false);
+            result = extract_task_information(newpath, action, curr_task -> cmd, false);
             
             free(newpath);
             newpath = NULL;
@@ -106,8 +119,7 @@ int task_finder(char* path, char* task_id, Action_type action){
     return result;
 }
 
-int extract_task_information(const char* path, Action_type action, bool is_sequence){
-    printf("\nExtracting task information at path %s\n", path);
+int extract_task_information(const char* path, Action_type action, command_t* cmd, bool is_sequence){
     int result = 0;
     DIR* dirp = opendir(path);
 
@@ -123,14 +135,14 @@ int extract_task_information(const char* path, Action_type action, bool is_seque
 
         //If the task is a sequence, we only use cmd_reader
         if(is_sequence){
-            if(cmd_reader(path) == -1){
+            if(cmd_reader(path, cmd) == -1){
                 result = -1;
                 goto error;
             }
         }else{
             //Calling the appropriate reader depending on the action and the file name
             if(action == LIST && strcmp(entry -> d_name, "cmd") == 0){
-                if(aux_extract(path, "cmd", cmd_reader) != 0){
+                if(aux_extract(path, "cmd", cmd) != 0){
                     goto error;
                 }
             }else if(action == LIST && strcmp(entry -> d_name, "timing") == 0){
@@ -165,13 +177,13 @@ int extract_task_information(const char* path, Action_type action, bool is_seque
     return result;
 }
 
-int aux_extract(const char* path, char* folder_name, int (*func)(const char*)){
+int aux_extract(const char* path, char* folder_name, command_t* cmd){
     //Construction of the path to the file
     char* new_path = make_path(path, folder_name);
     if(new_path == NULL){
         return -1;
     }
-    if(func(new_path) == -1){
+    if(cmd_reader(new_path, cmd) == -1){
         return -1;
     }
     free(new_path);
@@ -200,12 +212,10 @@ int aux_extract_time(const char* path, char* folder_name){
         return -1;
     }
     if(strcmp(folder_name, "timing") == 0){
-        printf("Calling timing_reader\n");
         if(timing_reader(new_path, timing_interpreter) == -1){
             return -1;
         }
     }else{
-        printf("Calling times_exitcodes_reader\n");
         if(timing_reader(new_path, times_exitcodes_interpreter) == -1){
             return -1;
         }

@@ -18,7 +18,7 @@ typedef struct {
  * @param args Pointer to the arguments_t structure to fill.
  * @return true on success, false on failure.
  */
-bool arguments_parse_struct(const string_t *buffer, ssize_t size, arguments_t *args);
+bool arguments_parse_struct(const string_t *buffer, unsigned int size, arguments_t *args);
 
 /**
  * @brief Parse a binary buffer containing serialized arguments
@@ -28,7 +28,15 @@ bool arguments_parse_struct(const string_t *buffer, ssize_t size, arguments_t *a
  * @param size Size of the buffer.
  * @return A newly allocated string containing the parsed arguments.
  */
-char *arguments_parse(const char *buffer, ssize_t size);
+arguments_t *arguments_parse(const char *buffer, unsigned int size);
+
+/**
+ * @brief Create a deep copy of an arguments_t structure.
+ * @param dst Pointer to the destination arguments_t structure.
+ * @param src Pointer to the source arguments_t structure.
+ * @return A newly allocated copy of the arguments_t structure if successful, NULL otherwise.
+ */
+arguments_t* copy_arguments(arguments_t* dst, const arguments_t* src);
 
 /**
  * @brief Free the memory allocated for the arguments structure.

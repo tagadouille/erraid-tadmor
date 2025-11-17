@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <dirent.h>
 #include <string.h>
 #include <stdio.h>
@@ -8,54 +10,36 @@
 #include "tree-reading/tree_reader.h"
 #include "tree-reading/cmd_reader.h"
 #include "types/argument.h"
+#include "types/task.h"
 
-int cmd_reader(const char* path){
-    printf("Reading cmd folder at path %s\n", path);
-
-    DIR* dirp = opendir(path);
+int cmd_reader(const char* path, command_t* cmd){
     int result = 0;
 
-    if(dirp == NULL){
-        perror("opendir");
+    char* type_path = make_path(path, "type");
+    char* argv_path = make_path(path, "argv");
+
+    if(type_path == NULL || argv_path == NULL){
         result = -1;
-        goto ret;
+        goto error;
     }
-    struct dirent* entry;
 
-    //Finding all the file and extracting some informations
-    while ((entry=readdir(dirp))){
-        if(entry -> d_name[0] == '.') continue;
-
-        if (strcmp(entry -> d_name, "type") == 0){
-        
-            if(type_reader(path) == 1){
-                dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", path);
-                result = -1;
-                goto error;
-            }
+    if(access(type_path, F_OK) == 0){
+        if(type_reader(path, cmd) == -1){
+            dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", path);
+            result = -1;
+            goto error;
         }
-        else if(strcmp(entry -> d_name, "argv") == 0){
-            
-            if(argv_reader(path) == 1){
-                dprintf(STDERR_FILENO, "Error while reading argv file of task at path %s\n", path);
-                result = -1;
-                goto error;
-            }
-        }
+    }else{
+        dprintf(STDERR_FILENO, "Type file doesn't exist at path %s\n", path);
     }
     error:
-    if(closedir(dirp) != 0){
-        perror("closedir");
-        return -1;
-    }
-    ret:
     if(result == -1){
         dprintf(STDERR_FILENO, "Error while reading cmd folder of task at path %s\n", path);
     }
     return result;
 }
 
-int argv_reader(const char* path){
+int argv_reader(const char* path, command_t* og_command, command_type_t type){
     char* buffer = NULL;
     int result = 0;
     int fd = -1;
@@ -116,21 +100,14 @@ int argv_reader(const char* path){
         }
 
     }
-    char* argv_content = arguments_parse(buffer, buf_ptr);
-
-    if(argv_content == NULL){   
-        dprintf(STDERR_FILENO, "Error while parsing argv content\n");
+    if(command_filler(buffer, buf_ptr, og_command, type) == -1){
+        dprintf(STDERR_FILENO, "Error while filling the command structure from argv file at path %s\n", path);
         result = -1;
         goto error;
     }
-    dprintf(STDOUT_FILENO, "argv content : %s \n", argv_content); // (provisional msg)
-    
-    free(argv_content);
-    argv_content = NULL;
 
     error:
-    if (buffer)
-    {
+    if (buffer != NULL){
         free(buffer);
         buffer = NULL;
     }
@@ -141,7 +118,7 @@ int argv_reader(const char* path){
     return result;
 }
 
-int type_reader(const char* path){
+int type_reader(const char* path, command_t *cmd){
     char* buffer = NULL;
     int result = 0;
     int fd = -1;
@@ -177,24 +154,10 @@ int type_reader(const char* path){
         //Detection of an anomaly
         if(nread == 2){
             buffer[nread] = '\0';
-            dprintf(STDOUT_FILENO, "type of the given task : %s \n", buffer); // (provisional msg)
-            int type = type_interpreter(buffer);
 
-            if(type == -1){
-                dprintf(STDERR_FILENO, "Error : unknown type found %s\n", buffer);
+            if(type_interpreter(path, buffer, cmd) == -1){
                 result = -1;
                 goto error;
-            }
-            if(type == SI){
-                dprintf(STDOUT_FILENO, "The task is an individual task\n");
-            }
-            //For the complex tasks
-            else{
-                if(all_tasks_reader(path) == -1){
-                    dprintf(STDERR_FILENO, "Error while reading all the sub-tasks\n");
-                    result = -1;
-                    goto error;
-                }
             }
         }else{
             result = -1;
@@ -216,12 +179,26 @@ int type_reader(const char* path){
 }
 
 //TODO adapt the function according to the different types
-int type_interpreter(char* buffer){
+int type_interpreter(const char* path, char* buffer, command_t* cmd){
+    int result = 0;
+
     if(strcmp(buffer, "SI") == 0){
-        return SI;
+        command_type_t type = SI;
+        if(cmd != NULL){
+            type = cmd->type;
+        }
+        if(argv_reader(path, cmd, type) == -1){
+            dprintf(STDERR_FILENO, "Error while reading argv file of task at path %s\n", path);
+            result = -1;
+        }
     }else if(strcmp(buffer, "SQ") == 0){
-        return SQ;
+        if(all_tasks_reader(path, cmd) == -1){
+            dprintf(STDERR_FILENO, "Error while reading all the sub-tasks\n");
+            result = -1;
+        }
     }else{
+        dprintf(STDERR_FILENO, "Unknown command type : %s\n", buffer);
         return -1;
     }
+    return result;
 }

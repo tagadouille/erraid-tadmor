@@ -39,6 +39,11 @@ string_t string_append(const string_t* str1, const string_t* str2);
 string_t string_concat(const string_t* str1, const char* str2);
 
 /**
+ * @brief 
+ */
+string_t* string_copy(const string_t* src);
+
+/**
  * @brief Free the memory allocated for a string_t.
  * @param str Pointer to string_t to free
  */
