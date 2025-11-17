@@ -7,6 +7,7 @@
 
 #include "tree-reading/tree_reader.h"
 #include "tree-reading/cmd_reader.h"
+#include "types/argument.h"
 
 int cmd_reader(const char* path){
     printf("Reading cmd folder at path %s\n", path);
@@ -59,10 +60,9 @@ int argv_reader(const char* path){
     int result = 0;
     int fd = -1;
 
-    if(buffer_init(&buffer) == 1){
+    if(buffer_init(&buffer) < 0){
         return -1;
     }
-    unsigned int buffer_size = BUFFER_SIZE;
 
     //Construction of the path to the argv file
     char* argv_path = make_path(path, "argv");
@@ -83,14 +83,17 @@ int argv_reader(const char* path){
     argv_path = NULL;
 
     //Reading the argv file and extracting the information
-    unsigned int multiplicator = 0;
+    ssize_t buffer_size = BUFFER_SIZE;
     unsigned int buf_ptr = 0; //Pointer to the current position in the buffer
+    unsigned int filesize = lseek(fd, 0, SEEK_END);
+    lseek(fd, 0, SEEK_SET); //Resetting the file descriptor to the beginning of the file
 
-    while(1){
-        multiplicator++;
+    while(buf_ptr < filesize){
+        
         //Reallocation of the buffer if needed
-        if(buf_ptr + BUFFER_SIZE > buffer_size){
-            char* new_buffer = realloc(buffer, (BUFFER_SIZE * multiplicator)*2);
+        if (buf_ptr == buffer_size){
+            buffer_size *= 2;
+            char* new_buffer = realloc(buffer, buffer_size);
 
             if(new_buffer == NULL){
                 perror("realloc");
@@ -98,7 +101,6 @@ int argv_reader(const char* path){
                 goto error;
             }
             buffer = new_buffer;
-            buffer_size = (BUFFER_SIZE * multiplicator)*2;
         }
         //Reading from the file
         ssize_t nread = read(fd, buffer + buf_ptr, buffer_size - buf_ptr);
@@ -112,15 +114,26 @@ int argv_reader(const char* path){
         }else{
             buf_ptr += nread;
         }
+
     }
-    //TODO parse the file and display the content
-    buffer[buf_ptr] = '\0';
-    dprintf(STDOUT_FILENO, "argv content : %s \n", buffer); // (provisional msg)
+    char* argv_content = arguments_parse(buffer, buf_ptr);
+
+    if(argv_content == NULL){   
+        dprintf(STDERR_FILENO, "Error while parsing argv content\n");
+        result = -1;
+        goto error;
+    }
+    dprintf(STDOUT_FILENO, "argv content : %s \n", argv_content); // (provisional msg)
+    
+    free(argv_content);
+    argv_content = NULL;
 
     error:
-    free(buffer);
-    buffer = NULL;
-
+    if (buffer)
+    {
+        free(buffer);
+        buffer = NULL;
+    }
     if(fd != -1 && close(fd) != 0){
         perror("close");
         result = -1;
@@ -133,7 +146,7 @@ int type_reader(const char* path){
     int result = 0;
     int fd = -1;
 
-    if(buffer_init(&buffer) == 1){
+    if(buffer_init(&buffer) < 0){
         return -1;
     }
     //Construction of the path to the type file
@@ -190,7 +203,10 @@ int type_reader(const char* path){
         }
     }  
     error:
-    free(buffer);
+    if (buffer)
+    {
+        free(buffer);
+    }
     buffer = NULL;
     if(fd != -1 && close(fd) != 0){
         perror("close");

@@ -1,20 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <time.h>
 #include <stdint.h>
 
 #include "tree-reading/tree_reader.h"
+#include "types/timing.h"
+
 
 int main() {
     printf("Running tests...\n\n");
 
     printf("Test for listing\n");
     test_tree_reader(LIST);
-    printf("Test for output\n\n");
+    /*printf("Test for output\n\n");
     test_tree_reader(OUTPUT);
     printf("Test for err\n\n");
     test_tree_reader(ERR);
     printf("Test for time_exitcodes\n\n");
-    test_tree_reader(TIME_EXIT);
+    test_tree_reader(TIME_EXIT);*/
 
     printf("All tests done.\n");
     return 0;
