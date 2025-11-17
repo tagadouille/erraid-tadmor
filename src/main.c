@@ -8,6 +8,9 @@
 #include "tree-reading/tree_reader.h"
 #include "types/timing.h"
 
+task_t* curr_task; //! maybe move it to the real executable
+
+void test_tree_reader(Action_type action);
 
 int main() {
     printf("Running tests...\n\n");

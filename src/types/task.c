@@ -166,7 +166,7 @@ int command_filler(char* buffer, unsigned int size, command_t* cmd, command_type
         }
     } else {
         // Creation of the complex command
-        command_t* complex_cmd = create_complex_command(cmd, cmd->type);
+        command_t* complex_cmd = create_command(cmd, cmd->type);
         if(complex_cmd == NULL){
             dprintf(STDERR_FILENO, "Error while creating complex command\n");
             arguments_free(arg);
