@@ -79,9 +79,8 @@ command_t* add_simple_command(command_t* command, const arguments_t* simple_args
  * @brief Adds a complex command to the given command structure
  * @param og_command Pointer to the command_t structure to add the complex command to.
  * @param command Pointer to the command_t structure representing the complex command to add.
- * @param type The type of the complex command. 
  */
-command_t* add_complex_command(command_t* og_command, command_t* command, command_type_t type);
+command_t* add_complex_command(command_t* og_command, command_t* command);
 
 command_t* create_complex_command(command_t* og_command, command_type_t type);
 

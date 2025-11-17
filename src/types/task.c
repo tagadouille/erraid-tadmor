@@ -56,17 +56,17 @@ void command_display(command_t *cmd){
     switch (cmd->type){
         case SI:
             if(cmd->args.simple.command == NULL){
-                dprintf(STDOUT_FILENO, "NULL command string\n");
+                dprintf(STDOUT_FILENO, "Error : NULL command string\n");
                 return;
             }
             if(cmd->args.simple.command->data == NULL){
-                dprintf(STDOUT_FILENO, "NULL command data\n");
+                dprintf(STDOUT_FILENO, "Error : NULL command data\n");
                 return;
             }
             dprintf(STDOUT_FILENO, "%s ", cmd->args.simple.command->data);
 
             if(cmd->args.simple.argv == NULL){
-                dprintf(STDOUT_FILENO, "NULL argv\n");
+                dprintf(STDOUT_FILENO, "Error : NULL argv\n");
                 return;
             }
 
@@ -117,7 +117,7 @@ command_t* add_simple_command(command_t* command, const arguments_t* simple_args
     return command;
 }
 
-command_t* add_complex_command(command_t* og_command, command_t* command, command_type_t type){
+command_t* add_complex_command(command_t* og_command, command_t* command){
     if(command == NULL){
         dprintf(STDERR_FILENO, "the command passed in parameter is NULL\n");
         return NULL;
@@ -126,7 +126,6 @@ command_t* add_complex_command(command_t* og_command, command_t* command, comman
         dprintf(STDERR_FILENO, "the original command is NULL or not of type SQ\n");
         return NULL;
     }
-    og_command->type = type;
 
     // Add the new command to the composed commands array
     if(og_command->args.composed.count % 10 == 0){
@@ -203,7 +202,7 @@ int command_filler(char* buffer, unsigned int size, command_t* cmd, command_type
             arguments_free(arg);
             return -1;
         }
-        cmd = add_simple_command(complex_cmd, arg);
+        cmd = add_complex_command(complex_cmd, complex_cmd);
         if(cmd == NULL){
             dprintf(STDERR_FILENO, "Error while adding simple command to complex command\n");
             arguments_free(arg);

@@ -183,9 +183,11 @@ int type_interpreter(const char* path, char* buffer, command_t* cmd){
     int result = 0;
 
     if(strcmp(buffer, "SI") == 0){
-        printf("Reading a simple instruction at path %s\n", path);
-
-        if(argv_reader(path, cmd, SI) == -1){
+        command_type_t type = SI;
+        if(cmd != NULL){
+            type = cmd->type;
+        }
+        if(argv_reader(path, cmd, type) == -1){
             dprintf(STDERR_FILENO, "Error while reading argv file of task at path %s\n", path);
             result = -1;
         }

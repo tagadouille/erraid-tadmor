@@ -32,7 +32,6 @@ void test_tree_reader(Action_type action) {
     uint16_t task = 0;
     printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR1 SUBDIR, task, action));
     
-    printf("Test of task reader for more complex tasks\n");
     if(curr_task != NULL){
         task_display(curr_task);
         task_destroy(curr_task);
