@@ -70,10 +70,10 @@ command_t* create_command(command_t* command, command_type_t type);
 /**
  * @brief Adds a simple command to the given command structure.
  * @param command Pointer to the command_t structure to add the simple command to.
- * @param args Pointer to the arguments_t structure representing the simple command.
+ * @param simple_args Pointer to the arguments_t structure representing the simple command.
  * @return Pointer to the updated command_t structure if success, NULL otherwise
  */
-command_t* add_simple_command(command_t* command, arguments_t* args);
+command_t* add_simple_command(command_t* command, const arguments_t* simple_args);
 
 /**
  * @brief Adds a complex command to the given command structure

@@ -12,8 +12,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-bool arguments_parse_struct(const string_t *buf, unsigned int size, arguments_t *args)
-{
+bool arguments_parse_struct(const string_t *buf, unsigned int size, arguments_t *args){
     // Test if the arguments are valid
     if (!buf || !buf->data || !args || size < (unsigned int) sizeof(uint32_t)) {
         dprintf(STDERR_FILENO, "arguments_parse_struct: invalid input\n");
@@ -63,12 +62,6 @@ bool arguments_parse_struct(const string_t *buf, unsigned int size, arguments_t 
         memcpy(&len_be, buf->data + offset, sizeof(uint32_t));
         uint32_t len = be32toh(len_be);
         offset += sizeof(uint32_t);
-
-        // * sanity: len should be reasonable 
-        if (len > (uint32_t)size) {
-            dprintf(STDERR_FILENO, "Bad length value\n"); 
-            goto error;
-        }
 
         if (offset + len > (size_t)size) {
             dprintf(STDERR_FILENO, "Buffer too small for data\n");
@@ -131,6 +124,61 @@ arguments_t *arguments_parse(const char *buffer, unsigned int size){
     string_free(&buf);
     return args;
 }
+
+arguments_t* copy_arguments(arguments_t* dst, const arguments_t* src){
+    // safety check
+    if (!dst || !src){
+        return NULL;
+    }
+
+    dst->argc = src->argc;
+
+    // Copy command
+    if (src->command){
+        dst->command = string_copy(src->command);
+        if (!dst->command){
+            perror("string_copy");
+            return NULL;
+        }
+    } else {
+        dst->command = NULL;
+    }
+
+    // Copy argv
+    uint32_t n_args = (src->argc > 0 ? src->argc - 1 : 0);
+
+    if (n_args > 0){
+        dst->argv = calloc(n_args, sizeof(string_t*));
+
+        if (!dst->argv){
+            perror("calloc");
+            string_free_heap(dst->command);
+            return NULL;
+        }
+
+        for (uint32_t i = 0; i < n_args; i++){
+            if (src->argv[i]){
+                dst->argv[i] = string_copy(src->argv[i]);
+                if (!dst->argv[i]){
+                    perror("string_copy");
+
+                    // Free already copied elements
+                    for (uint32_t j = 0; j < i; j++)
+                        string_free_heap(dst->argv[j]);
+                    free(dst->argv);
+                    string_free_heap(dst->command);
+                    return NULL;
+                }
+            } else {
+                dst->argv[i] = NULL; // initialize NULL pointers
+            }
+        }
+    } else {
+        dst->argv = NULL;
+    }
+    return dst;
+}
+
 
 
 void arguments_free(arguments_t *args)

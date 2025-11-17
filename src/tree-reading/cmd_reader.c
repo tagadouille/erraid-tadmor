@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <dirent.h>
 #include <string.h>
 #include <stdio.h>
@@ -181,13 +183,13 @@ int type_interpreter(const char* path, char* buffer, command_t* cmd){
     int result = 0;
 
     if(strcmp(buffer, "SI") == 0){
-        cmd -> type = SI;
+        printf("Reading a simple instruction at path %s\n", path);
+
         if(argv_reader(path, cmd, SI) == -1){
             dprintf(STDERR_FILENO, "Error while reading argv file of task at path %s\n", path);
             result = -1;
         }
     }else if(strcmp(buffer, "SQ") == 0){
-        cmd -> type = SQ;
         if(all_tasks_reader(path, cmd) == -1){
             dprintf(STDERR_FILENO, "Error while reading all the sub-tasks\n");
             result = -1;

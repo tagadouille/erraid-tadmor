@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -41,33 +43,43 @@ task_t *task_create(uint16_t id){
 void task_display(task_t* task){
     dprintf(STDOUT_FILENO, "%u: ", task->id);
 
-    timing_show(task->timing);
+    //timing_show(task->timing); //TODO finish timing_show
     command_display(task->cmd);
 }
 
-void command_display(command_t *cmd)
-{
-    if (!cmd){
+void command_display(command_t *cmd){
+    if (cmd == NULL){
+        dprintf(STDOUT_FILENO, "NULL command\n");
         return;
     }
 
     switch (cmd->type){
         case SI:
-        {
-            arguments_t arg = cmd->args.simple;
-            dprintf(STDOUT_FILENO, "%s ", arg.command->data);
+            if(cmd->args.simple.command == NULL){
+                dprintf(STDOUT_FILENO, "NULL command string\n");
+                return;
+            }
+            if(cmd->args.simple.command->data == NULL){
+                dprintf(STDOUT_FILENO, "NULL command data\n");
+                return;
+            }
+            dprintf(STDOUT_FILENO, "%s ", cmd->args.simple.command->data);
 
-            for (uint32_t i = 0; i < arg.argc; i++)
-            {
-                dprintf(STDOUT_FILENO, "%s", arg.argv[i]->data);
+            if(cmd->args.simple.argv == NULL){
+                dprintf(STDOUT_FILENO, "NULL argv\n");
+                return;
+            }
 
-                if(i != arg.argc - 1){
+            for (uint32_t i = 0; i < cmd->args.simple.argc -1; i++){
+                dprintf(STDOUT_FILENO, "%s", cmd->args.simple.argv[i]->data);
+
+                if(i != cmd->args.simple.argc - 1){
                     dprintf(STDOUT_FILENO, " ");
                 }
             }
             break;
-        }
         case SQ:
+            printf("Sequential Queue: ");
             dprintf(STDOUT_FILENO, "(");
             for (uint16_t i = 0; i < cmd->args.composed.count; i++){
                 command_display(cmd->args.composed.cmds[i]);
@@ -78,17 +90,30 @@ void command_display(command_t *cmd)
             }
             dprintf(STDOUT_FILENO, ")");
             break;
+        default:
+            dprintf(STDERR_FILENO, "Unknown command type: %d\n", cmd->type);
+            return;
     }
     dprintf(STDOUT_FILENO, "\n");
 }
 
-command_t* add_simple_command(command_t* command, arguments_t* simple_args){
-    if(command != NULL){
-        command->type = SI;
-        command->args.simple = *simple_args;
+command_t* add_simple_command(command_t* command, const arguments_t* simple_args){
+    if (!command){
+        dprintf(STDERR_FILENO, "The command that has been passed is NULL\n");
+        return NULL;
+    }
+    if (!simple_args){
+        dprintf(STDERR_FILENO, "simple_args is NULL\n");
         return command;
     }
-    dprintf(STDERR_FILENO, "The command that has been passed is NULL\n");
+
+    command->type = SI;
+
+    // Copy arguments safely
+    if (!copy_arguments(&command->args.simple, simple_args)){
+        dprintf(STDERR_FILENO, "Failed to copy arguments\n");
+        return NULL;
+    }
     return command;
 }
 
@@ -97,10 +122,11 @@ command_t* add_complex_command(command_t* og_command, command_t* command, comman
         dprintf(STDERR_FILENO, "the command passed in parameter is NULL\n");
         return NULL;
     }
-    if(og_command == NULL || og_command->type != SQ){
+    if(og_command == NULL){
         dprintf(STDERR_FILENO, "the original command is NULL or not of type SQ\n");
         return NULL;
     }
+    og_command->type = type;
 
     // Add the new command to the composed commands array
     if(og_command->args.composed.count % 10 == 0){
@@ -141,9 +167,12 @@ command_t* create_command(command_t* command, command_type_t type){
 }
 
 int command_filler(char* buffer, unsigned int size, command_t* cmd, command_type_t type){
+
     if(cmd == NULL){
         curr_task->cmd = create_command(cmd, type);
+
         if(curr_task->cmd == NULL){
+            dprintf(STDERR_FILENO, "Error while creating command structure\n");
             return -1;
         }
         cmd = curr_task->cmd;
@@ -159,11 +188,13 @@ int command_filler(char* buffer, unsigned int size, command_t* cmd, command_type
     // Filling the command structure based on its type
     if(type == SI){
         cmd = add_simple_command(cmd, arg);
+
         if(cmd == NULL){
             dprintf(STDERR_FILENO, "Error while creating simple command\n");
             arguments_free(arg);
             return -1;
         }
+        goto success;
     } else {
         // Creation of the complex command
         command_t* complex_cmd = create_command(cmd, cmd->type);
@@ -172,14 +203,15 @@ int command_filler(char* buffer, unsigned int size, command_t* cmd, command_type
             arguments_free(arg);
             return -1;
         }
-
         cmd = add_simple_command(complex_cmd, arg);
         if(cmd == NULL){
             dprintf(STDERR_FILENO, "Error while adding simple command to complex command\n");
             arguments_free(arg);
             return -1;
         }
+        goto success;
     }
+    success:
     return 0;
 }
 

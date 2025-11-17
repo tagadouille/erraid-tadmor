@@ -31,6 +31,14 @@ bool arguments_parse_struct(const string_t *buffer, unsigned int size, arguments
 arguments_t *arguments_parse(const char *buffer, unsigned int size);
 
 /**
+ * @brief Create a deep copy of an arguments_t structure.
+ * @param dst Pointer to the destination arguments_t structure.
+ * @param src Pointer to the source arguments_t structure.
+ * @return A newly allocated copy of the arguments_t structure if successful, NULL otherwise.
+ */
+arguments_t* copy_arguments(arguments_t* dst, const arguments_t* src);
+
+/**
  * @brief Free the memory allocated for the arguments structure.
  * @param args Pointer to the arguments structure to free.
  */

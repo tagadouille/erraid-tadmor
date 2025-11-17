@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <limits.h>
 #include <dirent.h>
 #include <string.h>
@@ -97,7 +99,7 @@ int task_finder(char* path, char* task_id, Action_type action){
                 result = -1;
                 goto error;
             }
-            result = extract_task_information(newpath, action, NULL, false);
+            result = extract_task_information(newpath, action, curr_task -> cmd, false);
             
             free(newpath);
             newpath = NULL;
