@@ -12,9 +12,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-bool arguments_parse_struct(const string_t *buf, ssize_t size, arguments_t *args)
+bool arguments_parse_struct(const string_t *buf, unsigned int size, arguments_t *args)
 {
-    if (!buf || !buf->data || !args || size < (ssize_t)sizeof(uint32_t)) {
+    // Test if the arguments are valid
+    if (!buf || !buf->data || !args || size < (unsigned int) sizeof(uint32_t)) {
         dprintf(STDERR_FILENO, "arguments_parse_struct: invalid input\n");
         return false;
     }
@@ -34,10 +35,12 @@ bool arguments_parse_struct(const string_t *buf, ssize_t size, arguments_t *args
         return false;
     }
 
+    // Initialize args structure
     args->argc = argc;
     args->command = NULL;
     args->argv = NULL;
 
+    // Allocate argv array
     uint32_t n_args = (argc > 0) ? (argc - 1) : 0;
     if (n_args > 0) {
         args->argv = calloc(n_args, sizeof(string_t*));
@@ -47,8 +50,10 @@ bool arguments_parse_struct(const string_t *buf, ssize_t size, arguments_t *args
         }
     }
 
+    // Read each argument
     for (uint32_t i = 0; i < argc; ++i) {
 
+        // Read length big-endian
         if (offset + sizeof(uint32_t) > (size_t)size) {
             dprintf(STDERR_FILENO, "Buffer too small for length\n");
             goto error;
@@ -104,66 +109,35 @@ error:
     return false;
 }
 
-char *arguments_parse(const char *buffer, ssize_t size)
-{
+arguments_t *arguments_parse(const char *buffer, unsigned int size){
     if (!buffer || size <= 0) {
         dprintf(STDERR_FILENO, "arguments_parse: invalid input\n");
         return NULL;
     }
 
+    // Creation of arguments_t structure
     string_t buf = string_create(buffer, size);
-    arguments_t args;
-    memset(&args, 0, sizeof(args));
+    arguments_t* args = malloc(sizeof(arguments_t));
+    if (!args) {
+        perror("malloc");
+        string_free(&buf);
+        return NULL;
+    }
 
-    if (!arguments_parse_struct(&buf, size, &args)) {
+    if (!arguments_parse_struct(&buf, size, args)) {
         string_free(&buf); 
         return NULL;
     }
-
     string_free(&buf);
-
-    size_t total = 1;
-    if (args.command) total += args.command->length;
-
-    uint32_t n_args = (args.argc > 0) ? (args.argc - 1) : 0;
-    for (uint32_t i = 0; i < n_args; ++i)
-        if (args.argv[i]) total += args.argv[i]->length + 1;
-    if (n_args > 0)
-    {
-        total += n_args; // spaces between arguments
-    }
-    
-    char *out = malloc(total);
-    if (!out) {
-        perror("malloc");
-        arguments_free(&args);
-        return NULL;
-    }
-
-    // Construct output string
-    size_t pos = 0;
-    if (args.command && args.command->length) {
-        memcpy(out + pos, args.command->data, args.command->length);
-        pos += args.command->length;
-    }
-
-    for (uint32_t i = 0; i < n_args; ++i) {
-        if (!args.argv[i]) continue;
-        out[pos++] = ' ';
-        memcpy(out + pos, args.argv[i]->data, args.argv[i]->length);
-        pos += args.argv[i]->length;
-    }
-
-    out[pos] = '\0';
-
-    arguments_free(&args);
-    return out;
+    return args;
 }
 
 
 void arguments_free(arguments_t *args)
 {
-    if (!args) return;
+    if (!args){
+        return;
+    }
 
     if (args->command) {
         string_free_heap(args->command);

@@ -43,8 +43,14 @@ bool timing_match_now(const timing_t *t);
 /**
  * @brief Read and interpret a binary timing file into a readable string.
  * @param path Path to the timing file.
- * @return Newly allocated string (must be freed by caller), or NULL on failure.
+ * @return the timing_t structure if success, NULL otherwise
  */
-char *timing_show(const char *path, ssize_t size);
+timing_t* timing_create(const char *path, ssize_t size);
+
+/**
+ * @brief Display the timing information.
+ * @param t Pointer to the timing_t structure to display.
+ */
+void timing_show(const timing_t *t);
 
 #endif

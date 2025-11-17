@@ -4,6 +4,9 @@
 #include <limits.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <unistd.h>
+
+#include "types/task.h"
 
 #define TASKPATH "Consignes/exemples-arborescences/" //The path to the task tree (provisional)
 
@@ -17,6 +20,9 @@
 
 #define MAX_PATH pathconf("/", _PC_PATH_MAX) //The maximum path length of the computer
 #define BUFFER_SIZE 1024 //The size of the buffer for reading
+
+// The current task being processed
+extern task_t* curr_task; //! maybe move it to erraid
 
 // The different type of action to do while reading the task tree
 enum Action_type {
@@ -41,7 +47,7 @@ int task_reader(const char* path, uint16_t task_id, Action_type action);
 * @param path the path to the directory containing the tasks
 * @return 0 if success, -1 otherwise
 */
-int all_tasks_reader(const char* path);
+int all_tasks_reader(const char* path, command_t* cmd);
 
 /**
 * @brief Find the task according to the path and task_id arguments
@@ -57,10 +63,11 @@ int task_finder(char* path, char* task_id, Action_type action);
 * @brief Extract the information of the specified task which is stored at path argument according to the action argument.
 * @param path the path to the task
 * @param action specify the action to do while reading the task
+* @param cmd Pointer to the command_t structure to fill
 * @param is_sequence argument specify if the task is a sequence of tasks of not
 * @return 0 if success, -1 if failure
 */
-int extract_task_information(const char* path, Action_type action, bool is_sequence);
+int extract_task_information(const char* path, Action_type action, command_t* cmd, bool is_sequence);
 
 /**
 * @brief  the buffer with a size of BUFFER_SIZE
@@ -84,7 +91,7 @@ char* make_path(const char* og_path, const char* folder_name);
  * @param func pointer to the function to use to read the file
  * @return 0 if success, -1 if failure
  */
-int aux_extract(const char* path, char* folder_name, int (*func)(const char*));
+int aux_extract(const char* path, char* folder_name, command_t* cmd);
 
 /**
  * @brief Auxiliary function to extract information from a file located in folder_name inside path
