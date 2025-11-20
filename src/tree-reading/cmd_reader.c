@@ -6,28 +6,47 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "tree-reading/tree_reader.h"
 #include "tree-reading/cmd_reader.h"
 #include "types/argument.h"
 #include "types/task.h"
 
-int cmd_reader(const char* path, command_t* cmd){
+int cmd_reader(const char* path){
     int result = 0;
 
     char* type_path = make_path(path, "type");
-    char* argv_path = make_path(path, "argv");
 
-    if(type_path == NULL || argv_path == NULL){
+    if(type_path == NULL){
         result = -1;
         goto error;
     }
 
     if(access(type_path, F_OK) == 0){
-        if(type_reader(path, cmd) == -1){
+        command_type_t type = type_reader(type_path);
+
+        if(type == INVALID){
             dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", path);
             result = -1;
             goto error;
+        }
+        if(type == SI){
+            curr_task -> cmd = type_processor(path, SI, curr_task -> cmd, NULL);
+            
+            if(curr_task -> cmd == NULL){
+                result = -1;
+                goto error;
+            }
+        }else{
+            command_t* cmd = create_command(curr_task -> cmd, type);
+            cmd = command_parser(path, cmd);
+            
+            if(cmd == NULL){
+                result = -1;
+                goto error;
+            }
+            curr_task -> cmd = cmd;
         }
     }else{
         dprintf(STDERR_FILENO, "Type file doesn't exist at path %s\n", path);
@@ -36,22 +55,169 @@ int cmd_reader(const char* path, command_t* cmd){
     if(result == -1){
         dprintf(STDERR_FILENO, "Error while reading cmd folder of task at path %s\n", path);
     }
+    free(type_path);
+    type_path = NULL;
     return result;
 }
 
-int argv_reader(const char* path, command_t* og_command, command_type_t type){
+command_t* command_parser(const char* path, command_t* cmd){
+    DIR* dirp = NULL;
+
+    // Creation of the paths to the argv and type files
+    char* argv_path = make_path(path, "argv");
+
+    if(argv_path == NULL){
+        return NULL;
+    }
+    char* curr_type_path = make_path(path, "type");
+
+    if(curr_type_path == NULL){
+        return NULL;
+    }
+    // We are in a leaf node, we read the argv file
+    if(access(argv_path, F_OK) == 0){
+        cmd = argv_reader(path, cmd);
+
+        if(cmd == NULL){
+            dprintf(STDERR_FILENO, "Error while reading argv file of task at path %s\n", path);
+            command_free(cmd);
+            free(argv_path);
+            argv_path = NULL;
+            goto error;
+        }
+        free(argv_path);
+        argv_path = NULL;
+        return cmd;
+    }
+
+    free(argv_path);
+    argv_path = NULL;
+
+    dirp = opendir(path);
+
+    if(dirp == NULL){
+        perror("opendir for command tree parsing");
+        command_free(cmd);
+        goto error;
+    }
+    struct dirent* entry;
+
+    // Reading all the direct sons
+    while((entry = readdir(dirp)) != NULL){
+        //Skipping the . and .. entries
+        if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0){
+            continue;
+        }
+        //We check if the entry is a directory
+        if(entry->d_type == DT_DIR){
+            // Test if the name is an int :
+            char *end;
+            strtol(entry->d_name, &end, 10);
+
+            if (*end != '\0' || errno == ERANGE) {
+                continue;
+            }
+            //Recursively calling command_parser on the subdirectory
+            char* sub_path = make_path(path, entry->d_name);
+
+            if(sub_path == NULL){
+                command_free(cmd);
+                goto error;
+            }
+            //Construction of the path to the type file of the son command
+            char* type_path = make_path(sub_path, "type");
+
+            if(type_path == NULL){
+                free(sub_path);
+                sub_path = NULL;
+                cmd = NULL;
+                goto error;
+            }
+            // Construction of the son command
+            //Reading the type file of the son and filling the command structure accordingly
+            command_t* son_cmd = NULL;
+            command_type_t type = type_reader(type_path);
+
+            if(type == INVALID){
+                dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", sub_path);
+                cmd = NULL;
+                goto clean;
+            }
+
+            son_cmd = create_command(son_cmd, type);
+
+            if(son_cmd == NULL){
+                goto clean;
+            }
+            son_cmd = command_parser(sub_path, son_cmd);
+
+            if(son_cmd == NULL){
+                free(sub_path);
+                sub_path = NULL;
+                command_free(cmd);
+                cmd = NULL;
+                goto error;
+            }
+            //Reading the type file of the father and filling the command structure accordingly
+            type = type_reader(curr_type_path);
+            if(type == INVALID){
+                dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", path);
+                cmd = NULL;
+                goto clean;
+            }
+            // cmd null
+            cmd = type_processor(path, type, cmd, son_cmd);
+            if(cmd == NULL){
+                dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", path);
+                goto clean;
+            }
+            //freeing the allocated paths
+            free(type_path);
+            type_path = NULL;
+
+            free(sub_path);
+            sub_path = NULL;
+            continue;
+
+            clean:
+            free(type_path);
+            type_path = NULL;
+            free(sub_path);
+            command_free(son_cmd);
+            command_free(cmd);
+            cmd = NULL;
+            sub_path = NULL;
+            goto error;
+        }
+    }
+    error:
+    free(curr_type_path);
+    curr_type_path = NULL;
+
+    if(dirp != NULL && closedir(dirp) != 0){
+        perror("closedir");
+        command_free(cmd);
+        return NULL;
+    }
+    if(cmd == NULL){
+        dprintf(STDERR_FILENO, "Error while parsing command tree at path %s\n", path);
+    }
+    return cmd;
+}
+
+command_t* argv_reader(const char* path, command_t* og_command){
     char* buffer = NULL;
-    int result = 0;
     int fd = -1;
 
     if(buffer_init(&buffer) < 0){
-        return -1;
+        command_free(og_command);
+        return NULL;
     }
 
     //Construction of the path to the argv file
     char* argv_path = make_path(path, "argv");
     if(argv_path == NULL){
-        result = -1;
+        command_free(og_command);
         goto error;
     }
     
@@ -59,8 +225,8 @@ int argv_reader(const char* path, command_t* og_command, command_type_t type){
     fd = open(argv_path, O_RDONLY);
 
     if(fd < 0){
-        perror("open type file");
-        result = -1;
+        perror("open argv file");
+        command_free(og_command);
         goto error;
     }
     free(argv_path);
@@ -81,7 +247,7 @@ int argv_reader(const char* path, command_t* og_command, command_type_t type){
 
             if(new_buffer == NULL){
                 perror("realloc");
-                result = -1;
+                command_free(og_command);
                 goto error;
             }
             buffer = new_buffer;
@@ -91,7 +257,7 @@ int argv_reader(const char* path, command_t* og_command, command_type_t type){
 
         if(nread < 0){
             perror("nread");
-            result = -1;
+            command_free(og_command);
             goto error;
         }else if(nread == 0){
             break;
@@ -100,9 +266,9 @@ int argv_reader(const char* path, command_t* og_command, command_type_t type){
         }
 
     }
-    if(command_filler(buffer, buf_ptr, og_command, type) == -1){
+    og_command = command_filler(buffer, buf_ptr, og_command, SI);
+    if(og_command == NULL){
         dprintf(STDERR_FILENO, "Error while filling the command structure from argv file at path %s\n", path);
-        result = -1;
         goto error;
     }
 
@@ -113,92 +279,87 @@ int argv_reader(const char* path, command_t* og_command, command_type_t type){
     }
     if(fd != -1 && close(fd) != 0){
         perror("close");
-        result = -1;
+        command_free(og_command);
     }
-    return result;
+    return og_command;
 }
 
-int type_reader(const char* path, command_t *cmd){
+command_type_t type_reader(const char* path){
     char* buffer = NULL;
-    int result = 0;
+    int result = INVALID;
     int fd = -1;
 
     if(buffer_init(&buffer) < 0){
-        return -1;
-    }
-    //Construction of the path to the type file
-    char* type_path = make_path(path, "type");
-
-    if(type_path == NULL){
-        result = -1;
-        goto error;
+        return INVALID;
     }
     //Reading the type file
-    fd = open(type_path, O_RDONLY);
-
-    free(type_path);
-    type_path = NULL;
+    fd = open(path, O_RDONLY);
 
     if(fd < 0){
         perror("open type file");
-        result = -1;
         goto error;
     }
     ssize_t nread = read(fd, buffer, BUFFER_SIZE);
 
     if(nread < 0){
         perror("nread");
-        result = -1;
         goto error;
     }else{
         //Detection of an anomaly
         if(nread == 2){
             buffer[nread] = '\0';
 
-            if(type_interpreter(path, buffer, cmd) == -1){
-                result = -1;
+            command_type_t type = type_interpreter(buffer);
+
+            if(type == INVALID){
                 goto error;
             }
+            result = type;
         }else{
-            result = -1;
             dprintf(STDERR_FILENO, "Error : type file has an invalid size\n");
             goto error;
         }
     }  
     error:
-    if (buffer)
-    {
+    if (buffer != NULL){
         free(buffer);
     }
     buffer = NULL;
     if(fd != -1 && close(fd) != 0){
         perror("close");
-        result = -1;
+        result = INVALID;
     }
     return result;
 }
 
-//TODO adapt the function according to the different types
-int type_interpreter(const char* path, char* buffer, command_t* cmd){
-    int result = 0;
+//TODO adapt the functions according to the different types
+command_type_t type_interpreter(char* buffer){
 
-    if(strcmp(buffer, "SI") == 0){
-        command_type_t type = SI;
-        if(cmd != NULL){
-            type = cmd->type;
-        }
-        if(argv_reader(path, cmd, type) == -1){
-            dprintf(STDERR_FILENO, "Error while reading argv file of task at path %s\n", path);
-            result = -1;
-        }
+    if(strcmp(buffer, "SI") == 0){      
+        return SI;
     }else if(strcmp(buffer, "SQ") == 0){
-        if(all_tasks_reader(path, cmd) == -1){
-            dprintf(STDERR_FILENO, "Error while reading all the sub-tasks\n");
-            result = -1;
-        }
+        return SQ;
     }else{
         dprintf(STDERR_FILENO, "Unknown command type : %s\n", buffer);
-        return -1;
+        return INVALID;
     }
-    return result;
+}
+
+command_t* type_processor(const char* path, command_type_t type, command_t* og_command, command_t* cmd){
+
+    switch (type){
+        case SI:
+            og_command = argv_reader(path, og_command);
+            return og_command;
+        case SQ:
+            og_command = add_complex_command(og_command, cmd);
+            if(og_command == NULL){
+                dprintf(STDERR_FILENO, "Error while adding command to composed command at path %s\n", path);
+                return NULL;
+            }
+            return og_command;
+        default:
+            dprintf(STDERR_FILENO, "Error : invalid command type");
+            return NULL;
+    }
 }

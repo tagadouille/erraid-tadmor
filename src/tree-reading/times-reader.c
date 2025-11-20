@@ -75,14 +75,14 @@ int times_exitcodes_interpreter(char* data, const char* path, ssize_t size){
         char* output = time_exitcode_show(data, size);
 
         if(output == NULL){
-            dprintf(STDOUT_FILENO, "Error while showing the time-exitcodes file");
+            dprintf(STDERR_FILENO, "Error while showing the time-exitcodes file");
             return -1;
         }
-        dprintf(STDOUT_FILENO, "%s\n", output);
+        dprintf(STDERR_FILENO, "%s\n", output);
         free(output);
         output = NULL;
     }else{
-        dprintf(STDOUT_FILENO, "times-exitcodes file is empty at path %s\n", path);
+        dprintf(STDERR_FILENO, "times-exitcodes file is empty at path %s\n", path);
         return -1;
     }
     return 0;
@@ -93,14 +93,14 @@ int timing_interpreter(char* data, const char* path, ssize_t size){
         timing_t* timing = timing_create(data, size);
 
         if(timing == NULL){
-            dprintf(STDOUT_FILENO, "Error while creating the timing structure");
+            dprintf(STDERR_FILENO, "Error while creating the timing structure");
             return -1;
         }
         curr_task -> timing -> minutes = timing -> minutes;
         curr_task -> timing -> hours = timing -> hours;
         curr_task -> timing -> daysofweek = timing -> daysofweek;
     }else{
-        dprintf(STDOUT_FILENO, "timing file is empty at path %s\n", path);
+        dprintf(STDERR_FILENO, "timing file is empty at path %s\n", path);
         return -1;
     }
     return 0;

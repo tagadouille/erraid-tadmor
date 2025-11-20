@@ -37,10 +37,8 @@ bool time_exitcode_append(const char *path, const time_exitcode_t *record)
     return true;
 }
 
-char *time_exitcode_show(const char *data, ssize_t size)
-{
-    printf("Inside time_exitcode_show with size %ld\n", size);
-
+char *time_exitcode_show(const char *data, ssize_t size){
+    
     const ssize_t REC_SIZE = sizeof(uint64_t) + sizeof(int16_t); // 10 bytes
 
     // Validation du buffer

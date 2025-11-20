@@ -13,7 +13,8 @@
 //! maybe modify that because that's already exist in cmd
 typedef enum{
     SI,
-    SQ // On pourra ajouter d'autres types plus tard
+    SQ,
+    INVALID // On pourra ajouter d'autres types plus tard
 } command_type_t;
 
 typedef struct command command_t;
@@ -38,7 +39,7 @@ struct command{
  * @brief Represents a task that can be executed by the scheduler.
  */
 typedef struct task {
-    uint32_t id;
+    uint16_t id;
     command_t *cmd;
     timing_t* timing;
 } task_t;
@@ -82,8 +83,6 @@ command_t* add_simple_command(command_t* command, const arguments_t* simple_args
  */
 command_t* add_complex_command(command_t* og_command, command_t* command);
 
-command_t* create_complex_command(command_t* og_command, command_type_t type);
-
 /**
  * @brief Fills the command structure based on the provided buffer.
  * @param buffer The buffer containing command data.
@@ -92,7 +91,13 @@ command_t* create_complex_command(command_t* og_command, command_type_t type);
  * @param type The type of to command
  * @return 0 if success, -1 otherwise.
  */
-int command_filler(char* buffer, unsigned int size, command_t* cmd, command_type_t type);
+command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, command_type_t type);
+
+/**
+ * @brief Helper to recursively free a command structure.
+ *        Works for both SI and SQ commands.
+ */
+void command_free(command_t *cmd);
 
 /**
  * @brief Free all memory inside a task.

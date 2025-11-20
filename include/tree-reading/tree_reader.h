@@ -43,13 +43,6 @@ typedef enum Action_type Action_type;
 int task_reader(const char* path, uint16_t task_id, Action_type action);
 
 /**
-* @brief Extract the information of all the tasks at the direcory path and for all the sub-tasks
-* @param path the path to the directory containing the tasks
-* @return 0 if success, -1 otherwise
-*/
-int all_tasks_reader(const char* path, command_t* cmd);
-
-/**
 * @brief Find the task according to the path and task_id arguments
 * @param path the path to the directory containing the tasks
 * @param task_id the number of the task
@@ -63,11 +56,9 @@ int task_finder(char* path, char* task_id, Action_type action);
 * @brief Extract the information of the specified task which is stored at path argument according to the action argument.
 * @param path the path to the task
 * @param action specify the action to do while reading the task
-* @param cmd Pointer to the command_t structure to fill
-* @param is_sequence argument specify if the task is a sequence of tasks of not
 * @return 0 if success, -1 if failure
 */
-int extract_task_information(const char* path, Action_type action, command_t* cmd, bool is_sequence);
+int extract_task_information(const char* path, Action_type action);
 
 /**
 * @brief  the buffer with a size of BUFFER_SIZE
@@ -91,7 +82,7 @@ char* make_path(const char* og_path, const char* folder_name);
  * @param func pointer to the function to use to read the file
  * @return 0 if success, -1 if failure
  */
-int aux_extract(const char* path, char* folder_name, command_t* cmd);
+int aux_extract(const char* path, char* folder_name);
 
 /**
  * @brief Auxiliary function to extract information from a file located in folder_name inside path
