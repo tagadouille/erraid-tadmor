@@ -23,33 +23,32 @@ int cmd_reader(const char* path){
         goto error;
     }
 
-    if(access(type_path, F_OK) == 0){
-        command_type_t type = type_reader(type_path);
+    // Trying to acces to the type file
+    command_type_t type = type_reader(type_path);
 
-        if(type == INVALID){
-            dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", path);
+    if(type == INVALID){
+        dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", path);
+        result = -1;
+        goto error;
+    }
+    // If the type is SI, construct the task by reading the argv file
+    if(type == SI){
+        curr_task -> cmd = type_processor(path, SI, curr_task -> cmd, NULL);
+        
+        if(curr_task -> cmd == NULL){
             result = -1;
             goto error;
         }
-        if(type == SI){
-            curr_task -> cmd = type_processor(path, SI, curr_task -> cmd, NULL);
-            
-            if(curr_task -> cmd == NULL){
-                result = -1;
-                goto error;
-            }
-        }else{
-            command_t* cmd = create_command(curr_task -> cmd, type);
-            cmd = command_parser(path, cmd);
-            
-            if(cmd == NULL){
-                result = -1;
-                goto error;
-            }
-            curr_task -> cmd = cmd;
+    }// Else command_parser is used
+    else{
+        command_t* cmd = create_command(curr_task -> cmd, type);
+        cmd = command_parser(path, cmd);
+        
+        if(cmd == NULL){
+            result = -1;
+            goto error;
         }
-    }else{
-        dprintf(STDERR_FILENO, "Type file doesn't exist at path %s\n", path);
+        curr_task -> cmd = cmd;
     }
     error:
     if(result == -1){
@@ -80,10 +79,9 @@ command_t* command_parser(const char* path, command_t* cmd){
 
         if(cmd == NULL){
             dprintf(STDERR_FILENO, "Error while reading argv file of task at path %s\n", path);
-            command_free(cmd);
             free(argv_path);
             argv_path = NULL;
-            goto error;
+            goto cmd_clean;
         }
         free(argv_path);
         argv_path = NULL;
@@ -97,12 +95,21 @@ command_t* command_parser(const char* path, command_t* cmd){
 
     if(dirp == NULL){
         perror("opendir for command tree parsing");
-        command_free(cmd);
-        goto error;
+        goto cmd_clean;
+    }
+
+    //Reading the type file of the current folder
+    command_type_t type = type_reader(curr_type_path);
+    free(curr_type_path);
+    curr_type_path = NULL;
+
+    if(type == INVALID){
+        dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", path);
+        goto cmd_clean;
     }
     struct dirent* entry;
 
-    // Reading all the direct sons
+    // Reading all the direct sons of the current node
     while((entry = readdir(dirp)) != NULL){
         //Skipping the . and .. entries
         if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0){
@@ -121,8 +128,7 @@ command_t* command_parser(const char* path, command_t* cmd){
             char* sub_path = make_path(path, entry->d_name);
 
             if(sub_path == NULL){
-                command_free(cmd);
-                goto error;
+                goto cmd_clean;
             }
             //Construction of the path to the type file of the son command
             char* type_path = make_path(sub_path, "type");
@@ -130,21 +136,20 @@ command_t* command_parser(const char* path, command_t* cmd){
             if(type_path == NULL){
                 free(sub_path);
                 sub_path = NULL;
-                cmd = NULL;
-                goto error;
+                goto cmd_clean;
             }
             // Construction of the son command
             //Reading the type file of the son and filling the command structure accordingly
             command_t* son_cmd = NULL;
-            command_type_t type = type_reader(type_path);
+            command_type_t son_type = type_reader(type_path);
 
-            if(type == INVALID){
+            if(son_type == INVALID){
                 dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", sub_path);
                 cmd = NULL;
                 goto clean;
             }
 
-            son_cmd = create_command(son_cmd, type);
+            son_cmd = create_command(son_cmd, son_type);
 
             if(son_cmd == NULL){
                 goto clean;
@@ -152,20 +157,9 @@ command_t* command_parser(const char* path, command_t* cmd){
             son_cmd = command_parser(sub_path, son_cmd);
 
             if(son_cmd == NULL){
-                free(sub_path);
-                sub_path = NULL;
-                command_free(cmd);
-                cmd = NULL;
-                goto error;
-            }
-            //Reading the type file of the father and filling the command structure accordingly
-            type = type_reader(curr_type_path);
-            if(type == INVALID){
-                dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", path);
-                cmd = NULL;
                 goto clean;
             }
-            // cmd null
+    
             cmd = type_processor(path, type, cmd, son_cmd);
             if(cmd == NULL){
                 dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", path);
@@ -183,26 +177,27 @@ command_t* command_parser(const char* path, command_t* cmd){
             free(type_path);
             type_path = NULL;
             free(sub_path);
-            command_free(son_cmd);
-            command_free(cmd);
-            cmd = NULL;
             sub_path = NULL;
-            goto error;
+            command_free(son_cmd);
+            son_cmd = NULL;
+            goto cmd_clean;
         }
     }
-    error:
-    free(curr_type_path);
-    curr_type_path = NULL;
 
     if(dirp != NULL && closedir(dirp) != 0){
         perror("closedir");
-        command_free(cmd);
-        return NULL;
-    }
-    if(cmd == NULL){
-        dprintf(STDERR_FILENO, "Error while parsing command tree at path %s\n", path);
+        goto clean;
     }
     return cmd;
+
+    cmd_clean:
+    dprintf(STDERR_FILENO, "Error while parsing command tree at path %s\n", path);
+    command_free(cmd);
+
+    if(dirp != NULL && closedir(dirp) != 0){
+        perror("closedir");
+    }
+    return NULL;
 }
 
 command_t* argv_reader(const char* path, command_t* og_command){
@@ -264,7 +259,6 @@ command_t* argv_reader(const char* path, command_t* og_command){
         }else{
             buf_ptr += nread;
         }
-
     }
     og_command = command_filler(buffer, buf_ptr, og_command, SI);
     if(og_command == NULL){

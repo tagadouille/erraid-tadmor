@@ -89,63 +89,42 @@ int task_finder(char* path, char* task_id, Action_type action){
 
 int extract_task_information(const char* path, Action_type action){
     int result = 0;
-    DIR* dirp = opendir(path);
-
-    if(dirp == NULL){
-        perror("opendir for tasks tree reading");
-        return -1;
-    }
-    struct dirent* entry;
-
-    //Finding all the file and extracting some informations
-    while ((entry=readdir(dirp))){
-        if(entry -> d_name[0] == '.') continue;
-
-        //Calling the appropriate reader depending on the action and the file name
-        if(action == LIST && strcmp(entry -> d_name, "cmd") == 0){
-            if(aux_extract(path, "cmd") != 0){
+    //Calling the appropriate reader depending on the action
+    switch (action){
+        case LIST:
+            if(aux_extract_cmd(path) != 0){
                 result = -1;
-                goto error;
             }
-        }else if(action == LIST && strcmp(entry -> d_name, "timing") == 0){
-            if(aux_extract_time(path, entry -> d_name) < 0){
+            if(aux_extract_time(path, "timing") < 0){
                 dprintf(STDERR_FILENO, "Error while reading timing file of task at path %s\n", path);
                 result = -1;
-                goto error;
             }
-        }else if(action == TIME_EXIT && strcmp(entry -> d_name, "times-exitcodes") == 0){
-            if(aux_extract_time(path, entry -> d_name) < 0){
+            break;
+        case TIME_EXIT:
+            if(aux_extract_time(path, "times-exitcodes") < 0){
                 dprintf(STDERR_FILENO, "Error while reading times_exitcodes file of task at path %s\n", path);
                 result = -1;
-                goto error;
-            }
-        }
-        else if(action == OUTPUT && strcmp(entry -> d_name, "stdout") == 0){
+            }break;
+        case OUTPUT:
             if(aux_extract_output(path, "stdout", output_reader, false) < 0){
                 dprintf(STDERR_FILENO, "Error while reading stdout file of task at path %s\n", path);
                 result = -1;
-                goto error;
-            }
-        }else if(action == ERR && strcmp(entry -> d_name, "stderr") == 0){
+            }break;
+        case ERR:
             if(aux_extract_output(path, "stderr", output_reader, true) < 0){
                 dprintf(STDERR_FILENO, "Error while reading stderr file of task at path %s\n", path);
                 result = -1;
-                goto error;
             }
-        }
-    }
-    error:
-    if(closedir(dirp) != 0){
-        perror("closedir");
-        result = -1;
+        default:
+            break;
     }
     return result;
 }
 
-int aux_extract(const char* path, char* folder_name){
+int aux_extract_cmd(const char* path){
     int result = 0;
     //Construction of the path to the file
-    char* new_path = make_path(path, folder_name);
+    char* new_path = make_path(path, "cmd");
     if(new_path == NULL){
         result = -1;
         goto error;
@@ -165,6 +144,7 @@ int aux_extract_output(const char* path, char* folder_name, int (*func)(const ch
     //Construction of the path to the file
     char* new_path = make_path(path, folder_name);
     if(new_path == NULL){
+        dprintf(STDERR_FILENO, "The task hasn't been executed yet\n");
         result = -1;
         goto error;
     }
@@ -212,6 +192,14 @@ int buffer_init(char** buffer) {
     return 0;
 }
 
+int folder_exist(const char* path){
+    if(access(path, F_OK) != 0){
+        dprintf(STDERR_FILENO, "the file doesn't exist at path : %s\n", path);
+        return 1;
+    }
+    return 0;
+}
+
 char* make_path(const char* og_path, const char* folder_name){
     char* pathcpy = malloc(MAX_PATH);
 
@@ -219,6 +207,11 @@ char* make_path(const char* og_path, const char* folder_name){
         perror("malloc");
         return NULL;
     }
+    
     snprintf(pathcpy, MAX_PATH, "%s/%s", og_path, folder_name); //Concatenation of og_path and folder_name
+    if(folder_exist(pathcpy) == 1){
+        free(pathcpy);
+        pathcpy = NULL;
+    }
     return pathcpy;
 }

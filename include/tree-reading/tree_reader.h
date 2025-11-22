@@ -61,28 +61,11 @@ int task_finder(char* path, char* task_id, Action_type action);
 int extract_task_information(const char* path, Action_type action);
 
 /**
-* @brief  the buffer with a size of BUFFER_SIZE
-* @param buffer the buffer to initialize
-* @return 0 if succes, -1 if failure
-*/
-int buffer_init(char** buffer);
-
-/**
-* Make the path by concatenate og_path with "/folder_name"
-* @param og_path the original path
-* @param folder_name the folder name to concatenate
-* @return the concatenation, NULL if failure 
-*/
-char* make_path(const char* og_path, const char* folder_name);
-
-/**
- * @brief Auxiliary function to extract information from a file located in folder_name inside path
+ * @brief Auxiliary function to extract the command information from the cmd folder of the task
  * @param path the path to the task
- * @param folder_name the folder name containing the file to read
- * @param func pointer to the function to use to read the file
  * @return 0 if success, -1 if failure
  */
-int aux_extract(const char* path, char* folder_name);
+int aux_extract_cmd(const char* path);
 
 /**
  * @brief Auxiliary function to extract information from a file located in folder_name inside path
@@ -101,5 +84,27 @@ int aux_extract_output(const char* path, char* folder_name, int (*func)(const ch
  * @return 0 if success, -1 if failure
  */
 int aux_extract_time(const char* path, char* folder_name);
+
+/**
+* @brief  the buffer with a size of BUFFER_SIZE
+* @param buffer the buffer to initialize
+* @return 0 if succes, -1 if failure
+*/
+int buffer_init(char** buffer);
+
+/**
+* Make the path by concatenate og_path with "/folder_name"
+* @param og_path the original path
+* @param folder_name the folder name to concatenate
+* @return the concatenation, NULL if failure
+*/
+char* make_path(const char* og_path, const char* folder_name);
+
+/**
+ * @brief determine if the folder at the path exist or not
+ * @param path the path to verify
+ * @return 0 if it exists, 1 otherwise
+ */
+int folder_exist(const char* path);
 
 #endif

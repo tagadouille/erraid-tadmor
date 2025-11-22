@@ -121,7 +121,6 @@ command_t* add_complex_command(command_t* og_command, command_t* command){
         dprintf(STDERR_FILENO, "the original command is NULL or not of type SQ\n");
         return NULL;
     }
-
     // Add the new command to the composed commands array
     if(og_command->args.composed.count % 10 == 0){
         command_t** new_cmds = realloc(
@@ -145,7 +144,6 @@ command_t* create_command(command_t* command, command_type_t type){
         perror("malloc");
         return NULL;
     }
-
     command->type = type;
 
     if(type != SI){
@@ -196,7 +194,6 @@ command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, comma
     }
     return cmd;
 }
-
 
 /**
  * @brief Helper to recursively free a command structure.
