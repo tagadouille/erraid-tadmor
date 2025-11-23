@@ -3,6 +3,22 @@
 
 #include "types/timing.h"
 
+/**
+ * @brief Append "i " for each bit set in mask into buffer.
+ */
+static void append_int_list(char *out, size_t max, uint64_t mask, int count)
+{
+    for (int i = 0; i < count; i++)
+    {
+        if (mask & (1ULL << i))
+        {
+            char tmp[8];
+            snprintf(tmp, sizeof(tmp), "%d ", i);
+            strncat(out, tmp, max - strlen(out) - 1);
+        }
+    }
+}
+
 // ! Les commentaires sont à enlever plus tard
 bool timing_match_now(const timing_t *t)
 {
@@ -38,9 +54,9 @@ bool timing_match_now(const timing_t *t)
 timing_t* timing_create(const char *data, ssize_t size)
 {
     // A timing is exactly 13 bytes (8 + 4 + 1)
-    const ssize_t TIMING_BIN_SIZE = 8 + 4 + 1; //! mettre des sizeof
+    const ssize_t NEED = sizeof(uint64_t) + sizeof(uint32_t) + sizeof(uint8_t);
 
-    if (data == NULL || size < TIMING_BIN_SIZE) {
+    if (data == NULL || size < NEED) {
         dprintf(STDERR_FILENO, "timing_show: buffer too small or NULL\n");
         return NULL;
     }
@@ -50,25 +66,21 @@ timing_t* timing_create(const char *data, ssize_t size)
         perror("malloc");
         return NULL;
     }
-    ssize_t offset = 0;
+    ssize_t off = 0;
 
     uint64_t m_be;
+    memcpy(&m_be, data + off, sizeof(uint64_t));
+    timing->minutes = be64toh(m_be);
+    off += sizeof(uint64_t);
+
     uint32_t h_be;
-    uint8_t  d;
+    memcpy(&h_be, data + off, sizeof(uint32_t));
+    timing->hours = be32toh(h_be);
+    off += sizeof(uint32_t);
 
-    // ---- minutes ----
-    memcpy(&m_be, data + offset, sizeof(uint64_t));
-    timing -> minutes = be64toh(m_be);
-    offset += sizeof(uint64_t);
-
-    // ---- hours ----
-    memcpy(&h_be, data + offset, sizeof(uint32_t));
-    timing -> hours = be32toh(h_be);
-    offset += sizeof(uint32_t);
-
-    // ---- days ----
-    memcpy(&d, data + offset, sizeof(uint8_t));
-    timing -> daysofweek = d;
+    uint8_t d;
+    memcpy(&d, data + off, sizeof(uint8_t));
+    timing->daysofweek = d;
 
     return timing;
 }
@@ -81,55 +93,27 @@ void timing_show(const timing_t *t)
     }
 
     // ---- allocate output ----
-    char *output = malloc(2048);
-    if (!output){
-        perror("malloc");
-        return;
-    }
-    output[0] = '\0';
+    char out[2048];
+    out[0] = '\0';
 
     //TODO Modify it to be less readable but more efficient
-    // ---- Minutes ----
-    strncat(output, "Minutes: ", 2048 - strlen(output) - 1);
-    for (int i = 0; i < MINUTES_COUNT; i++) {
-        if (t -> minutes & (1ULL << i)) {
-            char tmp[8];
-            snprintf(tmp, sizeof(tmp), "%d ", i);
-            strncat(output, tmp, 2048 - strlen(output) - 1);
+    strncat(out, "Minutes: ", sizeof(out) - strlen(out) - 1);
+    append_int_list(out, sizeof(out), t->minutes, MINUTES_COUNT);
+
+    strncat(out, "| Hours: ", sizeof(out) - strlen(out) - 1);
+    append_int_list(out, sizeof(out), t->hours, HOURS_COUNT);
+
+    static const char *days[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+    strncat(out, "| Days: ", sizeof(out) - strlen(out) - 1);
+
+    for (int i = 0; i < DAYS_COUNT; i++)
+    {
+        if (t->daysofweek & (1U << i))
+        {
+            strncat(out, days[i], sizeof(out) - strlen(out) - 1);
+            strncat(out, " ", sizeof(out) - strlen(out) - 1);
         }
     }
 
-    // ---- Hours ----
-    strncat(output, "| Hours: ", 2048 - strlen(output) - 1);
-    for (int i = 0; i < HOURS_COUNT; i++) {
-        if (t -> hours & (1U << i)) {
-            char tmp[8];
-            snprintf(tmp, sizeof(tmp), "%d ", i);
-            strncat(output, tmp, 2048 - strlen(output) - 1);
-        }
-    }
-
-    // ---- Days ----
-    strncat(output, "| Days of Week: ", 2048 - strlen(output) - 1);
-    const char *day_names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-    for (int i = 0; i < DAYS_COUNT; i++) {
-        if (t -> daysofweek & (1U << i)) {
-            char tmp[8];
-            snprintf(tmp, sizeof(tmp), "%s ", day_names[i]);
-            strncat(output, tmp, 2048 - strlen(output) - 1);
-        }
-    }
-
-    char *result = malloc(strlen(output) + 1);
-    if (!result) {
-        perror("malloc");
-        free(output);
-    }
-
-    strcpy(result, output);
-    free(output);
-
-    // ---- print result ----
-    dprintf(STDOUT_FILENO, "%s\n", result);
-    free(result);
+    dprintf(STDOUT_FILENO, "%s\n", out);
 }

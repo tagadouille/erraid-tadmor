@@ -29,6 +29,7 @@ task_t *task_create(uint16_t id){
 
     if(t -> timing == NULL){
         perror("malloc");
+        free(t);
         return NULL;
     }
 
@@ -103,6 +104,11 @@ command_t* add_simple_command(command_t* command, const arguments_t* simple_args
     }
 
     command->type = SI;
+
+    /* Ensure destination simple struct is in a known state */
+    command->args.simple.argc = 0;
+    command->args.simple.command = NULL;
+    command->args.simple.argv = NULL;
 
     // Copy arguments safely
     if (!copy_arguments(&command->args.simple, simple_args)){
@@ -185,11 +191,14 @@ command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, comma
         if(cmd == NULL){
             dprintf(STDERR_FILENO, "Error while creating simple command\n");
             arguments_free(arg);
+            free(arg);
         }
     } else {
         dprintf(STDERR_FILENO, "Error : Complex commands are not accepted for command_filler\n");
         arguments_free(arg);
         command_free(cmd);
+        free(arg);
+        free(cmd);
         return NULL;
     }
     return cmd;
@@ -212,11 +221,13 @@ void command_free(command_t *cmd){
         for (uint16_t i = 0; i < cmd->args.composed.count; i++)
         {
             command_free(cmd->args.composed.cmds[i]);
+            cmd->args.composed.cmds[i] = NULL;
         }
         free(cmd->args.composed.cmds);
         cmd->args.composed.cmds = NULL;
     }
 
+    cmd->args.composed.count = 0;
     free(cmd);
 }
 
@@ -224,16 +235,18 @@ void command_free(command_t *cmd){
  * @brief Destroy an entire task and free all associated memory.
  */
 void task_destroy(task_t *task){
-    if (task != NULL){
+    if (task == NULL){
         return;
     }
 
     // Free the command (SI or SQ)
     if (task->cmd != NULL){
         command_free(task->cmd);
+        task->cmd = NULL;
     }
 
     free(task->timing);
+    task->timing = NULL;
     free(task);
 }
 
