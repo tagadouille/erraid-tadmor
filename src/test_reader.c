@@ -16,14 +16,27 @@ int main() {
     printf("Running tests...\n\n");
 
     printf("Test for listing\n");
-    test_tree_reader(LIST);
-    /*printf("Test for output\n\n");
+    /*test_tree_reader(LIST);
+    printf("Test for output\n\n");
     test_tree_reader(OUTPUT);
     printf("Test for err\n\n");
     test_tree_reader(ERR);
     printf("Test for time_exitcodes\n\n");
     test_tree_reader(TIME_EXIT);*/
+    task_reader(TASKPATH DIR1 SUBDIR, 0, LIST);
 
+    for (size_t i = 0; i < 100; i++)
+    {
+        sleep(1);
+        if(timing_should_run(curr_task -> timing)){
+            dprintf(STDOUT_FILENO, "La TAAAACHE A ETE ACTIIIIIVER\n");
+            break;
+        }else{
+            dprintf(STDOUT_FILENO, "j'attends mon activation\n");
+        }
+
+    }
+    
     printf("All tests done.\n");
     return 0;
 }

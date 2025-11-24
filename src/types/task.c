@@ -46,7 +46,7 @@ task_t *task_create(uint16_t id){
 void task_display(task_t* task){
     dprintf(STDOUT_FILENO, "%u: ", task->id);
 
-    //timing_show(task->timing); //TODO finish timing_show
+    timing_show(task->timing);
     command_display(task->cmd);
     dprintf(STDOUT_FILENO, "\n");
 }

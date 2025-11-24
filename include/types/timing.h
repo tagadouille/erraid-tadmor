@@ -34,6 +34,12 @@ typedef struct
 } timing_t;
 
 /**
+ * @brief Turns a timing into a printable string.
+ * @return Newly allocated char* ; caller MUST free().
+ */
+char *timing_to_string(const timing_t *t);
+
+/**
  * @brief Check if the current time matches the timing_t structure.
  * @param t Pointer to the timing_t structure to check against.
  * @return true if the current time matches, false otherwise.
