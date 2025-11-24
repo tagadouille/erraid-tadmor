@@ -63,7 +63,7 @@ command_t* command_parser(const char* path, command_t* cmd){
     DIR* dirp = NULL;
 
     // Creation of the paths to the argv and type files
-    char* argv_path = make_path(path, "argv");
+    char* argv_path = make_path_no_test(path, "argv");
 
     if(argv_path == NULL){
         return NULL;

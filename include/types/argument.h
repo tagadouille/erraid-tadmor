@@ -43,5 +43,11 @@ arguments_t* copy_arguments(arguments_t* dst, const arguments_t* src);
  * @param args Pointer to the arguments structure to free.
  */
 void arguments_free(arguments_t *args);
+/**
+ * @brief Convert an arguments_t structure to a NULL-terminated argv array.
+ * @param args Pointer to the arguments_t structure.
+ */
+char **arguments_to_argv(const arguments_t *args);
+
 
 #endif

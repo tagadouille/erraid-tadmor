@@ -93,12 +93,20 @@ int aux_extract_time(const char* path, char* folder_name);
 int buffer_init(char** buffer);
 
 /**
-* Make the path by concatenate og_path with "/folder_name"
+* Make the path by concatenate og_path with "/folder_name" and test if the path created is correct
 * @param og_path the original path
 * @param folder_name the folder name to concatenate
 * @return the concatenation, NULL if failure
 */
 char* make_path(const char* og_path, const char* folder_name);
+
+/**
+* Make the path by concatenate og_path with "/folder_name" and don't test if the path created is correct
+* @param og_path the original path
+* @param folder_name the folder name to concatenate
+* @return the concatenation, NULL if failure
+*/
+char* make_path_no_test(const char* og_path, const char* folder_name);
 
 /**
  * @brief determine if the folder at the path exist or not

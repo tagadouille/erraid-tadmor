@@ -120,3 +120,8 @@ void string_free_heap(string_t *str)
     free(str->data);
     free(str);
 }
+
+const char* string_get(const string_t* str) {
+    if (!str || !str->data) return "";
+    return str->data;
+}

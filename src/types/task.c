@@ -10,6 +10,8 @@
 #include "types/time_exitcode.h"
 #include "tree-reading/tree_reader.h"
 
+task_t* curr_task = NULL;
+
 /**
  * @brief Create a new empty task with the given ID.
  * ! The internal fields still need to be filled by the tree reader.

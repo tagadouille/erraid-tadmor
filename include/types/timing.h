@@ -53,4 +53,9 @@ timing_t* timing_create(const char *path, ssize_t size);
  */
 void timing_show(const timing_t *t);
 
+/**
+ * @brief Return true if the task should run now
+ */
+bool timing_should_run(const timing_t *t);
+
 #endif

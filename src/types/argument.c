@@ -248,3 +248,29 @@ void arguments_free(arguments_t *args)
     }
     args->argc = 0;
 }
+
+char **arguments_to_argv(const arguments_t *args)
+{
+    if (!args || !args->command)
+        return NULL;
+
+    // +2 : un pour la commande, un pour le NULL final
+    size_t n = args->argc + 2;
+
+    char **argv = calloc(n, sizeof(char *));
+    if (!argv)
+        return NULL;
+
+    // argv[0] = commande
+    argv[0] = strdup(string_get(args->command));
+
+    // arguments supplémentaires
+    for (uint32_t i = 0; i < args->argc; i++) {
+        argv[i + 1] = strdup(string_get(args->argv[i]));
+    }
+
+    // execvp() exige un NULL final
+    argv[n - 1] = NULL;
+
+    return argv;
+}

@@ -55,4 +55,11 @@ void string_free(string_t* str);
  */
 void string_free_heap(string_t* str);
 
+/**
+ * @brief Get the C string from a string_t.
+ * @param str Pointer to string_t
+ * @return const char* C string representation
+ */
+const char* string_get(const string_t* str);
+
 #endif

@@ -215,3 +215,14 @@ char* make_path(const char* og_path, const char* folder_name){
     }
     return pathcpy;
 }
+char* make_path_no_test(const char* og_path, const char* folder_name){
+    char* pathcpy = malloc(MAX_PATH);
+
+    if(pathcpy == NULL){
+        perror("malloc");
+        return NULL;
+    }
+    snprintf(pathcpy, MAX_PATH, "%s/%s", og_path, folder_name); //Concatenation of og_path and folder_name
+
+    return pathcpy;
+}
