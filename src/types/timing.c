@@ -4,49 +4,93 @@
 #include "types/timing.h"
 
 /**
- * @brief Append "i " for each bit set in mask into buffer.
+ * @brief Check if mask equals "all bits set".
  */
-static void append_int_list(char *out, size_t max, uint64_t mask, int count)
+static bool mask_is_full(uint64_t mask, int count)
 {
+    uint64_t full = (count == 64 ? UINT64_MAX : ((1ULL << count) - 1));
+    return mask == full;
+}
+
+/**
+ * @brief Convert a bitmask into a comma-separated list, "*" or "-".
+ * @return Newly allocated string (caller must free).
+ */
+static char *mask_to_list(uint64_t mask, int count)
+{
+    if (mask == 0)
+        return strdup("-");
+
+    if (mask_is_full(mask, count))
+        return strdup("*");
+
+    char buffer[256] = {0};
     for (int i = 0; i < count; i++)
     {
         if (mask & (1ULL << i))
         {
             char tmp[8];
-            snprintf(tmp, sizeof(tmp), "%d ", i);
-            strncat(out, tmp, max - strlen(out) - 1);
+            snprintf(tmp, sizeof(tmp), "%d,", i);
+            strcat(buffer, tmp);
         }
     }
+
+    // remove trailing comma
+    size_t len = strlen(buffer);
+    if (len > 0 && buffer[len - 1] == ',')
+        buffer[len - 1] = '\0';
+
+    return strdup(buffer);
+}
+
+char *timing_to_string(const timing_t *t)
+{
+    if (!t)
+        return strdup("- - -");
+
+    char *min = mask_to_list(t->minutes, MINUTES_COUNT);
+    char *hrs = mask_to_list(t->hours, HOURS_COUNT);
+    char *day = mask_to_list(t->daysofweek, DAYS_COUNT);
+
+    size_t size = strlen(min) + strlen(hrs) + strlen(day) + 8;
+    char *out = malloc(size);
+
+    snprintf(out, size, "%s %s %s", min, hrs, day);
+
+    free(min);
+    free(hrs);
+    free(day);
+
+    return out;
 }
 
 // ! Les commentaires sont à enlever plus tard
 bool timing_match_now(const timing_t *t)
 {
+    if (!t)
+        return false;
+
     // Get current time
     time_t now = time(NULL);
     struct tm *tm_now = localtime(&now);
 
     // Check minutes mask
-    if (t->minutes != ALL_MINUTES &&
-        !(t->minutes & (1ULL << tm_now->tm_min))) // 1ULL c'est 1 sous forme unsigned long long pr être sûr
-    // que le décalage de bit fonctionne bien sur 64 bits
-    {
-        return false;
-    }
-
+    if (!mask_is_full(t->minutes, MINUTES_COUNT) &&
+        !(t->minutes & (1ULL << tm_now->tm_min)))
+        return false; // 1ULL c'est 1 sous forme unsigned long long pr être sûr
+                    // que le décalage de bit fonctionne bien sur 64 bits
+    
     // Check hours mask
-    if (t->hours != ALL_HOURS &&
-        !(t->hours & (1U << tm_now->tm_hour))) // 1U c'est 1 sous forme unsigned int pr être sûr
-    // que le décalage de bit fonctionne bien sur 32 bits
-    {
-        return false;
-    }
+    if (!mask_is_full(t->hours, HOURS_COUNT) &&
+        !(t->hours & (1U << tm_now->tm_hour)))
+        return false; // 1U c'est 1 sous forme unsigned int pr être sûr
+                    // que le décalage de bit fonctionne bien sur 32 bits
+
     // Check days of week mask
-    if (t->daysofweek != ALL_DAYS &&
+    if (!mask_is_full(t->daysofweek, DAYS_COUNT) &&
         !(t->daysofweek & (1U << tm_now->tm_wday)))
-    {
         return false;
-    }
+    
     return true;
 }
 
@@ -54,7 +98,7 @@ bool timing_match_now(const timing_t *t)
 timing_t* timing_create(const char *data, ssize_t size)
 {
     // A timing is exactly 13 bytes (8 + 4 + 1)
-    const ssize_t NEED = sizeof(uint64_t) + sizeof(uint32_t) + sizeof(uint8_t);
+    ssize_t NEED = sizeof(uint64_t) + sizeof(uint32_t) + sizeof(uint8_t);
 
     if (data == NULL || size < NEED) {
         dprintf(STDERR_FILENO, "timing_show: buffer too small or NULL\n");
@@ -87,41 +131,14 @@ timing_t* timing_create(const char *data, ssize_t size)
 
 void timing_show(const timing_t *t)
 {
-    if (!t) {
-        dprintf(STDERR_FILENO, "timing_show: NULL timing pointer\n");
-        return;
-    }
-
-    // ---- allocate output ----
-    char out[2048];
-    out[0] = '\0';
-
-    //TODO Modify it to be less readable but more efficient
-    strncat(out, "Minutes: ", sizeof(out) - strlen(out) - 1);
-    append_int_list(out, sizeof(out), t->minutes, MINUTES_COUNT);
-
-    strncat(out, "| Hours: ", sizeof(out) - strlen(out) - 1);
-    append_int_list(out, sizeof(out), t->hours, HOURS_COUNT);
-
-    static const char *days[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-    strncat(out, "| Days: ", sizeof(out) - strlen(out) - 1);
-
-    for (int i = 0; i < DAYS_COUNT; i++)
-    {
-        if (t->daysofweek & (1U << i))
-        {
-            strncat(out, days[i], sizeof(out) - strlen(out) - 1);
-            strncat(out, " ", sizeof(out) - strlen(out) - 1);
-        }
-    }
-
-    dprintf(STDOUT_FILENO, "%s\n", out);
+    char *txt = timing_to_string(t);
+    dprintf(STDOUT_FILENO, "%s", txt);
+    free(txt);
 }
 
 bool timing_should_run(const timing_t *t)
 {
     if (!t)
         return false;
-
     return timing_match_now(t);
 }
