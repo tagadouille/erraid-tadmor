@@ -1,5 +1,6 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
-#include "erraid.h"
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -9,6 +10,7 @@
 #include "tree-reading/tree_reader.h"
 #include "types/timing.h"
 #include "types/task.h"
+#include "erraid.h"
 
 void test_tree_reader(Action_type action);
 
