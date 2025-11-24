@@ -1,23 +1,26 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -pedantic -std=c99 -O2
-
-SRC = $(shell find src -name "*.c")
-OBJ = $(SRC:.c=.o)
 INC = -I include
 
-EXEC = main
+SRC_MAIN = src/main.c src/erraid.c
+SRC_TEST = src/test_reader.c
+SRC_COMMON = $(shell find src -path src/main.c -prune -o -path src/test_reader.c -prune -o -name "*.c" -print)
 
-all: $(EXEC)
+OBJ_MAIN = $(SRC_MAIN:.c=.o) $(SRC_COMMON:.c=.o)
+OBJ_TEST = $(SRC_TEST:.c=.o) $(SRC_COMMON:.c=.o)
 
-$(EXEC): $(OBJ)
+all: erraid test_reader
+
+erraid: $(OBJ_MAIN)
 	$(CC) $(CFLAGS) $(INC) -o $@ $^
 
-src/%.o: src/%.c
+test_reader: $(OBJ_TEST)
+	$(CC) $(CFLAGS) $(INC) -o $@ $^
+
+%.o: %.c
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 
 clean:
-	rm -f $(OBJ) $(EXEC)
+	rm -f $(OBJ_MAIN) $(OBJ_TEST) erraid test_reader
 
-distclean: clean
-
-.PHONY: all clean distclean
+.PHONY: all clean

@@ -1,40 +1,85 @@
+#define _POSIX_C_SOURCE 200809L /* for PATH_MAX, etc. */
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
+#include <unistd.h>
+#include <string.h>
+#include <limits.h>
+#include <errno.h>
 
-#include "tree-reading/tree_reader.h"
+#include "erraid.h"
 
-int main() {
-    printf("Running tests...\n\n");
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
-    printf("Test for listing\n");
-    test_tree_reader(LIST);
-    printf("Test for output\n\n");
-    test_tree_reader(OUTPUT);
-    printf("Test for err\n\n");
-    test_tree_reader(ERR);
-    printf("Test for time_exitcodes\n\n");
-    test_tree_reader(TIME_EXIT);
-
-    printf("All tests done.\n");
-    return 0;
+/* Default run directory: /tmp/$USER/erraid */
+static void default_rundir(char *out, size_t n) {
+    const char *user = getenv("USER");
+    if (!user) user = "nobody";
+    snprintf(out, n, "/tmp/%s/erraid", user);
 }
 
-void test_tree_reader(Action_type action) {
-    uint16_t task = 0;
-    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR1 SUBDIR, task, action));
-    printf("\n\n");
+static void usage(const char *prog) {
+    fprintf(stderr,
+        "Usage: %s [-r RUN_DIR] [-f]\n"
+        "  -r RUN_DIR   : root run directory (default /tmp/$USER/erraid)\n"
+        "  -f           : foreground (do not daemonize) - useful for debug\n",
+        prog);
+}
 
-    task = 1;
-    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR1 SUBDIR, task, action));
-    printf("Test of task reader for more complex tasks\n");
-    printf("\n\n");
+int main(int argc, char **argv) {
+    int opt;
+    char rundir[PATH_MAX];
+    int foreground = 0;
 
-    task = 4;
-    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR2 SUBDIR, task, action));
-    printf("\n\n");
+    default_rundir(rundir, sizeof(rundir));
 
-    task = 15;
-    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR3 SUBDIR, task, action));
-    printf("\n\n");
+    while ((opt = getopt(argc, argv, "r:fh")) != -1) {
+        switch (opt) {
+            case 'r':
+                if (optarg && strlen(optarg) < sizeof(rundir)) {
+                    strncpy(rundir, optarg, sizeof(rundir)-1);
+                    rundir[sizeof(rundir)-1] = '\0';
+                } else {
+                    fprintf(stderr, "Invalid run directory\n");
+                    return EXIT_FAILURE;
+                }
+                break;
+            case 'f':
+                foreground = 1;
+                break;
+            case 'h':
+            default:
+                usage(argv[0]);
+                return (opt == 'h') ? EXIT_SUCCESS : EXIT_FAILURE;
+        }
+    }
+
+    /* set run directory for daemon */
+    if (erraid_set_rundir(rundir) != 0) {
+        fprintf(stderr, "Failed to set run directory '%s': %s\n", rundir, strerror(errno));
+        return EXIT_FAILURE;
+    }
+
+    if (!foreground) {
+        if (daemon_init() != 0) {
+            fprintf(stderr, "daemon_init failed\n");
+            return EXIT_FAILURE;
+        }
+    } else {
+        /* In foreground mode we still initialize resources but skip forking */
+        if (erraid_init_foreground() != 0) {
+            fprintf(stderr, "foreground init failed\n");
+            return EXIT_FAILURE;
+        }
+    }
+
+    /* Main run loop (blocks until signal) */
+    daemon_run();
+
+    /* Cleanup */
+    daemon_cleanup();
+
+    return EXIT_SUCCESS;
 }
