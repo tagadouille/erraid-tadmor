@@ -16,7 +16,7 @@
 #define HOURS_COUNT 24
 #define DAYS_COUNT 7
 
-#define ALL_MINUTES ((1ULL << MINUTES_COUNT) - 1)
+#define ALL_MINUTES ((1ULL << MINUTES_COUNT) - 1) // Décalage du nombre d'octet de MINUTES
 #define ALL_HOURS ((1ULL << HOURS_COUNT) - 1)
 #define ALL_DAYS ((1ULL << DAYS_COUNT) - 1)
 
