@@ -16,17 +16,14 @@
 #include <limits.h>
 #include <stdint.h>
 
+#include <stdarg.h>    // pour va_start, va_end
+#include <arpa/inet.h> // pour htonl / ntohl
+#include <dirent.h>    // pour DIR / opendir / readdir
+
 #include "types/task.h" 
 #include "tree-reading/tree_reader.h"
 
 /* ---------------------------- CONFIG ---------------------------------- */
-
-#ifndef SLEEP_INTERVAL
-#define SLEEP_INTERVAL 60
-#endif
-
-#define PIDFILE_NAME "erraid.pid" 
-#define LOG_NAME     "erraid.log"
 
 static volatile int running = 1;
 
@@ -170,7 +167,7 @@ static int execute_simple(const command_t *cmd, uint32_t task_id)
 
         const arguments_t *args = &cmd->args.simple;
 
-        char **argv = arguments_to_argv(args); // Should exist
+        char **argv = arguments_to_argv(args); 
         execvp(argv[0], argv);
 
         dprintf(STDERR_FILENO, "execvp failed: %s\n", strerror(errno));
@@ -262,7 +259,7 @@ int daemon_init(void) {
     if (pid > 0) _exit(EXIT_SUCCESS);
     if (pid < 0) return -1;
 
-    umask(0);
+    umask(0); 
     chdir(g_run_dir);
 
     int devnull = open("/dev/null", O_RDWR);

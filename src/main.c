@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L /* for PATH_MAX, etc. */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -6,6 +8,10 @@
 #include <errno.h>
 
 #include "erraid.h"
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 /* Default run directory: /tmp/$USER/erraid */
 static void default_rundir(char *out, size_t n) {

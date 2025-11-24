@@ -8,8 +8,8 @@
 
 #include "tree-reading/tree_reader.h"
 #include "types/timing.h"
+#include "types/task.h"
 
-task_t* curr_task; //! maybe move it to the real executable
 
 void test_tree_reader(Action_type action);
 

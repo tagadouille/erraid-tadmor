@@ -133,3 +133,11 @@ void timing_show(const timing_t *t)
     dprintf(STDOUT_FILENO, "%s\n", result);
     free(result);
 }
+
+bool timing_should_run(const timing_t *t)
+{
+    if (!t)
+        return false;
+
+    return timing_match_now(t);
+}

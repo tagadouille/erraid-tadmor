@@ -5,6 +5,14 @@
 
 #include <stddef.h>
 
+
+#ifndef SLEEP_INTERVAL
+#define SLEEP_INTERVAL 60
+#endif
+
+#define PIDFILE_NAME "erraid.pid" 
+#define LOG_NAME     "erraid.log"
+
 /**
  * Set the run directory of the daemon.
  * Must be called before daemon_init() or erraid_init_foreground().
