@@ -53,25 +53,48 @@ int erraid_set_rundir(const char *rundir) {
 
 /* ----------------------------- UTILITIES ------------------------------- */
 
-static int ensure_rundir(void) {
-    if (g_run_dir[0] == '\0') {
-        errno = EINVAL;
+static int mkdir_p(const char *path) {
+    char tmp[PATH_MAX];
+    char *p = NULL;
+    size_t len;
+
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    len = strlen(tmp);
+    if (tmp[len - 1] == '/') tmp[len - 1] = 0; // enlever le slash final
+
+    for (p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = 0;
+            if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+                perror("mkdir_p");
+                return -1;
+            }
+            *p = '/';
+        }
+    }
+    if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+        perror("mkdir_p final");
         return -1;
     }
-    // Create run directory if it doesn't exist
-    struct stat st;
-    if (stat(g_run_dir, &st) != 0)
-        if (mkdir(g_run_dir, 0755) != 0 && errno != EEXIST)
-            return -1;
-    // Create tasks directory
-    char tasksdir[PATH_MAX];
-    snprintf(tasksdir, sizeof(tasksdir), "%s/tasks", g_run_dir);
-    if (stat(tasksdir, &st) != 0)
-        if (mkdir(tasksdir, 0755) != 0 && errno != EEXIST)
-            return -1;
+    return 0;
+}
 
-    snprintf(g_log_path, sizeof(g_log_path), "%s/%s", g_run_dir, LOG_NAME); // Set log path
-    snprintf(g_pid_path, sizeof(g_pid_path), "%s/%s", g_run_dir, PIDFILE_NAME); // Set pid file path
+static int ensure_rundir(void) {
+    if (g_run_dir[0] == '\0') return -1;
+
+    if (mkdir_p(g_run_dir) < 0) return -1;
+
+    char *tasksdir = make_path(g_run_dir, "tasks");
+    if (!tasksdir) return -1;
+    if (mkdir_p(tasksdir) < 0) {
+        free(tasksdir);
+        return -1;
+    }
+    free(tasksdir);
+
+    snprintf(g_log_path, sizeof(g_log_path), "%s/%s", g_run_dir, LOG_NAME);
+    snprintf(g_pid_path, sizeof(g_pid_path), "%s/%s", g_run_dir, PIDFILE_NAME);
+
     return 0;
 }
 

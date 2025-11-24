@@ -1,4 +1,5 @@
 *Zone.Identifier
 main
 erraid
-*.o
+*.o 
+.log
