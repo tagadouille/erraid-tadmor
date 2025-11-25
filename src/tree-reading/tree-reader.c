@@ -17,7 +17,7 @@
 int task_reader(const char* path, uint16_t task_id, Action_type action){
 
     //construction of the path
-    char* pathcpy = make_path(path, "tasks");
+    char* pathcpy = strdup(path);
     if(pathcpy == NULL){
         return -1;
     }

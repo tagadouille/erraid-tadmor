@@ -238,7 +238,8 @@ static int run_task_if_due(task_t *task)
         return -1;
 
     /* timing_should_run() handled inside timing_interpreter already */
-    if (!timing_should_run(task->timing))
+    if (!timing_match_now(task->timing))
+    write_log_msg("Task %u NOT due at this minute", task->id);
         return 0;
 
     write_log_msg("Executing task %u", task->id);
@@ -313,7 +314,10 @@ void daemon_run(void) {
 
         write_log_msg("Scanning tasks directory…");
 
-        DIR *d = opendir("tasks");
+        char tasksdir[PATH_MAX];
+        snprintf(tasksdir, sizeof(tasksdir), "%s/tasks", g_run_dir);
+
+        DIR *d = opendir(tasksdir);
         if (!d) {
             write_log_msg("Cannot open tasks/");
             sleep(SLEEP_INTERVAL);
@@ -330,7 +334,7 @@ void daemon_run(void) {
                 continue;
 
             task_t *task = task_create(id);
-            if (task_reader(g_run_dir, id, LIST) < 0) {
+            if (task_reader(tasksdir, id, LIST) < 0) {
                 task_destroy(task);
                 continue;
             }
