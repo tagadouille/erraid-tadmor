@@ -151,8 +151,9 @@ static int create_task_run_dir(uint32_t task_id, char *out, size_t outlen) {
 
     snprintf(out, outlen, "%s/tasks/%u/runs/%ld", g_run_dir, task_id, (long)now);
 
-    if (mkdir(out, 0755) != 0 && errno != EEXIST) {
-        return -1;
+    if (mkdir_p(out) < 0) {
+        write_log_msg("mkdir_p failed for run dir %s", out);
+    return -1;
     }
     return 0;
 }
@@ -190,7 +191,10 @@ static int execute_simple(const command_t *cmd, uint32_t task_id)
 
         const arguments_t *args = &cmd->args.simple;
 
-        char **argv = arguments_to_argv(args); 
+        char **argv = arguments_to_argv(args);
+        for (int i = 0; argv[i]; i++) {
+            write_log_msg("argv[%d] = '%s'", i, argv[i]);
+        }
         execvp(argv[0], argv);
 
         dprintf(STDERR_FILENO, "execvp failed: %s\n", strerror(errno));
@@ -238,9 +242,10 @@ static int run_task_if_due(task_t *task)
         return -1;
 
     /* timing_should_run() handled inside timing_interpreter already */
-    if (!timing_match_now(task->timing))
-    write_log_msg("Task %u NOT due at this minute", task->id);
+    if (!timing_match_now(task->timing)){
+        write_log_msg("Task %u NOT due at this minute", task->id);
         return 0;
+    }
 
     write_log_msg("Executing task %u", task->id);
     return execute_command(task->cmd, task->id);
@@ -319,28 +324,28 @@ void daemon_run(void) {
 
         DIR *d = opendir(tasksdir);
         if (!d) {
-            write_log_msg("Cannot open tasks/");
+            write_log_msg("Cannot open tasks/ directory: %s", tasksdir);
             sleep(SLEEP_INTERVAL);
             continue;
         }
 
         struct dirent *ent;
         while ((ent = readdir(d))) {
-            if (ent->d_name[0] == '.')
-                continue;
+           if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+            continue;
 
-            uint32_t id = atoi(ent->d_name);
-            if (id == 0)
-                continue;
+            char *endptr;
+            uint32_t id = strtoul(ent->d_name, &endptr, 10);
+            if (*endptr != '\0')continue;
 
-            task_t *task = task_create(id);
-            if (task_reader(tasksdir, id, LIST) < 0) {
-                task_destroy(task);
+            task_reader(tasksdir, id, LIST) ;
+            if (!curr_task) {
+                write_log_msg("Failed to allocate task %u", id);
                 continue;
             }
 
-            run_task_if_due(task);
-            task_destroy(task);
+            run_task_if_due(curr_task);
+            task_destroy(curr_task);
         }
 
         closedir(d);

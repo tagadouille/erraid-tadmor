@@ -167,7 +167,7 @@ command_t* create_command(command_t* command, command_type_t type){
 }
 
 command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, command_type_t type){
-
+    
     if(cmd == NULL){
         curr_task->cmd = create_command(cmd, type);
 
@@ -176,6 +176,22 @@ command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, comma
             return NULL;
         }
         cmd = curr_task->cmd;
+    }
+
+    // Remove trailing newlines
+    while (size > 0 && (buffer[size - 1] == '\n' || buffer[size - 1] == '\r'))
+        size--;
+
+    // Ignore empty or whitespace-only content
+    int only_spaces = 1;
+    for (unsigned int i = 0; i < size; i++) {
+        if (buffer[i] != ' ' && buffer[i] != '\t') {
+            only_spaces = 0;
+            break;
+        }
+    }
+    if (size == 0 || only_spaces) {
+        return cmd; // skip empty argument
     }
 
     // Parsing the buffer to extract arguments
