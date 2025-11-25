@@ -16,16 +16,16 @@ int main() {
     printf("Running tests...\n\n");
 
     printf("Test for listing\n");
-    /*test_tree_reader(LIST);
+    test_tree_reader(LIST);
     printf("Test for output\n\n");
     test_tree_reader(OUTPUT);
     printf("Test for err\n\n");
     test_tree_reader(ERR);
     printf("Test for time_exitcodes\n\n");
-    test_tree_reader(TIME_EXIT);*/
-    task_reader(TASKPATH DIR1 SUBDIR, 0, LIST);
+    test_tree_reader(TIME_EXIT);
+    task_reader(TASKPATH DIR2 SUBDIR, 4, LIST);
 
-    for (size_t i = 0; i < 100; i++)
+    for (size_t i = 0; i < 70; i++)
     {
         sleep(1);
         if(timing_should_run(curr_task -> timing)){
