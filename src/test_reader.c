@@ -25,7 +25,7 @@ int main() {
     test_tree_reader(ERR);
     printf("Test for time_exitcodes\n\n");
     test_tree_reader(TIME_EXIT);*/
-    task_reader(TASKPATH DIR1 SUBDIR, 0, LIST);
+    task_reader(TASKPATH DIR2 SUBDIR, 4, LIST);
 
     for (size_t i = 0; i < 100; i++)
     {

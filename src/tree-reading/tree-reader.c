@@ -19,7 +19,10 @@ int task_reader(const char* path, uint16_t task_id, Action_type action){
         path, task_id);
 
     //construction of the path
-    char* pathcpy = strdup(path);
+    char taskdir[PATH_MAX];
+    snprintf(taskdir, sizeof(taskdir), "%s/tasks", path);
+
+    char* pathcpy = strdup(taskdir);
     if(pathcpy == NULL){
         return -1;
     }

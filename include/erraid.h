@@ -10,8 +10,12 @@
 #define SLEEP_INTERVAL 60
 #endif
 
-#define PIDFILE_NAME "erraid.pid" 
-#define LOG_NAME     "erraid.log"
+#ifndef LOG_NAME
+#define LOG_NAME "erraid.log"
+#endif
+#ifndef PIDFILE_NAME
+#define PIDFILE_NAME "erraid.pid"
+#endif
 
 /**
  * Set the run directory of the daemon.
