@@ -415,6 +415,8 @@ void daemon_run(void) {
             if (task_reader(g_run_dir, id, LIST) < 0) {
                 write_log_msg("task_reader failed for %u", id);
                 continue;
+            }else{
+                write_log_msg("task_reader worked for %u", id);
             }
             if (!curr_task) {
                 write_log_msg("No curr_task for id %u", id);

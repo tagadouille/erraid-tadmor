@@ -271,7 +271,7 @@ char **arguments_to_argv(const arguments_t *args)
     argv[0] = strdup(string_get(args->command));
 
     // arguments supplémentaires
-    for (uint32_t i = 0; i < args->argc; i++) {
+    for (uint32_t i = 0; i < args->argc - 1; i++) {
         argv[i + 1] = strdup(string_get(args->argv[i]));
     }
 

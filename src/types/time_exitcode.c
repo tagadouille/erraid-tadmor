@@ -19,7 +19,7 @@ bool time_exitcode_append(const char *path, const time_exitcode_t *record)
 
     // Convert to big-endian before writing (on inverse l'ordre des octets)
     uint64_t t = htobe64(record->time);
-    int16_t c = htobe16(record->exitcode);
+    uint32_t c = htobe32(record->exitcode);
 
     // Write timestamp and exitcode
     if (write(fd, &t, sizeof(t)) != sizeof(t))
@@ -39,7 +39,7 @@ bool time_exitcode_append(const char *path, const time_exitcode_t *record)
 
 char *time_exitcode_show(const char *data, ssize_t size){
     
-    const ssize_t REC_SIZE = sizeof(uint64_t) + sizeof(int16_t); // 10 bytes
+    const ssize_t REC_SIZE = sizeof(uint64_t) + sizeof(uint32_t); 
 
     // Validation du buffer
     if (data == NULL || size <= 0) {
@@ -71,10 +71,10 @@ char *time_exitcode_show(const char *data, ssize_t size){
         offset += sizeof(uint64_t);
 
         // ---- exitcode ----
-        int16_t c_be;
-        memcpy(&c_be, data + offset, sizeof(int16_t));
-        int exitcode = (int)be16toh(c_be);
-        offset += sizeof(int16_t);
+        uint32_t c_be;
+        memcpy(&c_be, data + offset, sizeof(uint32_t));
+        unsigned int exitcode = be32toh(c_be);
+        offset += sizeof(uint32_t);
 
         // ---- format timestamp ----
         char time_str[32];
