@@ -186,12 +186,14 @@ static int append_times_exitcodes(uint32_t task_id, int exitcode) {
         return -1;
     }
 
-    int64_t now = (int64_t)time(NULL);
-    uint64_t be_ts = hton64((uint64_t)now);
-    uint32_t be_code = htonl((uint32_t)exitcode);
+    uint64_t now = (uint64_t)time(NULL);
+    uint64_t be_ts = hton64(now);
+    uint16_t code16 = (uint16_t)exitcode;
+    uint16_t be_code = htons(code16); /* 16-bit network order (big-endian) */
 
-    if (write(fd, &be_ts, sizeof(be_ts)) != sizeof(be_ts)) { close(fd); free(td); return -1; }
-    if (write(fd, &be_code, sizeof(be_code)) != sizeof(be_code)) { close(fd); free(td); return -1; }
+    if (write(fd, &be_ts, sizeof(be_ts)) != (ssize_t)sizeof(be_ts)) { close(fd); free(td); return -1; }
+    if (write(fd, &be_code, sizeof(be_code)) != (ssize_t)sizeof(be_code)) { close(fd); free(td); return -1; }
+
 
     close(fd);
     free(td);
@@ -244,25 +246,16 @@ static int execute_simple(const command_t *cmd, uint32_t task_id)
         const arguments_t *args = &cmd->args.simple;
         if (!args || !args->command) _exit(127);
 
-        // Construire la commande complète en une seule ligne
-        size_t len = strlen(string_get(args->command)) + 1;
-        for (uint32_t i = 0; i < args->argc; i++)
-            len += strlen(string_get(args->argv[i])) + 1;
+         char **argv = arguments_to_argv(args);
+        if (!argv) _exit(127);
 
-        char *cmdline = malloc(len);
-        if (!cmdline) _exit(127);
+        execvp(argv[0], argv);
+        /* if execvp returns, it's an error */
+        dprintf(STDERR_FILENO, "execvp failed: %s\n", strerror(errno));
 
-        strcpy(cmdline, string_get(args->command));
-        for (uint32_t i = 0; i < args->argc; i++) {
-            strcat(cmdline, " ");
-            strcat(cmdline, string_get(args->argv[i]));
-        }
-
-        // Exécuter avec sh -c
-        execl("/bin/sh", "sh", "-c", cmdline, (char *)NULL);
-
-        dprintf(STDERR_FILENO, "execl failed: %s\n", strerror(errno));
-        free(cmdline);
+        /* free argv before exit (child will exit anyway) */
+        for (size_t i = 0; argv[i]; ++i) free(argv[i]);
+        free(argv);
         _exit(127);
     }
 
@@ -317,26 +310,6 @@ static int run_task_if_due(task_t *task)
     return execute_command(task->cmd, task->id);
 }
 
-/* --------------------------- DAEMON INIT ------------------------------- */
-
-int erraid_init_foreground(void) {
-    if (ensure_rundir() != 0) return -1;
-
-    g_log_fd = open(g_log_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
-    if (g_log_fd < 0) return -1;
-
-    write_pidfile();
-
-    struct sigaction sa = {0};
-    sa.sa_handler = handle_signal;
-    sigaction(SIGTERM, &sa, NULL);
-    sigaction(SIGINT, &sa, NULL);
-    sigaction(SIGHUP, &sa, NULL);
-
-    write_log_msg("Foreground erraid init (rundir=%s)", g_run_dir);
-    return 0;
-}
-
 /* ---------------------------- DAEMON MODE ------------------------------ */
 
 int daemon_init(void) {
@@ -381,6 +354,20 @@ int daemon_init(void) {
 
     write_log_msg("Daemon initialized (rundir=%s)", g_run_dir);
     return 0;
+}
+
+/* ------------------------------ Timing util ---------------------------- */
+/* wait until the next minute boundary (sleep until seconds == 0) */
+static void wait_next_minute(void) {
+    struct timespec ts;
+    struct tm tm_now;
+    time_t now = time(NULL);
+    localtime_r(&now, &tm_now);
+    int sec = tm_now.tm_sec;
+    int wait = 60 - sec;
+    if (wait <= 0) wait = 60;
+    /* sleep in small steps so signals can interrupt */
+    for (int i = 0; i < wait && running; ++i) sleep(1);
 }
 
 /* ------------------------------ MAIN LOOP ------------------------------ */
@@ -432,7 +419,7 @@ void daemon_run(void) {
         }
         closedir(d);
 
-        for (int i = 0; i < SLEEP_INTERVAL && running; ++i) sleep(1);
+        wait_next_minute();
     }
 
     write_log_msg("Daemon main loop stopping.");
