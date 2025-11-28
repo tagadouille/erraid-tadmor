@@ -1,5 +1,6 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
-#include "erraid.h"
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -9,6 +10,7 @@
 #include "tree-reading/tree_reader.h"
 #include "types/timing.h"
 #include "types/task.h"
+#include "erraid.h"
 
 void test_tree_reader(Action_type action);
 
@@ -22,7 +24,7 @@ int main() {
     printf("Test for err\n\n");
     test_tree_reader(ERR);
     printf("Test for time_exitcodes\n\n");
-    test_tree_reader(TIME_EXIT);
+    test_tree_reader(TIME_EXIT);*/
     task_reader(TASKPATH DIR2 SUBDIR, 4, LIST);
 
     for (size_t i = 0; i < 70; i++)

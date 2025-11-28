@@ -15,9 +15,14 @@
 #include "tree-reading/output_reader.h"
 
 int task_reader(const char* path, uint16_t task_id, Action_type action){
+    dprintf(STDERR_FILENO, "DEBUG: task_reader called with path='%s', task_id=%u\n",
+        path, task_id);
 
     //construction of the path
-    char* pathcpy = make_path(path, "tasks");
+    char taskdir[PATH_MAX];
+    snprintf(taskdir, sizeof(taskdir), "%s/tasks", path);
+
+    char* pathcpy = strdup(taskdir);
     if(pathcpy == NULL){
         return -1;
     }
@@ -58,8 +63,9 @@ int task_finder(char* path, char* task_id, Action_type action){
 
     //Finding the task
     while ((entry=readdir(dirp))) {
+        dprintf(STDERR_FILENO, "DEBUG: task_finder sees entry '%s'\n", entry->d_name);
         if(entry -> d_name[0] == '.') continue;
-
+        //if(entry -> d_name[0] == '..') continue;
         if(strcmp(entry -> d_name, task_id) == 0){
             //Construction of the path to the task
             char* newpath = make_path(path, entry -> d_name);
@@ -207,12 +213,7 @@ char* make_path(const char* og_path, const char* folder_name){
         perror("malloc");
         return NULL;
     }
-    
     snprintf(pathcpy, MAX_PATH, "%s/%s", og_path, folder_name); //Concatenation of og_path and folder_name
-    if(folder_exist(pathcpy) == 1){
-        free(pathcpy);
-        pathcpy = NULL;
-    }
     return pathcpy;
 }
 char* make_path_no_test(const char* og_path, const char* folder_name){

@@ -27,6 +27,12 @@ static string_t *read_one_string(const char *buf, size_t size, size_t *offset)
     *offset += sizeof(uint32_t);
 
     uint32_t len = be32toh(len_be);
+
+    if (len == 0) {
+        // skip, or return NULL : but NULL is correct (means invalid argument)
+        return NULL;
+    }
+
     if (*offset + len > size)
         return NULL;
 
@@ -265,7 +271,7 @@ char **arguments_to_argv(const arguments_t *args)
     argv[0] = strdup(string_get(args->command));
 
     // arguments supplémentaires
-    for (uint32_t i = 0; i < args->argc; i++) {
+    for (uint32_t i = 0; i < args->argc - 1; i++) {
         argv[i + 1] = strdup(string_get(args->argv[i]));
     }
 
