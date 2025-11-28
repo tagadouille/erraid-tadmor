@@ -1,7 +1,8 @@
 *Zone.Identifier
 main
-.vscode/*
+test_reader
+.vscode*
 erraid
 *.o 
 .log
-Consignes/*
+Consignes*
