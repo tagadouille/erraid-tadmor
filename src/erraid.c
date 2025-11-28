@@ -448,7 +448,7 @@ void daemon_run(void) {
             uint32_t id = (uint32_t)idul;
 
             /* use existing tree reader which sets curr_task */
-            if (task_reader(tasksdir, id, TIME_EXIT) < 0) {
+            if (task_reader(tasksdir, id, LIST) < 0) {
                 write_log_msg("task_reader failed for %u", id);
                 continue;
             }else{
