@@ -9,6 +9,7 @@
 #include "tree-reading/tree_reader.h"
 #include "types/timing.h"
 #include "types/time_exitcode.h"
+#include "erraid.h"
 
 int timing_reader(const char* path, int (*interpreter)(char* data, const char* path, ssize_t size)){
     char* buffer = NULL;

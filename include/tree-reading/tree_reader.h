@@ -21,9 +21,6 @@
 #define MAX_PATH pathconf("/", _PC_PATH_MAX) //The maximum path length of the computer
 #define BUFFER_SIZE 1024 //The size of the buffer for reading
 
-// The current task being processed
-extern task_t* curr_task; //! maybe move it to erraid
-
 // The different type of action to do while reading the task tree
 enum Action_type {
     LIST = 10, //To list the tasks
@@ -50,7 +47,7 @@ int task_reader(const char* path, uint16_t task_id, Action_type action);
 * @return 0 if the task is found, -1 if not or if a error occured (an error message will be display in
 *that case)
 */
-int task_finder(char* path, char* task_id, Action_type action);
+int task_finder(const char* path, char* task_id, Action_type action);
 
 /**
 * @brief Extract the information of the specified task which is stored at path argument according to the action argument.

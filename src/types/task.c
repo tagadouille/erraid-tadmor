@@ -9,8 +9,7 @@
 #include "types/timing.h"
 #include "types/time_exitcode.h"
 #include "tree-reading/tree_reader.h"
-
-task_t* curr_task = NULL;
+#include "erraid.h"
 
 /**
  * @brief Create a new empty task with the given ID.
@@ -276,32 +275,3 @@ void task_destroy(task_t *task){
 
     free(task);
 }
-
-// ! Modify it
-
-/*
-void command_execute(const command_t *cmd)
-{
-    if (cmd == NULL) // Security check
-        return;
-
-    if (cmd->type == SI)
-    {
-        // Execute simple command
-        if (cmd->u.simple.argc > 0) // On vérifie qu'il y a au moins un argument
-        {
-                // nom de la commande    // arguments
-            execvp(cmd->u.simple.command->data, cmd->u.simple.argv);
-            perror("execvp failed"); // Si execvp échoue, on affiche une erreur
-        }
-    }
-    else // SQ
-    {
-        // Execute composed commands sequentially
-        for (uint32_t i = 1; i < cmd->u.composed.count; i++)
-        {
-            command_execute(cmd->u.composed.cmds[i]); // Appel récursif
-        }
-    }
-    command_free((command_t *)cmd); // Free the command after execution
-}*/

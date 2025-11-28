@@ -12,6 +12,7 @@
 #include "tree-reading/cmd_reader.h"
 #include "types/argument.h"
 #include "types/task.h"
+#include "erraid.h"
 
 int cmd_reader(const char *path)
 {
@@ -205,12 +206,20 @@ command_t *command_parser(const char *path, command_t *cmd)
 
             continue;
 
-        clean:
-            free(type_path);
-            type_path = NULL;
-            free(sub_path);
-            sub_path = NULL;
-            goto cmd_clean;
+            clean:
+                if (type_path) {
+                    free(type_path);
+                    type_path = NULL;
+                }
+                if (sub_path) {
+                    free(sub_path);
+                    sub_path = NULL;
+                }
+                if (son_cmd) {
+                    command_free(son_cmd);
+                    son_cmd = NULL;
+                }
+                goto cmd_clean;
         }
     }
 
