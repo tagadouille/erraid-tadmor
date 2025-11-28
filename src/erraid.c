@@ -129,7 +129,12 @@ static int write_pidfile(void) {
     if (fd < 0) return -1;
     char pbuf[32];
     int n = snprintf(pbuf, sizeof(pbuf), "%ld\n", (long)getpid());
-    if (n > 0) write(fd, pbuf, (size_t)n);
+    if (n > 0) {
+        ssize_t w = write(fd, pbuf, (size_t)n);
+        if (w < 0 || w != n) {
+            perror("write");
+        }
+    }
     close(fd);
     return 0;
 }
@@ -354,19 +359,17 @@ int daemon_init(void) {
     if (pid > 0) _exit(EXIT_SUCCESS);
 
     umask(0);
-    if (chdir(g_run_dir) != 0) { /* non fatal */ }
-
-    int devnull = open("/dev/null", O_RDWR);
-    if (devnull >= 0) {
-        dup2(devnull, STDIN_FILENO);
-        if (devnull > 2) close(devnull);
-    }
+    if (chdir(g_run_dir) != 0) { fprintf(stderr, "chdir failed: %s\n", strerror(errno)); }
 
     g_log_fd = open(g_log_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
-    if (g_log_fd >= 0) {
-        dup2(g_log_fd, STDOUT_FILENO);
-        dup2(g_log_fd, STDERR_FILENO);
+    if (g_log_fd < 0) {
+        fprintf(stderr, "Cannot open log file '%s': %s\n", g_log_path, strerror(errno));
+        return -1;
     }
+
+    dup2(g_log_fd, STDOUT_FILENO);
+    dup2(g_log_fd, STDERR_FILENO);
+    
 
     write_pidfile();
 

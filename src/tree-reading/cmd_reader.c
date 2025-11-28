@@ -174,13 +174,10 @@ command_t* command_parser(const char* path, command_t* cmd){
             continue;
 
             clean:
-            free(type_path);
-            type_path = NULL;
-            free(sub_path);
-            sub_path = NULL;
-            command_free(son_cmd);
-            son_cmd = NULL;
-            goto cmd_clean;
+                if (type_path) free(type_path);
+                if (sub_path) free(sub_path);
+                if (son_cmd)  command_free(son_cmd);
+                goto cmd_clean;
         }
     }
 
