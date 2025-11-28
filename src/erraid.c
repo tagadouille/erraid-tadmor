@@ -1,4 +1,4 @@
-Pourquoi le démon ne tourne pas en boucle : #define _POSIX_C_SOURCE 200809L /* for PATH_MAX, etc. */
+#define _POSIX_C_SOURCE 200809L /* for PATH_MAX, etc. */
 
 #include "erraid.h"
 
