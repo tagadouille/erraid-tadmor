@@ -4,3 +4,4 @@ main
 erraid
 *.o 
 .log
+Consignes/*

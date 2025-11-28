@@ -12,6 +12,7 @@
 #include "tree-reading/cmd_reader.h"
 #include "types/argument.h"
 #include "types/task.h"
+#include "erraid.h"
 
 int cmd_reader(const char* path){
     int result = 0;

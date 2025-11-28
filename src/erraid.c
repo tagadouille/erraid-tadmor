@@ -29,8 +29,9 @@ static volatile int running = 1;
 static char g_run_dir[PATH_MAX] = {0};
 
 static int g_log_fd = -1;
-static char g_log_path[PATH_MAX] = {0};
+static char g_log_path[PATH_MAX] = "log";
 static char g_pid_path[PATH_MAX] = {0};
+static char tasksdir[PATH_MAX];
 
 /* --------------------------- SIGNAL HANDLER ---------------------------- */
 
@@ -53,25 +54,39 @@ int erraid_set_rundir(const char *rundir) {
 
 /* ----------------------------- UTILITIES ------------------------------- */
 
-static int mkdir_p(const char *path) {
+int mkdir_p(const char *path) {
+    if (!path || *path == '\0') {
+        errno = EINVAL;
+        return -1;
+    }
+
     char tmp[PATH_MAX];
-    char *p = NULL;
-    size_t len;
+    size_t len = strlen(path);
+    if (len >= sizeof(tmp)) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
 
-    if (!path) { errno = EINVAL; return -1; }
-    snprintf(tmp, sizeof(tmp), "%s", path);
-    len = strlen(tmp);
-    if (len == 0) return -1;
-    if (tmp[len - 1] == '/') tmp[len - 1] = 0;
+    strncpy(tmp, path, sizeof(tmp));
+    tmp[sizeof(tmp)-1] = '\0';
 
-    for (p = tmp + 1; *p; p++) {
+    // delete the final slash
+    while (len > 1 && tmp[len-1] == '/') {
+        tmp[len-1] = '\0';
+        len--;
+    }
+
+    for (char *p = tmp + 1; *p; p++) {
         if (*p == '/') {
-            *p = 0;
+            *p = '\0';
             if (mkdir(tmp, 0755) != 0 && errno != EEXIST) return -1;
             *p = '/';
         }
     }
+
+    // create the last directory
     if (mkdir(tmp, 0755) != 0 && errno != EEXIST) return -1;
+
     return 0;
 }
 
@@ -80,11 +95,31 @@ static int ensure_rundir(void) {
 
     if (mkdir_p(g_run_dir) != 0) return -1;
 
-    char tasksdir[PATH_MAX];
-    if (snprintf(tasksdir, sizeof(tasksdir), "%s/tasks", g_run_dir) < 0) return -1;
+    //Use absolute path for g_run_dir
+    char abs_rundir[PATH_MAX];
+    if (!realpath(g_run_dir, abs_rundir)) {
+        perror("realpath");
+        return -1;
+    }
+    strncpy(g_run_dir, abs_rundir, sizeof(g_run_dir)-1);
+    g_run_dir[sizeof(g_run_dir)-1] = '\0';
+
+    size_t len = strlen(g_run_dir);
+
+    if (len + strlen("/tasks")+1 >= sizeof(tasksdir)) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+    //Add a slash if necessary
+    if (g_run_dir[strlen(g_run_dir)-1] == '/'){
+        snprintf(tasksdir, sizeof(tasksdir), "%stasks", g_run_dir);
+    }
+    else{
+        snprintf(tasksdir, sizeof(tasksdir), "%s/tasks", g_run_dir);
+    }
+
     if (mkdir_p(tasksdir) != 0) return -1;
 
-    if (snprintf(g_log_path, sizeof(g_log_path), "%s/%s", g_run_dir, LOG_NAME) < 0) return -1;
     if (snprintf(g_pid_path, sizeof(g_pid_path), "%s/%s", g_run_dir, PIDFILE_NAME) < 0) return -1;
 
     return 0;
@@ -112,12 +147,14 @@ int write_log_msg(const char *fmt, ...) {
     va_end(ap);
 
     if (n < 0) return -1;
-    size_t total = (size_t)(off + n);
+    ssize_t total = (off + n);
     if (total + 1 < sizeof(buf)) buf[total++] = '\n';
     else buf[sizeof(buf)-1] = '\0';
 
-    ssize_t w = write(g_log_fd, buf, total);
-    (void)w;
+    if(write(g_log_fd, buf, total) != total){
+        perror("write");
+        return -1;
+    }
     return 0;
 }
 
@@ -152,7 +189,7 @@ static uint64_t hton64(uint64_t x) {
 static char *task_dir_path(uint32_t task_id) {
     char *path = malloc(PATH_MAX);
     if (!path) return NULL;
-    if (snprintf(path, PATH_MAX, "%s/tasks/%u", g_run_dir, task_id) < 0) {
+    if (snprintf(path, PATH_MAX, "%s/%u", g_run_dir, task_id) < 0) {
         free(path);
         return NULL;
     }
@@ -388,14 +425,10 @@ void daemon_run(void) {
     while (running) {
         write_log_msg("Scanning tasks directory…");
 
-        char tasksdir[PATH_MAX];
-        if (snprintf(tasksdir, sizeof(tasksdir), "%s/tasks", g_run_dir) < 0) {
-            sleep(SLEEP_INTERVAL);
-            continue;
-        }
-
         DIR *d = opendir(tasksdir);
-        if (!d) {
+
+        if (d == NULL) {
+            perror("opendir");
             write_log_msg("Cannot open tasks/ directory: %s", tasksdir);
             sleep(SLEEP_INTERVAL);
             continue;
@@ -412,7 +445,7 @@ void daemon_run(void) {
             uint32_t id = (uint32_t)idul;
 
             /* use existing tree reader which sets curr_task */
-            if (task_reader(g_run_dir, id, LIST) < 0) {
+            if (task_reader(tasksdir, id, TIME_EXIT) < 0) {
                 write_log_msg("task_reader failed for %u", id);
                 continue;
             }else{
@@ -422,6 +455,8 @@ void daemon_run(void) {
                 write_log_msg("No curr_task for id %u", id);
                 continue;
             }
+            
+            //task_display(curr_task);
 
             run_task_if_due(curr_task);
             task_destroy(curr_task);

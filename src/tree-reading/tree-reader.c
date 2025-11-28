@@ -13,19 +13,12 @@
 #include "tree-reading/times_reader.h"
 #include "tree-reading/tree_reader.h"
 #include "tree-reading/output_reader.h"
+#include "erraid.h"
 
 int task_reader(const char* path, uint16_t task_id, Action_type action){
     dprintf(STDERR_FILENO, "DEBUG: task_reader called with path='%s', task_id=%u\n",
         path, task_id);
 
-    //construction of the path
-    char taskdir[PATH_MAX];
-    snprintf(taskdir, sizeof(taskdir), "%s/tasks", path);
-
-    char* pathcpy = strdup(taskdir);
-    if(pathcpy == NULL){
-        return -1;
-    }
     curr_task = task_create(task_id);
 
     if(curr_task == NULL){
@@ -37,19 +30,17 @@ int task_reader(const char* path, uint16_t task_id, Action_type action){
     char id[6];
     snprintf(id, sizeof(id), "%u", task_id);
 
-    int result = task_finder(pathcpy, id, action);
+    int result = task_finder(path, id, action);
 
     //If an error occured while finding the task, we free curr_task
     if(result == -1){
         task_destroy(curr_task);
         curr_task = NULL;
     }
-    free(pathcpy);
-    pathcpy = NULL;
     return result;
 }
 
-int task_finder(char* path, char* task_id, Action_type action){
+int task_finder(const char* path, char* task_id, Action_type action){
     DIR* dirp = opendir(path);
 
     if(dirp == NULL){
@@ -65,7 +56,7 @@ int task_finder(char* path, char* task_id, Action_type action){
     while ((entry=readdir(dirp))) {
         dprintf(STDERR_FILENO, "DEBUG: task_finder sees entry '%s'\n", entry->d_name);
         if(entry -> d_name[0] == '.') continue;
-        //if(entry -> d_name[0] == '..') continue;
+
         if(strcmp(entry -> d_name, task_id) == 0){
             //Construction of the path to the task
             char* newpath = make_path(path, entry -> d_name);

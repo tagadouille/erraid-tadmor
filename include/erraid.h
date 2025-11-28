@@ -17,6 +17,11 @@
 #define PIDFILE_NAME "erraid.pid"
 #endif
 
+#include "types/task.h"
+
+// The current task being processed
+extern task_t* curr_task;
+
 /**
  * Set the run directory of the daemon.
  * Must be called before daemon_init() or erraid_init_foreground().
