@@ -154,7 +154,7 @@ command_t* create_command(command_t* command, command_type_t type){
     }
     command->type = type;
 
-    if(type != SI){
+    if(type != SI){ // SQ
         command->args.composed.count = 0;
         command->args.composed.cmds = malloc(sizeof(command_t*) * 10); // Initial allocation for 10 commands
         if(command->args.composed.cmds == NULL){
@@ -211,12 +211,13 @@ command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, comma
             arguments_free(arg);
             free(arg);
         }
+        arguments_free(arg);
+        free(arg);
     } else {
         dprintf(STDERR_FILENO, "Error : Complex commands are not accepted for command_filler\n");
         arguments_free(arg);
-        command_free(cmd);
         free(arg);
-        free(cmd);
+        command_free(cmd);
         return NULL;
     }
     return cmd;
@@ -263,8 +264,16 @@ void task_destroy(task_t *task){
         task->cmd = NULL;
     }
 
-    free(task->timing);
-    task->timing = NULL;
+    if (task->timing != NULL) {
+        free(task->timing);
+        task->timing = NULL;
+    }
+
+    // If we're destroying the current global task, clear the global too
+    if (curr_task == task) {
+        curr_task = NULL;
+    }
+
     free(task);
 }
 

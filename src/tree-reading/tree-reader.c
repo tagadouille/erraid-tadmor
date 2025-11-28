@@ -42,10 +42,10 @@ int task_reader(const char* path, uint16_t task_id, Action_type action){
     //If an error occured while finding the task, we free curr_task
     if(result == -1){
         task_destroy(curr_task);
-        curr_task = NULL;
     }
     free(pathcpy);
     pathcpy = NULL;
+    
     return result;
 }
 

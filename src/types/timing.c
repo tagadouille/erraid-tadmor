@@ -147,7 +147,7 @@ timing_t* timing_create(const char *data, ssize_t size)
 void timing_show(const timing_t *t)
 {
     char *txt = timing_to_string(t);
-    dprintf(STDOUT_FILENO, "%s", txt);
+    dprintf(STDOUT_FILENO, "%s ", txt);
     free(txt);
 }
 

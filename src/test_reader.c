@@ -24,7 +24,7 @@ int main() {
     printf("Test for err\n\n");
     test_tree_reader(ERR);
     printf("Test for time_exitcodes\n\n");
-    test_tree_reader(TIME_EXIT);*/
+    test_tree_reader(TIME_EXIT);
     task_reader(TASKPATH DIR2 SUBDIR, 4, LIST);
 
     for (size_t i = 0; i < 70; i++)
@@ -36,7 +36,6 @@ int main() {
         }else{
             dprintf(STDOUT_FILENO, "j'attends mon activation\n");
         }
-
     }
     
     printf("All tests done.\n");
@@ -47,9 +46,10 @@ void test_tree_reader(Action_type action) {
     uint16_t task = 0;
     printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR1 SUBDIR, task, action));
     
-    if(action == LIST && curr_task != NULL){
+    if(curr_task != NULL){
         task_display(curr_task);
         task_destroy(curr_task);
+        curr_task = NULL;
     }
     printf("\n\n");
 
@@ -57,7 +57,7 @@ void test_tree_reader(Action_type action) {
     printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR1 SUBDIR, task, action));
     printf("Test of task reader for more complex tasks\n");
 
-    if(action == LIST && curr_task != NULL){
+    if(curr_task != NULL){
         task_display(curr_task);
         task_destroy(curr_task);
         curr_task = NULL;
@@ -67,7 +67,7 @@ void test_tree_reader(Action_type action) {
     task = 4;
     printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR2 SUBDIR, task, action));
 
-    if(action == LIST && curr_task != NULL){
+    if(curr_task != NULL){
         task_display(curr_task);
         task_destroy(curr_task);
         curr_task = NULL;
@@ -77,11 +77,10 @@ void test_tree_reader(Action_type action) {
     task = 15;
     printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR3 SUBDIR, task, action));
 
-    if(action == LIST && curr_task != NULL){
+    if(curr_task != NULL){
         task_display(curr_task);
         task_destroy(curr_task);
         curr_task = NULL;
     }
     printf("\n\n");
 }
-
