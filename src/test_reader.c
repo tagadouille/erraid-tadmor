@@ -36,9 +36,10 @@ void test_tree_reader(Action_type action) {
     uint16_t task = 0;
     printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR1 SUBDIR, task, action));
     
-    if(action == LIST && curr_task != NULL){
+    if(curr_task != NULL){
         task_display(curr_task);
         task_destroy(curr_task);
+        curr_task = NULL;
     }
     printf("\n\n");
 
@@ -46,7 +47,7 @@ void test_tree_reader(Action_type action) {
     printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR1 SUBDIR, task, action));
     printf("Test of task reader for more complex tasks\n");
 
-    if(action == LIST && curr_task != NULL){
+    if(curr_task != NULL){
         task_display(curr_task);
         task_destroy(curr_task);
         curr_task = NULL;
@@ -56,7 +57,7 @@ void test_tree_reader(Action_type action) {
     task = 4;
     printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR2 SUBDIR, task, action));
 
-    if(action == LIST && curr_task != NULL){
+    if(curr_task != NULL){
         task_display(curr_task);
         task_destroy(curr_task);
         curr_task = NULL;
@@ -66,11 +67,10 @@ void test_tree_reader(Action_type action) {
     task = 15;
     printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR3 SUBDIR, task, action));
 
-    if(action == LIST && curr_task != NULL){
+    if(curr_task != NULL){
         task_display(curr_task);
         task_destroy(curr_task);
         curr_task = NULL;
     }
     printf("\n\n");
 }
-
