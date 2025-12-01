@@ -191,7 +191,7 @@ static uint64_t hton64(uint64_t x) {
 /* ------------------------- EXECUTION ENGINE ----------------------------- */
 
 /* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] */
-static int append_times_exitcodes(const char* path, uint16_t task_id, int exitcode) {
+static int append_times_exitcodes(const char* path, uint64_t task_id, int exitcode) {
 
     char te_path[PATH_MAX];
     snprintf(te_path, sizeof(te_path), "%s/times-exitcodes", path);
@@ -269,8 +269,8 @@ static int execute_complexe(const command_t *cmd, uint32_t task_id,
 
     int final_exitcode = 0;
 
-    uint16_t count = cmd->args.composed.count;
-    for (uint16_t i = 0; i < count; i++) {
+    uint32_t count = cmd->args.composed.count;
+    for (uint32_t i = 0; i < count; i++) {
 
         /* Chaque sous-commande réutilise le même outfd/errfd */
         int fd_out = dup(outfd);
@@ -318,7 +318,7 @@ static int run_task_if_due(task_t *task)
 
     //Converting task_id to string :
     char id[6];
-    snprintf(id, sizeof(id), "%u", task->id);
+    snprintf(id, sizeof(id), "%lu", task->id);
 
     char outpath[PATH_MAX], errpath[PATH_MAX], timespath[PATH_MAX];
     snprintf(outpath, sizeof(outpath), "%s/%s/stdout", tasksdir, id);
@@ -393,7 +393,7 @@ int daemon_init(void) {
 /* ------------------------------ Timing util ---------------------------- */
 /* wait until the next minute boundary (sleep until seconds == 0) */
 static void wait_next_minute(void) {
-    struct timespec ts;
+
     struct tm tm_now;
     time_t now = time(NULL);
     localtime_r(&now, &tm_now);

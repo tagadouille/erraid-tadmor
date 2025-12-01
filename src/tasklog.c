@@ -45,14 +45,14 @@ static int format_time_rfc(time_t t, char *buf, size_t buflen) {
 }
 
 // Adds a line "YYYY-MM-DD HH:MM:SS EXIT_CODE\n" to tasks/<id>/times-exitcodes
-int log_add_execution(uint16_t taskid, time_t when, int exit_code) {
+int log_add_execution(uint64_t taskid, time_t when, int exit_code) {
     char path[PATH_MAX];
     if (build_task_path(path, sizeof(path), taskid, "times-exitcodes") != 0) return -1;
 
     // Ensure task dir exists
     char taskdir[PATH_MAX];
     const char *base = g_run_dir ? g_run_dir : ".";
-    if (snprintf(taskdir, sizeof(taskdir), "%s/tasks/%d", base, taskid) < 0) { return -1; }
+    if (snprintf(taskdir, sizeof(taskdir), "%s/tasks/%ld", base, taskid) < 0) { return -1; }
 
     // Open file for appending
     int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644);
@@ -83,10 +83,10 @@ int log_add_execution(uint16_t taskid, time_t when, int exit_code) {
 }
 
 // Helper: atomic replace of a file
-static int atomic_replace_file(uint16_t taskid, const char *fname, const char *buf, size_t len) {
+static int atomic_replace_file(uint64_t taskid, const char *fname, const char *buf, size_t len) {
     char taskdir[PATH_MAX];
     const char *base = g_run_dir ? g_run_dir : ".";
-    if (snprintf(taskdir, sizeof(taskdir), "%s/tasks/%d", base, taskid) < 0) { return -1; }
+    if (snprintf(taskdir, sizeof(taskdir), "%s/tasks/%ld", base, taskid) < 0) { return -1; }
 
     // Create temporary file 
     char tmp_template[PATH_MAX];
@@ -126,12 +126,12 @@ static int atomic_replace_file(uint16_t taskid, const char *fname, const char *b
     return 0;
 }
 
-int log_write_stdout(uint16_t taskid, const char *buf, size_t len) {
+int log_write_stdout(uint64_t taskid, const char *buf, size_t len) {
     if (!buf && len != 0) { return -1; }
     return atomic_replace_file(taskid, "stdout", buf ? buf : "", len);
 }
 
-int log_write_stderr(uint16_t taskid, const char *buf, size_t len) {
+int log_write_stderr(uint64_t taskid, const char *buf, size_t len) {
     if (!buf && len != 0) { return -1; }
     return atomic_replace_file(taskid, "stderr", buf ? buf : "", len);
 }

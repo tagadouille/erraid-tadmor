@@ -15,7 +15,7 @@
  * @brief Create a new empty task with the given ID.
  * ! The internal fields still need to be filled by the tree reader.
  */
-task_t *task_create(uint16_t id){
+task_t *task_create(uint64_t id){
     task_t *t = calloc(1, sizeof(task_t));
     if (!t){
         perror("calloc");
@@ -43,7 +43,7 @@ task_t *task_create(uint16_t id){
 
 //! Maybe change STDOUT_FILENO to something else
 void task_display(task_t* task){
-    dprintf(STDOUT_FILENO, "%u: ", task->id);
+    dprintf(STDOUT_FILENO, "%lu: ", task->id);
 
     timing_show(task->timing);
     command_display(task->cmd);
@@ -79,7 +79,7 @@ void command_display(command_t *cmd){
             break;
         case SQ:
             dprintf(STDOUT_FILENO, "(");
-            for (uint16_t i = 0; i < cmd->args.composed.count; i++){
+            for (uint32_t i = 0; i < cmd->args.composed.count; i++){
                 command_display(cmd->args.composed.cmds[i]);
 
                 if(i != cmd->args.composed.count - 1){
@@ -236,7 +236,7 @@ void command_free(command_t *cmd){
     }
     else if (cmd->type == SQ)
     {
-        for (uint16_t i = 0; i < cmd->args.composed.count; i++)
+        for (uint32_t i = 0; i < cmd->args.composed.count; i++)
         {
             command_free(cmd->args.composed.cmds[i]);
             cmd->args.composed.cmds[i] = NULL;

@@ -33,8 +33,8 @@ int main() {
 }
 
 void test_tree_reader(Action_type action) {
-    uint16_t task = 0;
-    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR1 SUBDIR, task, action));
+    uint64_t task = 0;
+    printf("Test of task_reader for task %li \n Return value : %i\n", task, task_reader(TASKPATH DIR1 SUBDIR, task, action));
     
     if(curr_task != NULL){
         task_display(curr_task);
@@ -44,7 +44,7 @@ void test_tree_reader(Action_type action) {
     printf("\n\n");
 
     task = 1;
-    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR1 SUBDIR, task, action));
+    printf("Test of task_reader for task %li \n Return value : %i\n", task, task_reader(TASKPATH DIR1 SUBDIR, task, action));
     printf("Test of task reader for more complex tasks\n");
 
     if(curr_task != NULL){
@@ -55,7 +55,7 @@ void test_tree_reader(Action_type action) {
     printf("\n\n");
 
     task = 4;
-    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR2 SUBDIR, task, action));
+    printf("Test of task_reader for task %li \n Return value : %i\n", task, task_reader(TASKPATH DIR2 SUBDIR, task, action));
 
     if(curr_task != NULL){
         task_display(curr_task);
@@ -65,7 +65,7 @@ void test_tree_reader(Action_type action) {
     printf("\n\n");
 
     task = 15;
-    printf("Test of task_reader for task %i \n Return value : %i\n", task, task_reader(TASKPATH DIR3 SUBDIR, task, action));
+    printf("Test of task_reader for task %li \n Return value : %i\n", task, task_reader(TASKPATH DIR3 SUBDIR, task, action));
 
     if(curr_task != NULL){
         task_display(curr_task);
