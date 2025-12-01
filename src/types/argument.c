@@ -227,7 +227,7 @@ arguments_t *copy_arguments(arguments_t *dst, const arguments_t *src)
 
 void arguments_free(arguments_t *args)
 {
-    if (!args)
+    if (args == NULL)
     {
         return;
     }

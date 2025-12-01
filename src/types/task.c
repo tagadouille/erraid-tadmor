@@ -227,7 +227,7 @@ command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, comma
  *        Works for both SI and SQ commands.
  */
 void command_free(command_t *cmd){
-    if (!cmd)
+    if (cmd == NULL)
         return;
 
     if (cmd->type == SI)

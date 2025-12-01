@@ -57,8 +57,6 @@ int cmd_reader(const char *path)
             goto error;
         }
         curr_task->cmd = cmd;
-        command_free(cmd);
-        cmd = NULL;
     }
 error:
     if (result == -1)

@@ -58,73 +58,67 @@ int erraid_set_rundir(const char *rundir) {
  * equivalent de realpath
  */
 char *my_realpath(const char *path, char *resolved_path) {
-    if (!path) {
-        errno = EINVAL;
-        return NULL;
-    }
+    if (!path) { errno = EINVAL; return NULL; }
 
     char temp[PATH_MAX];
-    // Si path est relatif, prefixer avec le répertoire courant
     if (path[0] != '/') {
         if (!getcwd(temp, sizeof(temp))) return NULL;
-        if (strlen(temp) + 1 + strlen(path) >= PATH_MAX) {
-            errno = ENAMETOOLONG;
-            return NULL;
-        }
+        size_t need = strlen(temp) + 1 + strlen(path) + 1;
+        if (need > sizeof(temp)) { errno = ENAMETOOLONG; return NULL; }
         strcat(temp, "/");
         strcat(temp, path);
     } else {
-        strncpy(temp, path, PATH_MAX);
-        temp[PATH_MAX - 1] = '\0';
+        if (strlen(path) >= sizeof(temp)) { errno = ENAMETOOLONG; return NULL; }
+        strncpy(temp, path, sizeof(temp));
+        temp[sizeof(temp)-1] = '\0';
     }
 
-    // Tokeniser par '/'
-    char *stack[PATH_MAX]; // pointeurs vers les composants
-    int top = -1;
-
+    /* split and normalize */
     char *copy = strdup(temp);
     if (!copy) return NULL;
 
-    char *token = strtok(copy, "/");
-    while (token) {
-        if (strcmp(token, ".") == 0) {
-            // ignorer
-        } else if (strcmp(token, "..") == 0) {
-            if (top >= 0) top--; // remonter
-        } else {
-            stack[++top] = token;
+    char *components[PATH_MAX];
+    int top = -1;
+
+    char *saveptr = NULL;
+    for (char *tok = strtok_r(copy, "/", &saveptr); tok; tok = strtok_r(NULL, "/", &saveptr)) {
+        if (strcmp(tok, ".") == 0) continue;
+        if (strcmp(tok, "..") == 0) {
+            if (top >= 0) top--;
+            continue;
         }
-        token = strtok(NULL, "/");
+        components[++top] = tok;
     }
 
-    // Construire le chemin final
+    /* build result */
     char result[PATH_MAX];
-    result[0] = '/';
-    result[1] = '\0';
-    for (int i = 0; i <= top; i++) {
-        if (strlen(result) + 1 + strlen(stack[i]) >= PATH_MAX) {
-            free(copy);
-            errno = ENAMETOOLONG;
-            return NULL;
+    if (top == -1) {
+        /* root */
+        strncpy(result, "/", sizeof(result));
+        result[sizeof(result)-1] = '\0';
+    } else {
+        result[0] = '\0';
+        for (int i = 0; i <= top; ++i) {
+            size_t need = strlen(result) + 1 + strlen(components[i]) + 1;
+            if (need > sizeof(result)) {
+                free(copy);
+                errno = ENAMETOOLONG;
+                return NULL;
+            }
+            strcat(result, "/");
+            strcat(result, components[i]);
         }
-        if (i != 0) strcat(result, "/");
-        strcat(result, stack[i]);
     }
 
     free(copy);
 
-    // Copier dans le buffer fourni ou allouer dynamiquement
-    char *res;
     if (resolved_path) {
         strncpy(resolved_path, result, PATH_MAX);
         resolved_path[PATH_MAX - 1] = '\0';
-        res = resolved_path;
+        return resolved_path;
     } else {
-        res = strdup(result);
-        if (!res) return NULL;
+        return strdup(result);
     }
-
-    return res;
 }
 
 int mkdir_p(const char *path) {
@@ -209,7 +203,8 @@ int write_log_msg(const char *fmt, ...) {
     char buf[1024];
     time_t now = time(NULL);
     struct tm tm;
-    localtime_r(&now, &tm);
+    /* use UTC so tests are deterministic */
+    if (gmtime_r(&now, &tm) == NULL) return -1;
 
     int off = strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S ", &tm);
     if (off < 0) off = 0;
@@ -221,11 +216,10 @@ int write_log_msg(const char *fmt, ...) {
 
     if (n < 0) return -1;
     ssize_t total = (off + n);
-    if (total + 1 < sizeof(buf)) buf[total++] = '\n';
+    if (total + 1 < (ssize_t)sizeof(buf)) buf[total++] = '\n';
     else buf[sizeof(buf)-1] = '\0';
 
-    if(write(g_log_fd, buf, total) != total){
-        perror("write");
+    if (write(g_log_fd, buf, total) != total) {
         return -1;
     }
     return 0;
@@ -264,28 +258,25 @@ static uint64_t hton64(uint64_t x) {
 /* ------------------------- EXECUTION ENGINE ----------------------------- */
 
 /* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] */
-static int append_times_exitcodes(const char* path, uint64_t task_id, int exitcode) {
-
+static int append_times_exitcodes(const char* path, int exitcode) {
     char te_path[PATH_MAX];
     snprintf(te_path, sizeof(te_path), "%s/times-exitcodes", path);
 
     int fd = open(te_path, O_CREAT | O_WRONLY | O_APPEND, 0644);
-    if (fd < 0) {
-        return -1;
-    }
+    if (fd < 0) return -1;
 
     uint64_t now = (uint64_t)time(NULL);
     uint64_t be_ts = hton64(now);
-    uint32_t code32 = (uint32_t)exitcode;
-    uint32_t be_code32 = htonl(code32);
+    uint16_t code16 = (uint16_t)exitcode;
+    uint16_t be_code16 = htons(code16);
 
     if (write(fd, &be_ts, sizeof(be_ts)) != (ssize_t)sizeof(be_ts)) { 
-        close(fd);
-        return -1;
+        close(fd); 
+        return -1; 
     }
-    if (write(fd, &be_code32, sizeof(be_code32)) != (ssize_t)sizeof(be_code32)) {
-        close(fd);
-        return -1;
+
+    if (write(fd, &be_code16, sizeof(be_code16)) != (ssize_t)sizeof(be_code16)) { 
+        close(fd); return -1; 
     }
 
     close(fd);
@@ -294,8 +285,7 @@ static int append_times_exitcodes(const char* path, uint64_t task_id, int exitco
 
 /* Execute a simple command and write stdout/stderr into task dir (overwrite),
    append times-exitcodes entry. */
-static int execute_simple(const command_t *cmd, uint32_t task_id,
-                          const char *timespath, int outfd, int errfd,
+static int execute_simple(const command_t *cmd, const char *timespath, int outfd, int errfd,
                           int is_subcmd)
 {
     if (!cmd) return -1;
@@ -327,15 +317,14 @@ static int execute_simple(const command_t *cmd, uint32_t task_id,
     int exitcode = WIFEXITED(status) ? WEXITSTATUS(status) : 255;
 
     if (!is_subcmd) {
-        append_times_exitcodes(timespath, task_id, exitcode);
+        append_times_exitcodes(timespath, exitcode);
     }
 
     return exitcode;
 }
 
 
-static int execute_complexe(const command_t *cmd, uint32_t task_id,
-                             const char *timespath, int outfd, int errfd)
+static int execute_complexe(const command_t *cmd, const char *timespath, int outfd, int errfd)
 {
     if (!cmd || cmd->type != SQ)
         return -1;
@@ -345,39 +334,35 @@ static int execute_complexe(const command_t *cmd, uint32_t task_id,
     uint32_t count = cmd->args.composed.count;
     for (uint32_t i = 0; i < count; i++) {
 
-        /* Chaque sous-commande réutilise le même outfd/errfd */
         int fd_out = dup(outfd);
         int fd_err = dup(errfd);
 
-        int ret = execute_simple(cmd->args.composed.cmds[i],
-                                 task_id, timespath,
-                                 fd_out, fd_err, 1);
+        int ret = execute_simple(cmd->args.composed.cmds[i], timespath, fd_out, fd_err, 1);
 
-        final_exitcode = ret; // convention shell: dernier exitcode
+        final_exitcode = ret;
     }
 
-    /* ENFIN : un seul append */
-    append_times_exitcodes(timespath, task_id, final_exitcode);
+    append_times_exitcodes(timespath, final_exitcode);
 
     return final_exitcode;
 }
 
 /* Execute command: SI or SQ */
-static int execute_command(const command_t *cmd, uint32_t id,
-                           const char *timespath, int outfd, int errfd)
+static int execute_command(const command_t *cmd, const char *timespath, int outfd, int errfd)
 {
     if (!cmd) return -1;
 
     if (cmd->type == SI)
-        return execute_simple(cmd, id, timespath, outfd, errfd, 0);
+        return execute_simple(cmd, timespath, outfd, errfd, 0);
 
     if (cmd->type == SQ)
-        return execute_complexe(cmd, id, timespath, outfd, errfd);
+        return execute_complexe(cmd, timespath, outfd, errfd);
 
     return -1;
 }
 
 
+/* Execute command: SI or SQ */
 static int run_task_if_due(task_t *task)
 {
     if (!task || !task->cmd || !task->timing) return -1;
@@ -389,18 +374,28 @@ static int run_task_if_due(task_t *task)
 
     write_log_msg("Executing task %u", task->id);
 
-    //Converting task_id to string :
-    char id[6];
-    snprintf(id, sizeof(id), "%lu", task->id);
+    /* use correct format for uint32_t id */
+    char id[32];
+    snprintf(id, sizeof(id), "%u", (unsigned)task->id);
 
     char outpath[PATH_MAX], errpath[PATH_MAX], timespath[PATH_MAX];
-    snprintf(outpath, sizeof(outpath), "%s/%s/stdout", tasksdir, id);
-    snprintf(errpath, sizeof(errpath), "%s/%s/stderr", tasksdir, id);
-    snprintf(timespath, sizeof(errpath), "%s/%s/times-exitcodes", tasksdir, id);
+
+    if (snprintf(outpath, sizeof(outpath), "%s/%s/stdout", tasksdir, id) >= (int)sizeof(outpath)) {
+        write_log_msg("outpath too long for task %u", task->id);
+        return -1;
+    }
+    if (snprintf(errpath, sizeof(errpath), "%s/%s/stderr", tasksdir, id) >= (int)sizeof(errpath)) {
+        write_log_msg("errpath too long for task %u", task->id);
+        return -1;
+    }
+    if (snprintf(timespath, sizeof(timespath), "%s/%s/times-exitcodes", tasksdir, id) >= (int)sizeof(timespath)) {
+        write_log_msg("timespath too long for task %u", task->id);
+        return -1;
+    }
 
     int outfd = open(outpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
     int errfd = open(errpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-    
+
     if (outfd < 0 || errfd < 0) {
         write_log_msg("Cannot open stdout/stderr for task %u: %s / %s", task->id, strerror(errno), tasksdir);
         if (outfd >= 0) close(outfd);
@@ -408,13 +403,7 @@ static int run_task_if_due(task_t *task)
         return -1;
     }
 
-    if (outfd < 0 || errfd < 0) {
-        if (outfd >= 0) close(outfd);
-        if (errfd >= 0) close(errfd);
-        return -1;
-    }
-
-    return execute_command(task->cmd, task->id, timespath, outfd, errfd);
+    return execute_command(task->cmd, timespath, outfd, errfd);
 }
 
 /* ---------------------------- DAEMON MODE ------------------------------ */
@@ -466,13 +455,23 @@ int daemon_init(void) {
 /* ------------------------------ Timing util ---------------------------- */
 /* wait until the next minute boundary (sleep until seconds == 0) */
 static void wait_next_minute(void) {
+    time_t now = time(NULL);
+    if (now == (time_t)-1) {
+        for (int i = 0; i < 60 && running; ++i) sleep(1);
+        return;
+    }
 
     struct tm tm_now;
-    time_t now = time(NULL);
-    localtime_r(&now, &tm_now);
+    /* use UTC so scheduling matches tests deterministically */
+    if (gmtime_r(&now, &tm_now) == NULL) {
+        for (int i = 0; i < 60 && running; ++i) sleep(1);
+        return;
+    }
+
     int sec = tm_now.tm_sec;
     int wait = 60 - sec;
     if (wait <= 0) wait = 60;
+
     /* sleep in small steps so signals can interrupt */
     for (int i = 0; i < wait && running; ++i) sleep(1);
 }

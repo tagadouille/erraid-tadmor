@@ -27,7 +27,7 @@ int task_reader(const char* path, uint64_t task_id, Action_type action){
     }
 
     //Converting task_id to string :
-    char id[6];
+    char id[32];
     snprintf(id, sizeof(id), "%lu", task_id);
 
     int result = task_finder(path, id, action);
