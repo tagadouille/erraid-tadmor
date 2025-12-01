@@ -203,16 +203,16 @@ static int append_times_exitcodes(const char* path, uint16_t task_id, int exitco
 
     uint64_t now = (uint64_t)time(NULL);
     uint64_t be_ts = hton64(now);
-    uint16_t code16 = (uint16_t)exitcode;
-    uint16_t be_code = htons(code16); /* 16-bit network order (big-endian) */
+    uint32_t code32 = (uint32_t)exitcode;
+    uint32_t be_code32 = htonl(code32);
 
     if (write(fd, &be_ts, sizeof(be_ts)) != (ssize_t)sizeof(be_ts)) { 
         close(fd);
         return -1;
     }
-    if (write(fd, &be_code, sizeof(be_code)) != (ssize_t)sizeof(be_code)) {
+    if (write(fd, &be_code32, sizeof(be_code32)) != (ssize_t)sizeof(be_code32)) {
         close(fd);
-        return -1; 
+        return -1;
     }
 
     close(fd);
@@ -432,7 +432,7 @@ void daemon_run(void) {
             uint32_t id = (uint32_t)idul;
 
             /* use existing tree reader which sets curr_task */
-            if (task_reader(tasksdir, id, OUTPUT) < 0) {
+            if (task_reader(tasksdir, id, TIME_EXIT) < 0) {
                 write_log_msg("task_reader failed for %u", id);
                 continue;
             }else{
