@@ -11,8 +11,8 @@
  */
 typedef struct 
 {
-    uint64_t time;     // timestamp of execution
-    int32_t exitcode;  // Exit status of the task
+    int64_t time;     // timestamp of execution
+    uint16_t exitcode;  // Exit status of the task
 } time_exitcode_t;
 
 /**
