@@ -54,6 +54,79 @@ int erraid_set_rundir(const char *rundir) {
 
 /* ----------------------------- UTILITIES ------------------------------- */
 
+/**
+ * equivalent de realpath
+ */
+char *my_realpath(const char *path, char *resolved_path) {
+    if (!path) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    char temp[PATH_MAX];
+    // Si path est relatif, prefixer avec le répertoire courant
+    if (path[0] != '/') {
+        if (!getcwd(temp, sizeof(temp))) return NULL;
+        if (strlen(temp) + 1 + strlen(path) >= PATH_MAX) {
+            errno = ENAMETOOLONG;
+            return NULL;
+        }
+        strcat(temp, "/");
+        strcat(temp, path);
+    } else {
+        strncpy(temp, path, PATH_MAX);
+        temp[PATH_MAX - 1] = '\0';
+    }
+
+    // Tokeniser par '/'
+    char *stack[PATH_MAX]; // pointeurs vers les composants
+    int top = -1;
+
+    char *copy = strdup(temp);
+    if (!copy) return NULL;
+
+    char *token = strtok(copy, "/");
+    while (token) {
+        if (strcmp(token, ".") == 0) {
+            // ignorer
+        } else if (strcmp(token, "..") == 0) {
+            if (top >= 0) top--; // remonter
+        } else {
+            stack[++top] = token;
+        }
+        token = strtok(NULL, "/");
+    }
+
+    // Construire le chemin final
+    char result[PATH_MAX];
+    result[0] = '/';
+    result[1] = '\0';
+    for (int i = 0; i <= top; i++) {
+        if (strlen(result) + 1 + strlen(stack[i]) >= PATH_MAX) {
+            free(copy);
+            errno = ENAMETOOLONG;
+            return NULL;
+        }
+        if (i != 0) strcat(result, "/");
+        strcat(result, stack[i]);
+    }
+
+    free(copy);
+
+    // Copier dans le buffer fourni ou allouer dynamiquement
+    char *res;
+    if (resolved_path) {
+        strncpy(resolved_path, result, PATH_MAX);
+        resolved_path[PATH_MAX - 1] = '\0';
+        res = resolved_path;
+    } else {
+        res = strdup(result);
+        if (!res) return NULL;
+    }
+
+    return res;
+}
+
 int mkdir_p(const char *path) {
     if (!path || *path == '\0') {
         errno = EINVAL;
@@ -97,7 +170,7 @@ static int ensure_rundir(void) {
 
     //Use absolute path for g_run_dir
     char abs_rundir[PATH_MAX];
-    if (!realpath(g_run_dir, abs_rundir)) {
+    if (!my_realpath(g_run_dir, abs_rundir)) {
         perror("realpath");
         return -1;
     }
