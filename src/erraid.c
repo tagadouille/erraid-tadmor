@@ -190,36 +190,14 @@ static uint64_t hton64(uint64_t x) {
 
 /* ------------------------- EXECUTION ENGINE ----------------------------- */
 
-/* Return path "RUN_DIR/tasks/<id>", ensure it exists (caller must free) */
-static char *task_dir_path(uint32_t task_id) {
-    char *path = malloc(PATH_MAX);
-    if (!path) return NULL;
-    if (snprintf(path, PATH_MAX, "%s/%u", g_run_dir, task_id) < 0) {
-        free(path);
-        return NULL;
-    }
-    if (mkdir_p(path) != 0) {
-        /* if fail, still return path (might already exist) */
-        /* but if not exist and can't create, return NULL */
-        struct stat st;
-        if (stat(path, &st) != 0) {
-            free(path);
-            return NULL;
-        }
-    }
-    return path;
-}
-
 /* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] */
-static int append_times_exitcodes(uint32_t task_id, int exitcode) {
-    char *td = task_dir_path(task_id);
-    if (!td) return -1;
+static int append_times_exitcodes(const char* path, uint16_t task_id, int exitcode) {
+
     char te_path[PATH_MAX];
-    snprintf(te_path, sizeof(te_path), "%s/times-exitcodes", td);
+    snprintf(te_path, sizeof(te_path), "%s/times-exitcodes", path);
 
     int fd = open(te_path, O_CREAT | O_WRONLY | O_APPEND, 0644);
     if (fd < 0) {
-        free(td);
         return -1;
     }
 
@@ -228,93 +206,104 @@ static int append_times_exitcodes(uint32_t task_id, int exitcode) {
     uint16_t code16 = (uint16_t)exitcode;
     uint16_t be_code = htons(code16); /* 16-bit network order (big-endian) */
 
-    if (write(fd, &be_ts, sizeof(be_ts)) != (ssize_t)sizeof(be_ts)) { close(fd); free(td); return -1; }
-    if (write(fd, &be_code, sizeof(be_code)) != (ssize_t)sizeof(be_code)) { close(fd); free(td); return -1; }
-
+    if (write(fd, &be_ts, sizeof(be_ts)) != (ssize_t)sizeof(be_ts)) { 
+        close(fd);
+        return -1;
+    }
+    if (write(fd, &be_code, sizeof(be_code)) != (ssize_t)sizeof(be_code)) {
+        close(fd);
+        return -1; 
+    }
 
     close(fd);
-    free(td);
     return 0;
 }
 
 /* Execute a simple command and write stdout/stderr into task dir (overwrite),
    append times-exitcodes entry. */
-static int execute_simple(const command_t *cmd, uint32_t task_id, int outfd, int errfd)
+static int execute_simple(const command_t *cmd, uint32_t task_id,
+                          const char *timespath, int outfd, int errfd,
+                          int is_subcmd)
 {
     if (!cmd) return -1;
 
     pid_t pid = fork();
     if (pid < 0) {
         write_log_msg("fork failed: %s", strerror(errno));
-        close(outfd);
-        close(errfd);
+        close(outfd); close(errfd);
         return -1;
     }
 
     if (pid == 0) {
-        /* CHILD: redirect stdout/stderr */
         if (dup2(outfd, STDOUT_FILENO) < 0) _exit(127);
         if (dup2(errfd, STDERR_FILENO) < 0) _exit(127);
-        close(outfd);
-        close(errfd);
+        close(outfd); close(errfd);
 
-        const arguments_t *args = &cmd->args.simple;
-        if (!args || !args->command) _exit(127);
-
-         char **argv = arguments_to_argv(args);
+        char **argv = arguments_to_argv(&cmd->args.simple);
         if (!argv) _exit(127);
 
         execvp(argv[0], argv);
-        /* if execvp returns, it's an error */
-        dprintf(STDERR_FILENO, "execvp failed: %s\n", strerror(errno));
-
-        /* free argv before exit (child will exit anyway) */
-        for (size_t i = 0; argv[i]; ++i) free(argv[i]);
-        free(argv);
         _exit(127);
     }
 
-    /* PARENT */
     close(outfd);
     close(errfd);
 
-    int status = 0;
+    int status;
     waitpid(pid, &status, 0);
     int exitcode = WIFEXITED(status) ? WEXITSTATUS(status) : 255;
 
-    if (append_times_exitcodes(task_id, exitcode) < 0)
-        write_log_msg("Failed to append times-exitcodes for %u", task_id);
+    if (!is_subcmd) {
+        append_times_exitcodes(timespath, task_id, exitcode);
+    }
 
-    write_log_msg("Task %u executed (retval=%d)", task_id, exitcode);
+    return exitcode;
+}
 
-    return 0;
+
+static int execute_complexe(const command_t *cmd, uint32_t task_id,
+                             const char *timespath, int outfd, int errfd)
+{
+    if (!cmd || cmd->type != SQ)
+        return -1;
+
+    int final_exitcode = 0;
+
+    uint16_t count = cmd->args.composed.count;
+    for (uint16_t i = 0; i < count; i++) {
+
+        /* Chaque sous-commande réutilise le même outfd/errfd */
+        int fd_out = dup(outfd);
+        int fd_err = dup(errfd);
+
+        int ret = execute_simple(cmd->args.composed.cmds[i],
+                                 task_id, timespath,
+                                 fd_out, fd_err, 1);
+
+        final_exitcode = ret; // convention shell: dernier exitcode
+    }
+
+    /* ENFIN : un seul append */
+    append_times_exitcodes(timespath, task_id, final_exitcode);
+
+    return final_exitcode;
 }
 
 /* Execute command: SI or SQ */
-static int execute_command(const command_t *cmd, uint32_t id, int outfd, int errfd){
+static int execute_command(const command_t *cmd, uint32_t id,
+                           const char *timespath, int outfd, int errfd)
+{
     if (!cmd) return -1;
 
-    if (outfd < 0 || errfd < 0) {
-        if (outfd >= 0) close(outfd);
-        if (errfd >= 0) close(errfd);
-        return -1;
-    }
+    if (cmd->type == SI)
+        return execute_simple(cmd, id, timespath, outfd, errfd, 0);
 
-    if (cmd->type == SI) {
-        return execute_simple(cmd, id, outfd, errfd);
-    } else if (cmd->type == SQ) {
-        uint16_t count = cmd->args.composed.count;
-        for (uint16_t i = 0; i < count; ++i) {
-            command_t *sub = cmd->args.composed.cmds[i];
-            if (execute_command(sub, id, outfd, errfd) < 0) {
-                /* continue executing sequence even if one fails (spec choice) */
-                write_log_msg("Subcommand %u of sequence failed (task %u)", i, id);
-            }
-        }
-        return 0;
-    }
+    if (cmd->type == SQ)
+        return execute_complexe(cmd, id, timespath, outfd, errfd);
+
     return -1;
 }
+
 
 static int run_task_if_due(task_t *task)
 {
@@ -327,21 +316,32 @@ static int run_task_if_due(task_t *task)
 
     write_log_msg("Executing task %u", task->id);
 
-    /* prepare task directory */
-    char *td = task_dir_path(task -> id);
-    if (!td) {
-        write_log_msg("Cannot locate/create task directory for %u", task->id);
-        return -1;
-    }
+    //Converting task_id to string :
+    char id[6];
+    snprintf(id, sizeof(id), "%u", task->id);
 
-    char outpath[PATH_MAX], errpath[PATH_MAX];
-    snprintf(outpath, sizeof(outpath), "%s/stdout", td);
-    snprintf(errpath, sizeof(errpath), "%s/stderr", td);
+    char outpath[PATH_MAX], errpath[PATH_MAX], timespath[PATH_MAX];
+    snprintf(outpath, sizeof(outpath), "%s/%s/stdout", tasksdir, id);
+    snprintf(errpath, sizeof(errpath), "%s/%s/stderr", tasksdir, id);
+    snprintf(timespath, sizeof(errpath), "%s/%s/times-exitcodes", tasksdir, id);
 
     int outfd = open(outpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
     int errfd = open(errpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    
+    if (outfd < 0 || errfd < 0) {
+        write_log_msg("Cannot open stdout/stderr for task %u: %s / %s", task->id, strerror(errno), tasksdir);
+        if (outfd >= 0) close(outfd);
+        if (errfd >= 0) close(errfd);
+        return -1;
+    }
 
-    return execute_command(task->cmd, task->id, outfd, errfd);
+    if (outfd < 0 || errfd < 0) {
+        if (outfd >= 0) close(outfd);
+        if (errfd >= 0) close(errfd);
+        return -1;
+    }
+
+    return execute_command(task->cmd, task->id, timespath, outfd, errfd);
 }
 
 /* ---------------------------- DAEMON MODE ------------------------------ */
