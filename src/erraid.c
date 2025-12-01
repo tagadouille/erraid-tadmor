@@ -1,4 +1,4 @@
-Pourquoi le démon ne tourne pas en boucle : #define _POSIX_C_SOURCE 200809L /* for PATH_MAX, etc. */
+#define _POSIX_C_SOURCE 200809L /* for PATH_MAX, etc. */
 
 #include "erraid.h"
 
@@ -239,37 +239,15 @@ static int append_times_exitcodes(uint32_t task_id, int exitcode) {
 
 /* Execute a simple command and write stdout/stderr into task dir (overwrite),
    append times-exitcodes entry. */
-static int execute_simple(const command_t *cmd, uint32_t task_id)
+static int execute_simple(const command_t *cmd, uint32_t task_id, int outfd, int errfd)
 {
     if (!cmd) return -1;
-
-    /* prepare task directory */
-    char *td = task_dir_path(task_id);
-    if (!td) {
-        write_log_msg("Cannot locate/create task directory for %u", task_id);
-        return -1;
-    }
-
-    char outpath[PATH_MAX], errpath[PATH_MAX];
-    snprintf(outpath, sizeof(outpath), "%s/stdout", td);
-    snprintf(errpath, sizeof(errpath), "%s/stderr", td);
-
-    int outfd = open(outpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-    int errfd = open(errpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-    if (outfd < 0 || errfd < 0) {
-        write_log_msg("Cannot open stdout/stderr for task %u: %s / %s", task_id, strerror(errno), td);
-        free(td);
-        if (outfd >= 0) close(outfd);
-        if (errfd >= 0) close(errfd);
-        return -1;
-    }
 
     pid_t pid = fork();
     if (pid < 0) {
         write_log_msg("fork failed: %s", strerror(errno));
         close(outfd);
         close(errfd);
-        free(td);
         return -1;
     }
 
@@ -309,22 +287,26 @@ static int execute_simple(const command_t *cmd, uint32_t task_id)
 
     write_log_msg("Task %u executed (retval=%d)", task_id, exitcode);
 
-    free(td);
     return 0;
 }
 
 /* Execute command: SI or SQ */
-static int execute_command(const command_t *cmd, uint32_t id)
-{
+static int execute_command(const command_t *cmd, uint32_t id, int outfd, int errfd){
     if (!cmd) return -1;
 
+    if (outfd < 0 || errfd < 0) {
+        if (outfd >= 0) close(outfd);
+        if (errfd >= 0) close(errfd);
+        return -1;
+    }
+
     if (cmd->type == SI) {
-        return execute_simple(cmd, id);
+        return execute_simple(cmd, id, outfd, errfd);
     } else if (cmd->type == SQ) {
         uint16_t count = cmd->args.composed.count;
         for (uint16_t i = 0; i < count; ++i) {
             command_t *sub = cmd->args.composed.cmds[i];
-            if (execute_command(sub, id) < 0) {
+            if (execute_command(sub, id, outfd, errfd) < 0) {
                 /* continue executing sequence even if one fails (spec choice) */
                 write_log_msg("Subcommand %u of sequence failed (task %u)", i, id);
             }
@@ -344,7 +326,22 @@ static int run_task_if_due(task_t *task)
     }
 
     write_log_msg("Executing task %u", task->id);
-    return execute_command(task->cmd, task->id);
+
+    /* prepare task directory */
+    char *td = task_dir_path(task -> id);
+    if (!td) {
+        write_log_msg("Cannot locate/create task directory for %u", task->id);
+        return -1;
+    }
+
+    char outpath[PATH_MAX], errpath[PATH_MAX];
+    snprintf(outpath, sizeof(outpath), "%s/stdout", td);
+    snprintf(errpath, sizeof(errpath), "%s/stderr", td);
+
+    int outfd = open(outpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    int errfd = open(errpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+
+    return execute_command(task->cmd, task->id, outfd, errfd);
 }
 
 /* ---------------------------- DAEMON MODE ------------------------------ */
@@ -435,7 +432,7 @@ void daemon_run(void) {
             uint32_t id = (uint32_t)idul;
 
             /* use existing tree reader which sets curr_task */
-            if (task_reader(tasksdir, id, LIST) < 0) {
+            if (task_reader(tasksdir, id, OUTPUT) < 0) {
                 write_log_msg("task_reader failed for %u", id);
                 continue;
             }else{
