@@ -70,38 +70,33 @@ char *timing_to_string(const timing_t *t)
     return out;
 }
 
-bool timing_match_time(const timing_t *t, time_t now)
+bool timing_match_now(const timing_t *t)
 {
     if (!t)
         return false;
 
+    time_t now = time(NULL);
+    if (now == (time_t)-1)
+        return false;
+
     struct tm tm_now;
-    if (gmtime_r(&now, &tm_now) == NULL)
+    if (localtime_r(&now, &tm_now) == NULL)
         return false;
 
-    /* Minutes */
-    if (t->minutes == 0)
-        return false;
+    if (t->minutes != 0 && !mask_is_full(t->minutes, 60)) {
+        if (!(t->minutes & (1ULL << tm_now.tm_min)))
+            return false;
+    }
 
-    if (!mask_is_full(t->minutes, MINUTES_COUNT) &&
-        !(t->minutes & (1ULL << tm_now.tm_min)))
-        return false;
+    if (t->hours != 0 && !mask_is_full(t->hours, 24)) {
+        if (!(t->hours & (1U << tm_now.tm_hour)))
+            return false;
+    }
 
-    /* Hours */
-    if (t->hours == 0)
-        return false;
-
-    if (!mask_is_full(t->hours, HOURS_COUNT) &&
-        !(t->hours & (1U << tm_now.tm_hour)))
-        return false;
-
-    /* Days */
-    if (t->daysofweek == 0)
-        return false;
-
-    if (!mask_is_full(t->daysofweek, DAYS_COUNT) &&
-        !(t->daysofweek & (1U << tm_now.tm_wday)))
-        return false;
+    if (t->daysofweek != 0 && !mask_is_full(t->daysofweek, 7)) {
+        if (!(t->daysofweek & (1U << tm_now.tm_wday)))
+            return false;
+    }
 
     return true;
 }
