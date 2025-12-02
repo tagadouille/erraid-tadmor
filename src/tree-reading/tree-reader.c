@@ -16,8 +16,6 @@
 #include "erraid.h"
 
 int task_reader(const char* path, uint64_t task_id, Action_type action){
-    dprintf(STDERR_FILENO, "DEBUG: task_reader called with path='%s', task_id=%lu\n",
-        path, task_id);
 
     curr_task = task_create(task_id);
 
@@ -53,7 +51,7 @@ int task_finder(const char* path, char* task_id, Action_type action){
 
     //Finding the task
     while ((entry=readdir(dirp))) {
-        dprintf(STDERR_FILENO, "DEBUG: task_finder sees entry '%s'\n", entry->d_name);
+        
         if(entry -> d_name[0] == '.') continue;
 
         if(strcmp(entry -> d_name, task_id) == 0){
