@@ -455,31 +455,20 @@ int daemon_init(void) {
 /* ------------------------------ Timing util ---------------------------- */
 /* wait until the next minute boundary (sleep until seconds == 0) */
 static void wait_next_minute(void) {
-    struct timespec now;
-    clock_gettime(CLOCK_REALTIME, &now);
+    time_t now = time(NULL);
+    struct tm tm_now;
 
-    time_t t = now.tv_sec;
-    struct tm tm_utc;
+    if (localtime_r(&now, &tm_now) == NULL) {
+        sleep(60);
+        return;
+    }
 
-    gmtime_r(&t, &tm_utc);
-
-    int sec = tm_utc.tm_sec;
-
-    /* minute suivante en UTC */
+    int sec = tm_now.tm_sec;
     int wait = 60 - sec;
     if (wait <= 0) wait = 60;
 
-    time_t target = t + wait;
-
-    struct timespec ts;
-    ts.tv_sec = target;
-    ts.tv_nsec = 0;
-
-    while (running) {
-        int r = clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, NULL);
-        if (r == 0) break;
-        if (r != EINTR) break;
-    }
+    for (int i = 0; i < wait && running; ++i)
+        sleep(1);
 }
 
 /* ------------------------------ MAIN LOOP ------------------------------ */

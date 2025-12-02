@@ -76,38 +76,39 @@ bool timing_match_now(const timing_t *t)
     if (!t)
         return false;
 
-    // Get current time
     time_t now = time(NULL);
-    struct tm *tm_now = localtime(&now);
+    struct tm tm_now;
 
-    // Check minutes mask
+    if (gmtime_r(&now, &tm_now) == NULL)
+        return false;
+
+    // Minutes mask
     if (t->minutes == 0)
-        return false;  // Aucun bit = jamais valable
+        return false;
 
     if (!mask_is_full(t->minutes, MINUTES_COUNT) &&
-        !(t->minutes & (1ULL << tm_now->tm_min)))
-        return false; // 1ULL c'est 1 sous forme unsigned long long pr être sûr
-                    // que le décalage de bit fonctionne bien sur 64 bits
-    
-    // Check hours mask
+        !(t->minutes & (1ULL << tm_now.tm_min)))
+        return false;
+
+    // Hours mask
     if (t->hours == 0)
-        return false;  // Aucun bit = jamais valable
+        return false;
 
     if (!mask_is_full(t->hours, HOURS_COUNT) &&
-        !(t->hours & (1U << tm_now->tm_hour)))
-        return false; // 1U c'est 1 sous forme unsigned int pr être sûr
-                    // que le décalage de bit fonctionne bien sur 32 bits
+        !(t->hours & (1U << tm_now.tm_hour)))
+        return false;
 
-    // Check days of week mask
+    // Days of week mask
     if (t->daysofweek == 0)
-        return false;  // Aucun bit = jamais valable
+        return false;
 
     if (!mask_is_full(t->daysofweek, DAYS_COUNT) &&
-        !(t->daysofweek & (1U << tm_now->tm_wday)))
+        !(t->daysofweek & (1U << tm_now.tm_wday)))
         return false;
-    
+
     return true;
 }
+
 
 //TODO Refaire ça
 timing_t* timing_create(const char *data, ssize_t size)
