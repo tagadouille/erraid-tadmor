@@ -258,7 +258,7 @@ static uint64_t hton64(uint64_t x) {
 /* ------------------------- EXECUTION ENGINE ----------------------------- */
 
 /* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] */
-static int append_times_exitcodes_ts(const char* path, int exitcode, uint64_t ts)
+static int append_times_exitcodes(const char* path, int exitcode, uint64_t ts)
 {
     char te_path[PATH_MAX];
     snprintf(te_path, sizeof(te_path), "%s/times-exitcodes", path);
