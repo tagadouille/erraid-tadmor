@@ -258,15 +258,19 @@ static uint64_t hton64(uint64_t x) {
 /* ------------------------- EXECUTION ENGINE ----------------------------- */
 
 /* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] */
-static int append_times_exitcodes(const char* path, int exitcode) {
+static int append_times_exitcodes_ts(const char* path, int exitcode, uint64_t ts)
+{
     char te_path[PATH_MAX];
     snprintf(te_path, sizeof(te_path), "%s/times-exitcodes", path);
 
     int fd = open(te_path, O_CREAT | O_WRONLY | O_APPEND, 0644);
-    if (fd < 0) return -1;
+    if (fd < 0)
+        return -1;
 
-    uint64_t now = (uint64_t)time(NULL);
-    uint64_t be_ts = hton64(now);
+    /* Convert timestamp en big endian */
+    uint64_t be_ts = hton64(ts);
+
+    /* Convert exit code en 16 bits big endian */
     uint16_t code16 = (uint16_t)exitcode;
     uint16_t be_code16 = htons(code16);
 
@@ -276,12 +280,14 @@ static int append_times_exitcodes(const char* path, int exitcode) {
     }
 
     if (write(fd, &be_code16, sizeof(be_code16)) != (ssize_t)sizeof(be_code16)) { 
-        close(fd); return -1; 
+        close(fd); 
+        return -1; 
     }
 
     close(fd);
     return 0;
 }
+
 
 /* Execute a simple command and write stdout/stderr into task dir (overwrite),
    append times-exitcodes entry. */

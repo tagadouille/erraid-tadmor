@@ -70,19 +70,16 @@ char *timing_to_string(const timing_t *t)
     return out;
 }
 
-// ! Les commentaires sont à enlever plus tard
-bool timing_match_now(const timing_t *t)
+bool timing_match_time(const timing_t *t, time_t now)
 {
     if (!t)
         return false;
 
-    time_t now = time(NULL);
     struct tm tm_now;
-
     if (gmtime_r(&now, &tm_now) == NULL)
         return false;
 
-    // Minutes mask
+    /* Minutes */
     if (t->minutes == 0)
         return false;
 
@@ -90,7 +87,7 @@ bool timing_match_now(const timing_t *t)
         !(t->minutes & (1ULL << tm_now.tm_min)))
         return false;
 
-    // Hours mask
+    /* Hours */
     if (t->hours == 0)
         return false;
 
@@ -98,7 +95,7 @@ bool timing_match_now(const timing_t *t)
         !(t->hours & (1U << tm_now.tm_hour)))
         return false;
 
-    // Days of week mask
+    /* Days */
     if (t->daysofweek == 0)
         return false;
 
