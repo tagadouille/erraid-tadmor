@@ -68,6 +68,13 @@ error:
     return result;
 }
 
+static int numeric_cmp(const void *a, const void *b)
+{
+    int na = atoi(*(char * const*)a);
+    int nb = atoi(*(char * const*)b);
+    return (na > nb) - (na < nb);
+}
+
 command_t *command_parser(const char *path, command_t *cmd)
 {
     DIR *dirp = NULL;
@@ -132,7 +139,11 @@ command_t *command_parser(const char *path, command_t *cmd)
     
     struct dirent *entry;
 
-    // Reading all the direct sons of the current node
+    // Collecting numeric subdirectories for sorting
+    size_t cap = 8, count = 0;
+    char **subdirs = malloc(cap * sizeof(char*));
+    if (!subdirs) goto cmd_clean;
+
     while ((entry = readdir(dirp)) != NULL)
     {
         // Skipping the . and .. entries
@@ -143,90 +154,122 @@ command_t *command_parser(const char *path, command_t *cmd)
         // We check if the entry is a directory
         if (entry->d_type == DT_DIR)
         {
-            // Test if the name is an int :
             char *end;
+            errno = 0;
             strtol(entry->d_name, &end, 10);
 
             if (*end != '\0' || errno == ERANGE)
             {
                 continue;
             }
-            // Recursively calling command_parser on the subdirectory
-            char *sub_path = make_path(path, entry->d_name);
 
-            if (sub_path == NULL)
-            {
-                goto cmd_clean;
-            }
-            // Construction of the path to the type file of the son command
-            char *type_path = make_path(sub_path, "type");
-
-            if (type_path == NULL)
-            {
-                goto cmd_clean;
-            }
-            // Construction of the son command
-            // Reading the type file of the son and filling the command structure accordingly
-            command_t *son_cmd = NULL;
-            command_type_t son_type = type_reader(type_path);
-
-            if (son_type == INVALID)
-            {
-                dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", sub_path);
-                cmd = NULL;
-                goto clean;
-            }
-
-            son_cmd = create_command(son_cmd, son_type);
-
-            if (son_cmd == NULL)
-            {
-                goto clean;
-            }
-            son_cmd = command_parser(sub_path, son_cmd);
-
-            if (son_cmd == NULL)
-            {
-                goto clean;
-            }
-
-            cmd = type_processor(path, type, cmd, son_cmd);
-            if (cmd == NULL)
-            {
-                dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", path);
-                goto clean;
-            }
-            // freeing the allocated paths
-            free(type_path);
-            type_path = NULL;
-            free(sub_path);
-            sub_path = NULL;
-
-            continue;
-
-            clean:
-                if (type_path) {
-                    free(type_path);
-                    type_path = NULL;
+            if (count == cap) {
+                cap *= 2;
+                char **tmp = realloc(subdirs, cap * sizeof(char*));
+                if (!tmp) {
+                    free(subdirs);
+                    goto cmd_clean;
                 }
-                if (sub_path) {
-                    free(sub_path);
-                    sub_path = NULL;
-                }
-                if (son_cmd) {
-                    command_free(son_cmd);
-                    son_cmd = NULL;
-                }
-                goto cmd_clean;
+                subdirs = tmp;
+            }
+            subdirs[count++] = strdup(entry->d_name);
         }
     }
 
-    if (dirp != NULL && closedir(dirp) != 0)
+    if (closedir(dirp) != 0)
     {
         perror("closedir");
+        for (size_t i = 0; i < count; i++) free(subdirs[i]);
+        free(subdirs);
         goto cmd_clean;
     }
+
+    // numeric sort
+    qsort(subdirs, count, sizeof(char *), numeric_cmp);
+
+    // Reading all the direct sons of the current node
+    for (size_t i = 0; i < count; i++)
+    {
+        char *sub_path = make_path(path, subdirs[i]);
+
+        if (sub_path == NULL)
+        {
+            goto numeric_clean;
+        }
+
+        // Construction of the path to the type file of the son command
+        char *type_path = make_path(sub_path, "type");
+
+        if (type_path == NULL)
+        {
+            free(sub_path);
+            sub_path = NULL;
+            goto numeric_clean;
+        }
+
+        // Construction of the son command
+        // Reading the type file of the son and filling the command structure accordingly
+        command_t *son_cmd = NULL;
+        command_type_t son_type = type_reader(type_path);
+
+        if (son_type == INVALID)
+        {
+            dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", sub_path);
+            cmd = NULL;
+            goto clean;
+        }
+
+        son_cmd = create_command(son_cmd, son_type);
+
+        if (son_cmd == NULL)
+        {
+            goto clean;
+        }
+        son_cmd = command_parser(sub_path, son_cmd);
+
+        if (son_cmd == NULL)
+        {
+            goto clean;
+        }
+
+        cmd = type_processor(path, type, cmd, son_cmd);
+        if (cmd == NULL)
+        {
+            dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", path);
+            goto clean;
+        }
+        // freeing the allocated paths
+        free(type_path);
+        type_path = NULL;
+        free(sub_path);
+        sub_path = NULL;
+
+        continue;
+
+        clean:
+            if (type_path) {
+                free(type_path);
+                type_path = NULL;
+            }
+            if (sub_path) {
+                free(sub_path);
+                sub_path = NULL;
+            }
+            if (son_cmd) {
+                command_free(son_cmd);
+                son_cmd = NULL;
+            }
+            goto numeric_clean;
+    }
+
+    for (size_t i = 0; i < count; i++) free(subdirs[i]);
+    free(subdirs);
     return cmd;
+
+numeric_clean:
+    for (size_t i = 0; i < count; i++) free(subdirs[i]);
+    free(subdirs);
+    goto cmd_clean;
 
 cmd_clean:
     dprintf(STDERR_FILENO, "Error while parsing command tree at path %s\n", path);
@@ -242,12 +285,9 @@ cmd_clean:
         argv_path = NULL;
     }
 
-    if (dirp != NULL && closedir(dirp) != 0)
-    {
-        perror("closedir");
-    }
     return NULL;
 }
+
 
 command_t *argv_reader(const char *path, command_t *og_command)
 {
