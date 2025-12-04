@@ -282,43 +282,29 @@ static ssize_t write_all(int fd, const void *buf, size_t count) {
 
 /* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] atomically+safe */
 static int append_times_exitcodes(const char* path, int exitcode) {
-    if (!path) { errno = EINVAL; return -1; }
 
     int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
     if (fd < 0) return -1;
 
-    /* optional: lock file to avoid interleaving with other processes */
-    if (flock(fd, LOCK_EX) != 0) {
-        /* Non fatal: continue but log */
-        write_log_msg("flock LOCK_EX failed on %s: %s", path, strerror(errno));
-    }
+    struct __attribute__((packed)) rec {
+        uint64_t ts;
+        uint32_t code;
+    } r;
 
-    struct times_record r;
-    uint64_t now = (uint64_t)time(NULL);
-    r.ts_be = hton64(now);
-    r.code_be = htonl((uint32_t)exitcode);
+    r.ts = hton64((uint64_t)time(NULL));
+    r.code = htonl((uint32_t)exitcode);
 
-    /* single write_all call for atomicity correctness (single syscall is ideal,
-       but we still loop in case of partial write). */
-    if (write_all(fd, &r, sizeof(r)) != (ssize_t)sizeof(r)) {
-        write_log_msg("write_all failed for %s: %s", path, strerror(errno));
-        /* unlock and close */
-        flock(fd, LOCK_UN);
+    ssize_t w = write(fd, &r, sizeof(r));
+    if (w != sizeof(r)) {
         close(fd);
         return -1;
     }
 
-    /* ensure data is on disk (test harness may expect durable writes) */
-    if (fsync(fd) != 0) {
-        write_log_msg("fsync failed for %s: %s", path, strerror(errno));
-        /* don't treat as fatal maybe, but log it */
-    }
-
-    /* unlock and close */
-    flock(fd, LOCK_UN);
+    fsync(fd);
     close(fd);
     return 0;
 }
+
 
 /* Execute a simple command and write stdout/stderr into task dir (overwrite),
    append times-exitcodes entry. */
