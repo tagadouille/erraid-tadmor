@@ -265,22 +265,24 @@ static int append_times_exitcodes(const char* path, int exitcode) {
 
     uint64_t now = (uint64_t) time(NULL);
     uint64_t be_ts = hton64(now);
-    uint16_t code16 = (uint16_t) exitcode;
-    uint16_t be_code16 = htons(code16);
 
-    if (write(fd, &be_ts, sizeof(be_ts)) != (ssize_t)sizeof(be_ts)) { 
-        close(fd); 
-        return -1; 
+    uint32_t code32 = (uint32_t) exitcode;
+    uint32_t be_code32 = htonl(code32);
+
+    if (write(fd, &be_ts, sizeof(be_ts)) != sizeof(be_ts)) {
+        close(fd);
+        return -1;
     }
 
-    if (write(fd, &be_code16, sizeof(be_code16)) != (ssize_t)sizeof(be_code16)) { 
-        close(fd); 
-        return -1; 
+    if (write(fd, &be_code32, sizeof(be_code32)) != sizeof(be_code32)) {
+        close(fd);
+        return -1;
     }
 
     close(fd);
     return 0;
 }
+
 
 
 
