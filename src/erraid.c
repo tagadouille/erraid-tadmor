@@ -259,10 +259,8 @@ static uint64_t hton64(uint64_t x) {
 
 /* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] */
 static int append_times_exitcodes(const char* path, int exitcode) {
-    char te_path[PATH_MAX];
-    snprintf(te_path, sizeof(te_path), "%s/times-exitcodes", path);
 
-    int fd = open(te_path, O_CREAT | O_WRONLY | O_APPEND, 0644);
+    int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
     if (fd < 0) return -1;
 
     uint64_t now = (uint64_t) time(NULL);
@@ -303,7 +301,6 @@ static int execute_simple(const command_t *cmd, const char *timespath, int outfd
     if (pid == 0) {
         if (dup2(outfd, STDOUT_FILENO) < 0) _exit(127);
         if (dup2(errfd, STDERR_FILENO) < 0) _exit(127);
-        close(outfd); close(errfd);
 
         char **argv = arguments_to_argv(&cmd->args.simple);
         if (!argv) _exit(127);
@@ -311,9 +308,6 @@ static int execute_simple(const command_t *cmd, const char *timespath, int outfd
         execvp(argv[0], argv);
         _exit(127);
     }
-
-    close(outfd);
-    close(errfd);
 
     int status;
     waitpid(pid, &status, 0);
@@ -406,7 +400,12 @@ static int run_task_if_due(task_t *task)
         return -1;
     }
 
-    return execute_command(task->cmd, timespath, outfd, errfd);
+    int res = execute_command(task->cmd, timespath, outfd, errfd);
+
+    close(outfd);
+    close(errfd);
+
+    return res;
 }
 
 /* ---------------------------- DAEMON MODE ------------------------------ */
