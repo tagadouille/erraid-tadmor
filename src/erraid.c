@@ -16,12 +16,14 @@
 #include <limits.h>
 #include <stdint.h>
 
-#include <stdarg.h>    // va_list
-#include <arpa/inet.h> // htonl / ntohl
-#include <dirent.h>    // opendir / readdir
+#include <stdarg.h>
+#include <arpa/inet.h>
+#include <dirent.h>
+#include <sys/file.h>
 
 #include "types/task.h"
 #include "tree-reading/tree_reader.h"
+
 
 /* ---------------------------- CONFIG ---------------------------------- */
 
@@ -257,34 +259,66 @@ static uint64_t hton64(uint64_t x) {
 
 /* ------------------------- EXECUTION ENGINE ----------------------------- */
 
-/* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] */
+struct times_record {
+    uint64_t ts_be;
+    uint32_t code_be;
+} __attribute__((packed));
+
+/* write "count" bytes from buf, retrying on partial writes */
+static ssize_t write_all(int fd, const void *buf, size_t count) {
+    const unsigned char *p = (const unsigned char *)buf;
+    size_t left = count;
+    while (left > 0) {
+        ssize_t w = write(fd, p, left);
+        if (w < 0) {
+            if (errno == EINTR) continue;
+            return -1;
+        }
+        p += w;
+        left -= (size_t)w;
+    }
+    return (ssize_t)count;
+}
+
+/* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] atomically+safe */
 static int append_times_exitcodes(const char* path, int exitcode) {
+    if (!path) { errno = EINVAL; return -1; }
 
     int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
     if (fd < 0) return -1;
 
-    uint64_t now = (uint64_t) time(NULL);
-    uint64_t be_ts = hton64(now);
+    /* optional: lock file to avoid interleaving with other processes */
+    if (flock(fd, LOCK_EX) != 0) {
+        /* Non fatal: continue but log */
+        write_log_msg("flock LOCK_EX failed on %s: %s", path, strerror(errno));
+    }
 
-    uint32_t code32 = (uint32_t) exitcode;
-    uint32_t be_code32 = htonl(code32);
+    struct times_record r;
+    uint64_t now = (uint64_t)time(NULL);
+    r.ts_be = hton64(now);
+    r.code_be = htonl((uint32_t)exitcode);
 
-    if (write(fd, &be_ts, sizeof(be_ts)) != sizeof(be_ts)) {
+    /* single write_all call for atomicity correctness (single syscall is ideal,
+       but we still loop in case of partial write). */
+    if (write_all(fd, &r, sizeof(r)) != (ssize_t)sizeof(r)) {
+        write_log_msg("write_all failed for %s: %s", path, strerror(errno));
+        /* unlock and close */
+        flock(fd, LOCK_UN);
         close(fd);
         return -1;
     }
 
-    if (write(fd, &be_code32, sizeof(be_code32)) != sizeof(be_code32)) {
-        close(fd);
-        return -1;
+    /* ensure data is on disk (test harness may expect durable writes) */
+    if (fsync(fd) != 0) {
+        write_log_msg("fsync failed for %s: %s", path, strerror(errno));
+        /* don't treat as fatal maybe, but log it */
     }
 
+    /* unlock and close */
+    flock(fd, LOCK_UN);
     close(fd);
     return 0;
 }
-
-
-
 
 /* Execute a simple command and write stdout/stderr into task dir (overwrite),
    append times-exitcodes entry. */
@@ -315,7 +349,7 @@ static int execute_simple(const command_t *cmd, const char *timespath, int outfd
     waitpid(pid, &status, 0);
     int exitcode = WIFEXITED(status) ? WEXITSTATUS(status) : 255;
 
-    if (!is_subcmd) {
+    if (is_subcmd == 0) {
         append_times_exitcodes(timespath, exitcode);
     }
 
