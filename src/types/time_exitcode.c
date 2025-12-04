@@ -10,32 +10,6 @@
 #include <stdlib.h>
 #include <endian.h>
 
-bool time_exitcode_append(const char *path, const time_exitcode_t *record)
-{
-    // Open file in append mode, create if it doesn't exist
-    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644); // 0644 : rw-r--r--
-    if (fd < 0)
-        return false;
-
-    // Convert to big-endian before writing (on inverse l'ordre des octets)
-    uint64_t t = htobe64(record->time);
-    uint32_t c = htobe32(record->exitcode);
-
-    // Write timestamp and exitcode
-    if (write(fd, &t, sizeof(t)) != sizeof(t))
-    {
-        close(fd);
-        return false;
-    }
-    if (write(fd, &c, sizeof(c)) != sizeof(c))
-    {
-        close(fd);
-        return false;
-    }
-
-    close(fd);
-    return true;
-}
 
 char *time_exitcode_show(const char *data, ssize_t size){
     
