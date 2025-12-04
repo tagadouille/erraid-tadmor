@@ -16,12 +16,14 @@
 #include <limits.h>
 #include <stdint.h>
 
-#include <stdarg.h>    // va_list
-#include <arpa/inet.h> // htonl / ntohl
-#include <dirent.h>    // opendir / readdir
+#include <stdarg.h>
+#include <arpa/inet.h>
+#include <dirent.h>
+#include <sys/file.h>
 
 #include "types/task.h"
 #include "tree-reading/tree_reader.h"
+
 
 /* ---------------------------- CONFIG ---------------------------------- */
 
@@ -29,8 +31,9 @@ static volatile int running = 1;
 static char g_run_dir[PATH_MAX] = {0};
 
 static int g_log_fd = -1;
-static char g_log_path[PATH_MAX] = {0};
+static char g_log_path[PATH_MAX] = "log";
 static char g_pid_path[PATH_MAX] = {0};
+static char tasksdir[PATH_MAX];
 
 /* --------------------------- SIGNAL HANDLER ---------------------------- */
 
@@ -53,25 +56,106 @@ int erraid_set_rundir(const char *rundir) {
 
 /* ----------------------------- UTILITIES ------------------------------- */
 
-static int mkdir_p(const char *path) {
+/**
+ * equivalent de realpath
+ */
+char *my_realpath(const char *path, char *resolved_path) {
+    if (!path) { errno = EINVAL; return NULL; }
+
+    char temp[PATH_MAX];
+    if (path[0] != '/') {
+        if (!getcwd(temp, sizeof(temp))) return NULL;
+        size_t need = strlen(temp) + 1 + strlen(path) + 1;
+        if (need > sizeof(temp)) { errno = ENAMETOOLONG; return NULL; }
+        strcat(temp, "/");
+        strcat(temp, path);
+    } else {
+        if (strlen(path) >= sizeof(temp)) { errno = ENAMETOOLONG; return NULL; }
+        strncpy(temp, path, sizeof(temp));
+        temp[sizeof(temp)-1] = '\0';
+    }
+
+    /* split and normalize */
+    char *copy = strdup(temp);
+    if (!copy) return NULL;
+
+    char *components[PATH_MAX];
+    int top = -1;
+
+    char *saveptr = NULL;
+    for (char *tok = strtok_r(copy, "/", &saveptr); tok; tok = strtok_r(NULL, "/", &saveptr)) {
+        if (strcmp(tok, ".") == 0) continue;
+        if (strcmp(tok, "..") == 0) {
+            if (top >= 0) top--;
+            continue;
+        }
+        components[++top] = tok;
+    }
+
+    /* build result */
+    char result[PATH_MAX];
+    if (top == -1) {
+        /* root */
+        strncpy(result, "/", sizeof(result));
+        result[sizeof(result)-1] = '\0';
+    } else {
+        result[0] = '\0';
+        for (int i = 0; i <= top; ++i) {
+            size_t need = strlen(result) + 1 + strlen(components[i]) + 1;
+            if (need > sizeof(result)) {
+                free(copy);
+                errno = ENAMETOOLONG;
+                return NULL;
+            }
+            strcat(result, "/");
+            strcat(result, components[i]);
+        }
+    }
+
+    free(copy);
+
+    if (resolved_path) {
+        strncpy(resolved_path, result, PATH_MAX);
+        resolved_path[PATH_MAX - 1] = '\0';
+        return resolved_path;
+    } else {
+        return strdup(result);
+    }
+}
+
+int mkdir_p(const char *path) {
+    if (!path || *path == '\0') {
+        errno = EINVAL;
+        return -1;
+    }
+
     char tmp[PATH_MAX];
-    char *p = NULL;
-    size_t len;
+    size_t len = strlen(path);
+    if (len >= sizeof(tmp)) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
 
-    if (!path) { errno = EINVAL; return -1; }
-    snprintf(tmp, sizeof(tmp), "%s", path);
-    len = strlen(tmp);
-    if (len == 0) return -1;
-    if (tmp[len - 1] == '/') tmp[len - 1] = 0;
+    strncpy(tmp, path, sizeof(tmp));
+    tmp[sizeof(tmp)-1] = '\0';
 
-    for (p = tmp + 1; *p; p++) {
+    // delete the final slash
+    while (len > 1 && tmp[len-1] == '/') {
+        tmp[len-1] = '\0';
+        len--;
+    }
+
+    for (char *p = tmp + 1; *p; p++) {
         if (*p == '/') {
-            *p = 0;
+            *p = '\0';
             if (mkdir(tmp, 0755) != 0 && errno != EEXIST) return -1;
             *p = '/';
         }
     }
+
+    // create the last directory
     if (mkdir(tmp, 0755) != 0 && errno != EEXIST) return -1;
+
     return 0;
 }
 
@@ -80,11 +164,31 @@ static int ensure_rundir(void) {
 
     if (mkdir_p(g_run_dir) != 0) return -1;
 
-    char tasksdir[PATH_MAX];
-    if (snprintf(tasksdir, sizeof(tasksdir), "%s/tasks", g_run_dir) < 0) return -1;
+    //Use absolute path for g_run_dir
+    char abs_rundir[PATH_MAX];
+    if (!my_realpath(g_run_dir, abs_rundir)) {
+        perror("realpath");
+        return -1;
+    }
+    strncpy(g_run_dir, abs_rundir, sizeof(g_run_dir)-1);
+    g_run_dir[sizeof(g_run_dir)-1] = '\0';
+
+    size_t len = strlen(g_run_dir);
+
+    if (len + strlen("/tasks")+1 >= sizeof(tasksdir)) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+    //Add a slash if necessary
+    if (g_run_dir[strlen(g_run_dir)-1] == '/'){
+        snprintf(tasksdir, sizeof(tasksdir), "%stasks", g_run_dir);
+    }
+    else{
+        snprintf(tasksdir, sizeof(tasksdir), "%s/tasks", g_run_dir);
+    }
+
     if (mkdir_p(tasksdir) != 0) return -1;
 
-    if (snprintf(g_log_path, sizeof(g_log_path), "%s/%s", g_run_dir, LOG_NAME) < 0) return -1;
     if (snprintf(g_pid_path, sizeof(g_pid_path), "%s/%s", g_run_dir, PIDFILE_NAME) < 0) return -1;
 
     return 0;
@@ -101,7 +205,8 @@ int write_log_msg(const char *fmt, ...) {
     char buf[1024];
     time_t now = time(NULL);
     struct tm tm;
-    localtime_r(&now, &tm);
+    /* use UTC so tests are deterministic */
+    if (gmtime_r(&now, &tm) == NULL) return -1;
 
     int off = strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S ", &tm);
     if (off < 0) off = 0;
@@ -112,12 +217,13 @@ int write_log_msg(const char *fmt, ...) {
     va_end(ap);
 
     if (n < 0) return -1;
-    size_t total = (size_t)(off + n);
-    if (total + 1 < sizeof(buf)) buf[total++] = '\n';
+    ssize_t total = (off + n);
+    if (total + 1 < (ssize_t)sizeof(buf)) buf[total++] = '\n';
     else buf[sizeof(buf)-1] = '\0';
 
-    ssize_t w = write(g_log_fd, buf, total);
-    (void)w;
+    if (write(g_log_fd, buf, total) != total) {
+        return -1;
+    }
     return 0;
 }
 
@@ -129,7 +235,12 @@ static int write_pidfile(void) {
     if (fd < 0) return -1;
     char pbuf[32];
     int n = snprintf(pbuf, sizeof(pbuf), "%ld\n", (long)getpid());
-    if (n > 0) write(fd, pbuf, (size_t)n);
+    if (n > 0) {
+        ssize_t w = write(fd, pbuf, (size_t)n);
+        if (w < 0 || w != n) {
+            perror("write");
+        }
+    }
     close(fd);
     return 0;
 }
@@ -148,157 +259,129 @@ static uint64_t hton64(uint64_t x) {
 
 /* ------------------------- EXECUTION ENGINE ----------------------------- */
 
-/* Return path "RUN_DIR/tasks/<id>", ensure it exists (caller must free) */
-static char *task_dir_path(uint32_t task_id) {
-    char *path = malloc(PATH_MAX);
-    if (!path) return NULL;
-    if (snprintf(path, PATH_MAX, "%s/tasks/%u", g_run_dir, task_id) < 0) {
-        free(path);
-        return NULL;
-    }
-    if (mkdir_p(path) != 0) {
-        /* if fail, still return path (might already exist) */
-        /* but if not exist and can't create, return NULL */
-        struct stat st;
-        if (stat(path, &st) != 0) {
-            free(path);
-            return NULL;
+struct times_record {
+    uint64_t ts_be;
+    uint32_t code_be;
+} __attribute__((packed));
+
+/* write "count" bytes from buf, retrying on partial writes */
+static ssize_t write_all(int fd, const void *buf, size_t count) {
+    const unsigned char *p = (const unsigned char *)buf;
+    size_t left = count;
+    while (left > 0) {
+        ssize_t w = write(fd, p, left);
+        if (w < 0) {
+            if (errno == EINTR) continue;
+            return -1;
         }
+        p += w;
+        left -= (size_t)w;
     }
-    return path;
+    return (ssize_t)count;
 }
 
-/* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] */
-static int append_times_exitcodes(uint32_t task_id, int exitcode) {
-    char *td = task_dir_path(task_id);
-    if (!td) return -1;
-    char te_path[PATH_MAX];
-    snprintf(te_path, sizeof(te_path), "%s/times-exitcodes", td);
+/* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] atomically+safe */
+static int append_times_exitcodes(const char* path, int exitcode) {
 
-    int fd = open(te_path, O_CREAT | O_WRONLY | O_APPEND, 0644);
-    if (fd < 0) {
-        free(td);
+    int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
+    if (fd < 0) return -1;
+
+    struct __attribute__((packed)) rec {
+        uint64_t ts;
+        uint32_t code;
+    } r;
+
+    r.ts = hton64((uint64_t)time(NULL));
+    r.code = htonl((uint32_t)exitcode);
+
+    ssize_t w = write(fd, &r, sizeof(r));
+    if (w != sizeof(r)) {
+        close(fd);
         return -1;
     }
 
-    int64_t now = (int64_t)time(NULL);
-    uint64_t be_ts = hton64((uint64_t)now);
-    uint32_t be_code = htonl((uint32_t)exitcode);
-
-    if (write(fd, &be_ts, sizeof(be_ts)) != sizeof(be_ts)) { close(fd); free(td); return -1; }
-    if (write(fd, &be_code, sizeof(be_code)) != sizeof(be_code)) { close(fd); free(td); return -1; }
-
+    fsync(fd);
     close(fd);
-    free(td);
     return 0;
 }
 
+
 /* Execute a simple command and write stdout/stderr into task dir (overwrite),
    append times-exitcodes entry. */
-static int execute_simple(const command_t *cmd, uint32_t task_id)
+static int execute_simple(const command_t *cmd, const char *timespath, int outfd, int errfd,
+                          int is_subcmd)
 {
     if (!cmd) return -1;
-
-    /* prepare task directory */
-    char *td = task_dir_path(task_id);
-    if (!td) {
-        write_log_msg("Cannot locate/create task directory for %u", task_id);
-        return -1;
-    }
-
-    char outpath[PATH_MAX], errpath[PATH_MAX];
-    snprintf(outpath, sizeof(outpath), "%s/stdout", td);
-    snprintf(errpath, sizeof(errpath), "%s/stderr", td);
-
-    int outfd = open(outpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-    int errfd = open(errpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-    if (outfd < 0 || errfd < 0) {
-        write_log_msg("Cannot open stdout/stderr for task %u: %s / %s", task_id, strerror(errno), td);
-        free(td);
-        if (outfd >= 0) close(outfd);
-        if (errfd >= 0) close(errfd);
-        return -1;
-    }
 
     pid_t pid = fork();
     if (pid < 0) {
         write_log_msg("fork failed: %s", strerror(errno));
-        close(outfd);
-        close(errfd);
-        free(td);
+        close(outfd); close(errfd);
         return -1;
     }
 
     if (pid == 0) {
-        /* CHILD: redirect stdout/stderr */
         if (dup2(outfd, STDOUT_FILENO) < 0) _exit(127);
         if (dup2(errfd, STDERR_FILENO) < 0) _exit(127);
-        close(outfd);
-        close(errfd);
 
-        const arguments_t *args = &cmd->args.simple;
-        if (!args || !args->command) _exit(127);
+        char **argv = arguments_to_argv(&cmd->args.simple);
+        if (!argv) _exit(127);
 
-        // Construire la commande complète en une seule ligne
-        size_t len = strlen(string_get(args->command)) + 1;
-        for (uint32_t i = 0; i < args->argc; i++)
-            len += strlen(string_get(args->argv[i])) + 1;
-
-        char *cmdline = malloc(len);
-        if (!cmdline) _exit(127);
-
-        strcpy(cmdline, string_get(args->command));
-        for (uint32_t i = 0; i < args->argc; i++) {
-            strcat(cmdline, " ");
-            strcat(cmdline, string_get(args->argv[i]));
-        }
-
-        // Exécuter avec sh -c
-        execl("/bin/sh", "sh", "-c", cmdline, (char *)NULL);
-
-        dprintf(STDERR_FILENO, "execl failed: %s\n", strerror(errno));
-        free(cmdline);
+        execvp(argv[0], argv);
         _exit(127);
     }
 
-    /* PARENT */
-    close(outfd);
-    close(errfd);
-
-    int status = 0;
+    int status;
     waitpid(pid, &status, 0);
     int exitcode = WIFEXITED(status) ? WEXITSTATUS(status) : 255;
 
-    if (append_times_exitcodes(task_id, exitcode) < 0)
-        write_log_msg("Failed to append times-exitcodes for %u", task_id);
+    if (is_subcmd == 0) {
+        append_times_exitcodes(timespath, exitcode);
+    }
 
-    write_log_msg("Task %u executed (retval=%d)", task_id, exitcode);
+    return exitcode;
+}
 
-    free(td);
-    return 0;
+
+static int execute_complexe(const command_t *cmd, const char *timespath, int outfd, int errfd)
+{
+    if (!cmd || cmd->type != SQ)
+        return -1;
+
+    int final_exitcode = 0;
+
+    uint32_t count = cmd->args.composed.count;
+    for (uint32_t i = 0; i < count; i++) {
+
+        int fd_out = dup(outfd);
+        int fd_err = dup(errfd);
+
+        int ret = execute_simple(cmd->args.composed.cmds[i], timespath, fd_out, fd_err, 1);
+
+        final_exitcode = ret;
+    }
+
+    append_times_exitcodes(timespath, final_exitcode);
+
+    return final_exitcode;
 }
 
 /* Execute command: SI or SQ */
-static int execute_command(const command_t *cmd, uint32_t id)
+static int execute_command(const command_t *cmd, const char *timespath, int outfd, int errfd)
 {
     if (!cmd) return -1;
 
-    if (cmd->type == SI) {
-        return execute_simple(cmd, id);
-    } else if (cmd->type == SQ) {
-        uint16_t count = cmd->args.composed.count;
-        for (uint16_t i = 0; i < count; ++i) {
-            command_t *sub = cmd->args.composed.cmds[i];
-            if (execute_command(sub, id) < 0) {
-                /* continue executing sequence even if one fails (spec choice) */
-                write_log_msg("Subcommand %u of sequence failed (task %u)", i, id);
-            }
-        }
-        return 0;
-    }
+    if (cmd->type == SI)
+        return execute_simple(cmd, timespath, outfd, errfd, 0);
+
+    if (cmd->type == SQ)
+        return execute_complexe(cmd, timespath, outfd, errfd);
+
     return -1;
 }
 
+
+/* Execute command: SI or SQ */
 static int run_task_if_due(task_t *task)
 {
     if (!task || !task->cmd || !task->timing) return -1;
@@ -309,27 +392,42 @@ static int run_task_if_due(task_t *task)
     }
 
     write_log_msg("Executing task %u", task->id);
-    return execute_command(task->cmd, task->id);
-}
 
-/* --------------------------- DAEMON INIT ------------------------------- */
+    /* use correct format for uint32_t id */
+    char id[32];
+    snprintf(id, sizeof(id), "%u", (unsigned)task->id);
 
-int erraid_init_foreground(void) {
-    if (ensure_rundir() != 0) return -1;
+    char outpath[PATH_MAX], errpath[PATH_MAX], timespath[PATH_MAX];
 
-    g_log_fd = open(g_log_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
-    if (g_log_fd < 0) return -1;
+    if (snprintf(outpath, sizeof(outpath), "%s/%s/stdout", tasksdir, id) >= (int)sizeof(outpath)) {
+        write_log_msg("outpath too long for task %u", task->id);
+        return -1;
+    }
+    if (snprintf(errpath, sizeof(errpath), "%s/%s/stderr", tasksdir, id) >= (int)sizeof(errpath)) {
+        write_log_msg("errpath too long for task %u", task->id);
+        return -1;
+    }
+    if (snprintf(timespath, sizeof(timespath), "%s/%s/times-exitcodes", tasksdir, id) >= (int)sizeof(timespath)) {
+        write_log_msg("timespath too long for task %u", task->id);
+        return -1;
+    }
 
-    write_pidfile();
+    int outfd = open(outpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    int errfd = open(errpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
 
-    struct sigaction sa = {0};
-    sa.sa_handler = handle_signal;
-    sigaction(SIGTERM, &sa, NULL);
-    sigaction(SIGINT, &sa, NULL);
-    sigaction(SIGHUP, &sa, NULL);
+    if (outfd < 0 || errfd < 0) {
+        write_log_msg("Cannot open stdout/stderr for task %u: %s / %s", task->id, strerror(errno), tasksdir);
+        if (outfd >= 0) close(outfd);
+        if (errfd >= 0) close(errfd);
+        return -1;
+    }
 
-    write_log_msg("Foreground erraid init (rundir=%s)", g_run_dir);
-    return 0;
+    int res = execute_command(task->cmd, timespath, outfd, errfd);
+
+    close(outfd);
+    close(errfd);
+
+    return res;
 }
 
 /* ---------------------------- DAEMON MODE ------------------------------ */
@@ -354,19 +452,17 @@ int daemon_init(void) {
     if (pid > 0) _exit(EXIT_SUCCESS);
 
     umask(0);
-    if (chdir(g_run_dir) != 0) { /* non fatal */ }
-
-    int devnull = open("/dev/null", O_RDWR);
-    if (devnull >= 0) {
-        dup2(devnull, STDIN_FILENO);
-        if (devnull > 2) close(devnull);
-    }
+    if (chdir(g_run_dir) != 0) { fprintf(stderr, "chdir failed: %s\n", strerror(errno)); }
 
     g_log_fd = open(g_log_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
-    if (g_log_fd >= 0) {
-        dup2(g_log_fd, STDOUT_FILENO);
-        dup2(g_log_fd, STDERR_FILENO);
+    if (g_log_fd < 0) {
+        fprintf(stderr, "Cannot open log file '%s': %s\n", g_log_path, strerror(errno));
+        return -1;
     }
+
+    dup2(g_log_fd, STDOUT_FILENO);
+    dup2(g_log_fd, STDERR_FILENO);
+    
 
     write_pidfile();
 
@@ -380,6 +476,25 @@ int daemon_init(void) {
     return 0;
 }
 
+/* ------------------------------ Timing util ---------------------------- */
+/* wait until the next minute boundary (sleep until seconds == 0) */
+static void wait_next_minute(void) {
+    time_t now = time(NULL);
+    struct tm tm_now;
+
+    if (localtime_r(&now, &tm_now) == NULL) {
+        sleep(60);
+        return;
+    }
+
+    int sec = tm_now.tm_sec;
+    int wait = 60 - sec;
+    if (wait <= 0) wait = 60;
+
+    for (int i = 0; i < wait && running; ++i)
+        sleep(1);
+}
+
 /* ------------------------------ MAIN LOOP ------------------------------ */
 
 void daemon_run(void) {
@@ -388,14 +503,10 @@ void daemon_run(void) {
     while (running) {
         write_log_msg("Scanning tasks directory…");
 
-        char tasksdir[PATH_MAX];
-        if (snprintf(tasksdir, sizeof(tasksdir), "%s/tasks", g_run_dir) < 0) {
-            sleep(SLEEP_INTERVAL);
-            continue;
-        }
-
         DIR *d = opendir(tasksdir);
-        if (!d) {
+
+        if (d == NULL) {
+            perror("opendir");
             write_log_msg("Cannot open tasks/ directory: %s", tasksdir);
             sleep(SLEEP_INTERVAL);
             continue;
@@ -412,7 +523,7 @@ void daemon_run(void) {
             uint32_t id = (uint32_t)idul;
 
             /* use existing tree reader which sets curr_task */
-            if (task_reader(g_run_dir, id, LIST) < 0) {
+            if (task_reader(tasksdir, id, LIST) < 0) {
                 write_log_msg("task_reader failed for %u", id);
                 continue;
             }else{
@@ -422,6 +533,8 @@ void daemon_run(void) {
                 write_log_msg("No curr_task for id %u", id);
                 continue;
             }
+            
+            //task_display(curr_task);
 
             run_task_if_due(curr_task);
             task_destroy(curr_task);
@@ -429,7 +542,7 @@ void daemon_run(void) {
         }
         closedir(d);
 
-        for (int i = 0; i < SLEEP_INTERVAL && running; ++i) sleep(1);
+        wait_next_minute();
     }
 
     write_log_msg("Daemon main loop stopping.");

@@ -13,43 +13,31 @@
 #include "tree-reading/times_reader.h"
 #include "tree-reading/tree_reader.h"
 #include "tree-reading/output_reader.h"
+#include "erraid.h"
 
-int task_reader(const char* path, uint16_t task_id, Action_type action){
-    dprintf(STDERR_FILENO, "DEBUG: task_reader called with path='%s', task_id=%u\n",
-        path, task_id);
+int task_reader(const char* path, uint64_t task_id, Action_type action){
 
-    //construction of the path
-    char taskdir[PATH_MAX];
-    snprintf(taskdir, sizeof(taskdir), "%s/tasks", path);
-
-    char* pathcpy = strdup(taskdir);
-    if(pathcpy == NULL){
-        return -1;
-    }
     curr_task = task_create(task_id);
 
     if(curr_task == NULL){
-        dprintf(STDERR_FILENO, "Error while creating task with id %u\n", task_id);
+        dprintf(STDERR_FILENO, "Error while creating task with id %lu\n", task_id);
         return -1;
     }
 
     //Converting task_id to string :
-    char id[6];
-    snprintf(id, sizeof(id), "%u", task_id);
+    char id[32];
+    snprintf(id, sizeof(id), "%lu", task_id);
 
-    int result = task_finder(pathcpy, id, action);
+    int result = task_finder(path, id, action);
 
     //If an error occured while finding the task, we free curr_task
     if(result == -1){
         task_destroy(curr_task);
-        curr_task = NULL;
-    }
-    free(pathcpy);
-    pathcpy = NULL;
+    } 
     return result;
 }
 
-int task_finder(char* path, char* task_id, Action_type action){
+int task_finder(const char* path, char* task_id, Action_type action){
     DIR* dirp = opendir(path);
 
     if(dirp == NULL){
@@ -63,9 +51,9 @@ int task_finder(char* path, char* task_id, Action_type action){
 
     //Finding the task
     while ((entry=readdir(dirp))) {
-        dprintf(STDERR_FILENO, "DEBUG: task_finder sees entry '%s'\n", entry->d_name);
+        
         if(entry -> d_name[0] == '.') continue;
-        //if(entry -> d_name[0] == '..') continue;
+
         if(strcmp(entry -> d_name, task_id) == 0){
             //Construction of the path to the task
             char* newpath = make_path(path, entry -> d_name);
@@ -94,6 +82,7 @@ int task_finder(char* path, char* task_id, Action_type action){
 }
 
 int extract_task_information(const char* path, Action_type action){
+   
     int result = 0;
     //Calling the appropriate reader depending on the action
     switch (action){
@@ -214,6 +203,10 @@ char* make_path(const char* og_path, const char* folder_name){
         return NULL;
     }
     snprintf(pathcpy, MAX_PATH, "%s/%s", og_path, folder_name); //Concatenation of og_path and folder_name
+    if(folder_exist(pathcpy) == 1){
+        free(pathcpy);
+        return NULL;
+    }
     return pathcpy;
 }
 char* make_path_no_test(const char* og_path, const char* folder_name){
