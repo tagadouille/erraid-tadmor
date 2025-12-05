@@ -1,3 +1,6 @@
+#ifndef ANSWER_H
+#define ANSWER_H
+
 #include "communication/code.h"
 #include <stdint.h>
 #include "types/time_exitcode.h"
@@ -32,6 +35,7 @@ typedef struct{
 typedef struct{
 
     uint16_t anstype;
+    uint16_t errcode;
     uint32_t nbrun;
     time_exitcode_t* all_timecode; //An array of size nbrun
 
@@ -99,3 +103,5 @@ void free_a_timecode_t(a_timecode_t* timecode);
  * @brief free the answer output structure
  */
 void free_a_output_t(a_output_t* output);
+
+#endif

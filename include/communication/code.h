@@ -1,3 +1,6 @@
+#ifndef CODE_H
+#define CODE_H
+
 #define PIPE_BUF 4096
 
 /**
@@ -14,8 +17,6 @@ enum opcode{
     TM = 0x4b49 //TERMINATE -- finish the daemon
 };
 
-typedef enum opcode opcode_t;
-
 /**
  * The enum of the ANSTYPE
  */
@@ -23,8 +24,6 @@ enum anstype{
     OK = 0x4f4b,
     ERR = 0x4552,
 };
-
-typedef enum anstype anstype_t;
 
 /**
  * The enum of the ERRCODE
@@ -34,4 +33,4 @@ enum errcode{
     NR = 0x4e52
 };
 
-typedef enum errcode errcode_t;
+#endif

@@ -1,6 +1,10 @@
+#ifndef REQUEST_H
+#define REQUEST_H
+
 #include "communication/code.h"
 #include  "types/timing.h"
 #include <stdint.h>
+#include "types/task.h"
 
 /**
  * Define the structure of a simple request
@@ -67,3 +71,5 @@ complex_request_t* create_complex_request(uint16_t opcode, timing_t* timing, com
  * @param request the request to free
  */
 void free_complex_request(complex_request_t* request);
+
+#endif
