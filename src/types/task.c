@@ -15,7 +15,7 @@
  * @brief Create a new empty task with the given ID.
  * ! The internal fields still need to be filled by the tree reader.
  */
-task_t *task_create(uint16_t id){
+task_t *task_create(uint64_t id){
     task_t *t = calloc(1, sizeof(task_t));
     if (!t){
         perror("calloc");
@@ -43,7 +43,7 @@ task_t *task_create(uint16_t id){
 
 //! Maybe change STDOUT_FILENO to something else
 void task_display(task_t* task){
-    dprintf(STDOUT_FILENO, "%u: ", task->id);
+    dprintf(STDOUT_FILENO, "%lu: ", task->id);
 
     timing_show(task->timing);
     command_display(task->cmd);
@@ -79,7 +79,7 @@ void command_display(command_t *cmd){
             break;
         case SQ:
             dprintf(STDOUT_FILENO, "(");
-            for (uint16_t i = 0; i < cmd->args.composed.count; i++){
+            for (uint32_t i = 0; i < cmd->args.composed.count; i++){
                 command_display(cmd->args.composed.cmds[i]);
 
                 if(i != cmd->args.composed.count - 1){
@@ -153,7 +153,7 @@ command_t* create_command(command_t* command, command_type_t type){
     }
     command->type = type;
 
-    if(type != SI){
+    if(type != SI){ // SQ
         command->args.composed.count = 0;
         command->args.composed.cmds = malloc(sizeof(command_t*) * 10); // Initial allocation for 10 commands
         if(command->args.composed.cmds == NULL){
@@ -210,12 +210,13 @@ command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, comma
             arguments_free(arg);
             free(arg);
         }
+        arguments_free(arg);
+        free(arg);
     } else {
         dprintf(STDERR_FILENO, "Error : Complex commands are not accepted for command_filler\n");
         arguments_free(arg);
-        command_free(cmd);
         free(arg);
-        free(cmd);
+        command_free(cmd);
         return NULL;
     }
     return cmd;
@@ -226,7 +227,7 @@ command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, comma
  *        Works for both SI and SQ commands.
  */
 void command_free(command_t *cmd){
-    if (!cmd)
+    if (cmd == NULL)
         return;
 
     if (cmd->type == SI)
@@ -235,7 +236,7 @@ void command_free(command_t *cmd){
     }
     else if (cmd->type == SQ)
     {
-        for (uint16_t i = 0; i < cmd->args.composed.count; i++)
+        for (uint32_t i = 0; i < cmd->args.composed.count; i++)
         {
             command_free(cmd->args.composed.cmds[i]);
             cmd->args.composed.cmds[i] = NULL;
@@ -262,7 +263,15 @@ void task_destroy(task_t *task){
         task->cmd = NULL;
     }
 
-    free(task->timing);
-    task->timing = NULL;
+    if (task->timing != NULL) {
+        free(task->timing);
+        task->timing = NULL;
+    }
+
+    // If we're destroying the current global task, clear the global too
+    if (curr_task == task) {
+        curr_task = NULL;
+    }
+
     free(task);
 }
