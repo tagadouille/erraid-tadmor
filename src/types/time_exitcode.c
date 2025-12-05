@@ -10,13 +10,14 @@
 #include <stdlib.h>
 #include <endian.h>
 
+char *time_exitcode_show(const char *data, ssize_t size)
+{
 
-char *time_exitcode_show(const char *data, ssize_t size){
-    
-    const ssize_t REC_SIZE = sizeof(int64_t) + sizeof(uint16_t); 
+    const ssize_t REC_SIZE = sizeof(int64_t) + sizeof(uint16_t);
 
     // Validation du buffer
-    if (data == NULL || size <= 0) {
+    if (data == NULL || size <= 0)
+    {
         dprintf(STDERR_FILENO, "Invalid buffer size=%ld (not a multiple of 12)\n", size);
         return NULL;
     }
@@ -71,5 +72,5 @@ char *time_exitcode_show(const char *data, ssize_t size){
     if (strlen(output) == 0)
         strcpy(output, "(No previous executions)\n");
 
-    return output;   // caller must free()
+    return output; // caller must free()
 }
