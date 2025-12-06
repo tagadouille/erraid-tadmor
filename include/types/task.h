@@ -29,7 +29,7 @@ struct command{
         arguments_t simple;
         struct
         {
-            uint16_t count;
+            uint32_t count;
             command_t **cmds; // Array of pointers to commands
         } composed;
     } args;
@@ -39,7 +39,7 @@ struct command{
  * @brief Represents a task that can be executed by the scheduler.
  */
 typedef struct task {
-    uint16_t id;
+    uint64_t id;
     command_t *cmd;
     timing_t* timing;
 } task_t;
@@ -47,7 +47,7 @@ typedef struct task {
 /**
  * @brief Allocate and initialize a new task.
  */
-task_t *task_create(uint16_t id);
+task_t *task_create(uint64_t id);
 
 /**
  * @brief Display the task information.

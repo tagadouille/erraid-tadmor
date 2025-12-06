@@ -37,7 +37,7 @@ typedef enum Action_type Action_type;
 * @param action specify the action to do while reading the task.
 * @return 0 if success, -1 if failure
 */
-int task_reader(const char* path, uint16_t task_id, Action_type action);
+int task_reader(const char* path, uint64_t task_id, Action_type action);
 
 /**
 * @brief Find the task according to the path and task_id arguments

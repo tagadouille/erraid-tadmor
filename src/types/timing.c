@@ -8,8 +8,14 @@
  */
 static bool mask_is_full(uint64_t mask, int count)
 {
-    uint64_t full = (count == 64 ? UINT64_MAX : ((1ULL << count) - 1));
-    return mask == full;
+    uint64_t full;
+
+    if (count >= 64)
+        full = UINT64_MAX;
+    else
+        full = (1ULL << count) - 1;
+
+    return (mask & full) == full;
 }
 
 /**
@@ -60,39 +66,41 @@ char *timing_to_string(const timing_t *t)
     free(min);
     free(hrs);
     free(day);
-
+  
     return out;
 }
 
-// ! Les commentaires sont à enlever plus tard
 bool timing_match_now(const timing_t *t)
 {
     if (!t)
         return false;
 
-    // Get current time
     time_t now = time(NULL);
-    struct tm *tm_now = localtime(&now);
-
-    // Check minutes mask
-    if (!mask_is_full(t->minutes, MINUTES_COUNT) &&
-        !(t->minutes & (1ULL << tm_now->tm_min)))
-        return false; // 1ULL c'est 1 sous forme unsigned long long pr être sûr
-                    // que le décalage de bit fonctionne bien sur 64 bits
-    
-    // Check hours mask
-    if (!mask_is_full(t->hours, HOURS_COUNT) &&
-        !(t->hours & (1U << tm_now->tm_hour)))
-        return false; // 1U c'est 1 sous forme unsigned int pr être sûr
-                    // que le décalage de bit fonctionne bien sur 32 bits
-
-    // Check days of week mask
-    if (!mask_is_full(t->daysofweek, DAYS_COUNT) &&
-        !(t->daysofweek & (1U << tm_now->tm_wday)))
+    if (now == (time_t)-1)
         return false;
-    
+
+    struct tm tm_now;
+    if (localtime_r(&now, &tm_now) == NULL)
+        return false;
+
+    if (t->minutes != 0 && !mask_is_full(t->minutes, 60)) {
+        if (!(t->minutes & (1ULL << tm_now.tm_min)))
+            return false;
+    }
+
+    if (t->hours != 0 && !mask_is_full(t->hours, 24)) {
+        if (!(t->hours & (1U << tm_now.tm_hour)))
+            return false;
+    }
+
+    if (t->daysofweek != 0 && !mask_is_full(t->daysofweek, 7)) {
+        if (!(t->daysofweek & (1U << tm_now.tm_wday)))
+            return false;
+    }
+
     return true;
 }
+
 
 //TODO Refaire ça
 timing_t* timing_create(const char *data, ssize_t size)
@@ -132,7 +140,7 @@ timing_t* timing_create(const char *data, ssize_t size)
 void timing_show(const timing_t *t)
 {
     char *txt = timing_to_string(t);
-    dprintf(STDOUT_FILENO, "%s", txt);
+    dprintf(STDOUT_FILENO, "%s ", txt);
     free(txt);
 }
 

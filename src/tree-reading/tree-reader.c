@@ -15,28 +15,25 @@
 #include "tree-reading/output_reader.h"
 #include "erraid.h"
 
-int task_reader(const char* path, uint16_t task_id, Action_type action){
-    dprintf(STDERR_FILENO, "DEBUG: task_reader called with path='%s', task_id=%u\n",
-        path, task_id);
+int task_reader(const char* path, uint64_t task_id, Action_type action){
 
     curr_task = task_create(task_id);
 
     if(curr_task == NULL){
-        dprintf(STDERR_FILENO, "Error while creating task with id %u\n", task_id);
+        dprintf(STDERR_FILENO, "Error while creating task with id %lu\n", task_id);
         return -1;
     }
 
     //Converting task_id to string :
-    char id[6];
-    snprintf(id, sizeof(id), "%u", task_id);
+    char id[32];
+    snprintf(id, sizeof(id), "%lu", task_id);
 
     int result = task_finder(path, id, action);
 
     //If an error occured while finding the task, we free curr_task
     if(result == -1){
         task_destroy(curr_task);
-        curr_task = NULL;
-    }
+    } 
     return result;
 }
 
@@ -54,7 +51,7 @@ int task_finder(const char* path, char* task_id, Action_type action){
 
     //Finding the task
     while ((entry=readdir(dirp))) {
-        dprintf(STDERR_FILENO, "DEBUG: task_finder sees entry '%s'\n", entry->d_name);
+        
         if(entry -> d_name[0] == '.') continue;
 
         if(strcmp(entry -> d_name, task_id) == 0){

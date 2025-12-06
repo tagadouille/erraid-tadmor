@@ -227,7 +227,7 @@ arguments_t *copy_arguments(arguments_t *dst, const arguments_t *src)
 
 void arguments_free(arguments_t *args)
 {
-    if (!args)
+    if (args == NULL)
     {
         return;
     }
@@ -240,8 +240,8 @@ void arguments_free(arguments_t *args)
 
     if (args->argv)
     {
-        uint32_t n = (args->argc > 0 ? args->argc - 1 : 0);
-        for (uint32_t i = 0; i < n; ++i)
+        //uint32_t n = (args->argc > 0 ? args->argc - 1 : 0);
+        for (uint32_t i = 0; i < args->argc; ++i)
         {
             if (args->argv[i])
             {
