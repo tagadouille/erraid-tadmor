@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "communication/answer.h"
 #include "communication/code.h"
 #include <unistd.h>
@@ -7,7 +9,7 @@
 answer_t* create_answer(uint16_t anstype, uint64_t task_id, uint16_t errcode){
     
     if(anstype != OK && anstype != ERR){
-        dprintf(STDOUT_FILENO, "Invalide anstype \n");
+        dprintf(STDERR_FILENO, "Invalide anstype \n");
         return NULL;
     }
     answer_t* answer = malloc(sizeof(answer_t));
@@ -22,7 +24,7 @@ answer_t* create_answer(uint16_t anstype, uint64_t task_id, uint16_t errcode){
     }
     else if(anstype == ERR){
         if(errcode != NF && errcode != NR){
-            dprintf(STDOUT_FILENO, "Invalid errcode\n");
+            dprintf(STDERR_FILENO, "Invalid errcode\n");
             free(answer);
             return NULL;
         }
@@ -34,7 +36,7 @@ answer_t* create_answer(uint16_t anstype, uint64_t task_id, uint16_t errcode){
 a_list_t* create_a_list(uint16_t anstype, uint32_t nbtask, task_t* all_task){
 
     if(anstype != OK){
-        dprintf(STDOUT_FILENO, "The anstype must be OK\n");
+        dprintf(STDERR_FILENO, "The anstype must be OK\n");
         return NULL;
     }
     a_list_t* a_list = malloc(sizeof(a_list_t));
@@ -53,7 +55,7 @@ a_list_t* create_a_list(uint16_t anstype, uint32_t nbtask, task_t* all_task){
 a_timecode_t* create_a_timecode_t(uint16_t anstype, uint32_t nbrun, time_exitcode_t* all_timecode){
 
     if(anstype != ERR && anstype != OK){
-        dprintf(STDOUT_FILENO, "The anstype is incorrect\n");
+        dprintf(STDERR_FILENO, "The anstype is incorrect\n");
         return NULL;
     }
     a_timecode_t* time = malloc(sizeof(a_timecode_t));
@@ -77,12 +79,12 @@ a_timecode_t* create_a_timecode_t(uint16_t anstype, uint32_t nbrun, time_exitcod
 a_output_t* create_a_output_t(uint16_t anstype, string_t output, uint16_t errcode) {
 
     if (anstype != OK && anstype != ERR) {
-        fprintf(stderr, "Invalid anstype\n");
+        dprintf(STDERR_FILENO, "Invalid anstype\n");
         return NULL;
     }
 
     if (anstype == ERR && (errcode != NF && errcode != NR)) {
-        fprintf(stderr, "Invalid errcode\n");
+        dprintf(STDERR_FILENO, "Invalid errcode\n");
         return NULL;
     }
 

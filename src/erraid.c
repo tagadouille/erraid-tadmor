@@ -259,27 +259,6 @@ static uint64_t hton64(uint64_t x) {
 
 /* ------------------------- EXECUTION ENGINE ----------------------------- */
 
-struct times_record {
-    uint64_t ts_be;
-    uint32_t code_be;
-} __attribute__((packed));
-
-/* write "count" bytes from buf, retrying on partial writes */
-static ssize_t write_all(int fd, const void *buf, size_t count) {
-    const unsigned char *p = (const unsigned char *)buf;
-    size_t left = count;
-    while (left > 0) {
-        ssize_t w = write(fd, p, left);
-        if (w < 0) {
-            if (errno == EINTR) continue;
-            return -1;
-        }
-        p += w;
-        left -= (size_t)w;
-    }
-    return (ssize_t)count;
-}
-
 /* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] atomically+safe */
 static int append_times_exitcodes(const char* path, int exitcode) {
 

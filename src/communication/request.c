@@ -25,8 +25,9 @@ void free_simple_request(simple_request_t* request){
     free(request);
 }
 
+//TODO jalon-3
+/*
 complex_request_t* create_complex_request(uint16_t opcode, timing_t* timing, command_t* command, composed_t* composed){
-    //TODO Faire ça quand on fera le jalon-3
     return NULL;
 }
 
@@ -36,5 +37,4 @@ void free_complex_request(complex_request_t* request){
     if(request == NULL){
         return;
     }
-    //TODO Faire ça quand on fera le jalon-3
-}
+}*/

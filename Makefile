@@ -1,23 +1,53 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -pedantic -std=c99 -O2
-INC = -I include
+# --- Compilateur et options ---
+CC      := gcc
+CFLAGS  := -Wall -Wextra -pedantic -std=c99 -O2 -I include
+LDFLAGS :=
+LDLIBS  :=
 
-SRC_MAIN = src/main.c src/erraid.c
-SRC_TEST = src/test_reader.c
-SRC_COMMON = $(shell find src -path src/main.c -prune -o -name "*.c" -print)
+# --- Répertoires ---
+SRCDIR  := src
+OBJDIR  := build
 
-OBJ_MAIN = $(SRC_MAIN:.c=.o) $(SRC_COMMON:.c=.o)
-OBJ_TEST = $(SRC_TEST:.c=.o) $(SRC_COMMON:.c=.o)
+# --- Fichiers sources principaux ---
+SRC_ERRAID_MAIN := $(SRCDIR)/main.c
+SRC_TADMOR_MAIN := $(SRCDIR)/tadmor_main.c
 
-all: erraid
+# --- Tous les .c dans src (récursif) ---
+SRC_ALL := $(shell find $(SRCDIR) -name "*.c")
 
-erraid: $(OBJ_MAIN)
-	$(CC) $(CFLAGS) $(INC) -o $@ $^
+# --- Sources communes (tout sauf les mains) ---
+SRC_COMMON := $(filter-out $(SRC_ERRAID_MAIN) $(SRC_TADMOR_MAIN), $(SRC_ALL))
 
-%.o: %.c
-	$(CC) $(CFLAGS) $(INC) -c $< -o $@
+# --- Objets ---
+obj_from_src = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$1)
 
-distclean:
-	rm -f $(OBJ_MAIN) $(OBJ_TEST) erraid
+OBJ_ERRAID := $(call obj_from_src,$(SRC_ERRAID_MAIN) $(SRC_COMMON))
+OBJ_TADMOR := $(call obj_from_src,$(SRC_TADMOR_MAIN) $(SRC_COMMON))
 
-.PHONY: all clean
+# --- Executables ---
+TARGETS := erraid tadmor
+
+.PHONY: all clean distclean
+
+# --- Cible par défaut ---
+all: $(TARGETS)
+
+# --- Règles pour les exécutables ---
+erraid: $(OBJ_ERRAID)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+
+tadmor: $(OBJ_TADMOR)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+
+# --- Règle générique pour compiler .c → .o ---
+# Les headers sont utilisés via leurs chemins relatifs
+$(OBJDIR)/%.o: $(SRCDIR)/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# --- Nettoyage ---
+clean:
+	rm -rf $(OBJDIR)
+
+distclean: clean
+	rm -f $(TARGETS)

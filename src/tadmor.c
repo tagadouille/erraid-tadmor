@@ -222,31 +222,6 @@ static void *client_simple(uint16_t opcode, uint64_t task_id, size_t answer_size
     return read_answer(answer_size);
 }
 
-a_list_t *client_ls(void)
-{
-    return (a_list_t *)client_simple(LS, 0, sizeof(a_list_t));
-}
-
-answer_t *client_rm(uint64_t task_id)
-{
-    return (answer_t *)client_simple(RM, task_id, sizeof(answer_t));
-}
-
-a_output_t *client_stdout(uint64_t task_id)
-{
-    return (a_output_t *)client_simple(SO, task_id, sizeof(a_output_t));
-}
-
-a_output_t *client_stderr(uint64_t task_id)
-{
-    return (a_output_t *)client_simple(SE, task_id, sizeof(a_output_t));
-}
-
-a_timecode_t *client_times(uint64_t task_id)
-{
-    return (a_timecode_t *)client_simple(TX, task_id, sizeof(a_timecode_t));
-}
-
 answer_t *client_terminate(void)
 {
     return (answer_t *)client_simple(TM, 0, sizeof(answer_t));
