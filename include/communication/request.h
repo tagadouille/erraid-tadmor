@@ -26,7 +26,6 @@ typedef struct{
 
 } composed_t;
 
-//TODO trouver un moyen d'envoyer les données séparemment dans le pipe
 /**
  * Define the structure of a complex request
  *  A complex request is has CR and CB as opcode
