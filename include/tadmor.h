@@ -8,42 +8,76 @@
 #include "communication/request.h"
 #include "communication/answer.h"
 
-/* Default run directory: /tmp/$USER/erraid */
+/** 
+ * @brief Set the Default run directory: /tmp/$USER/erraid.
+ * @return 0 on success.
+ */
 int client_set_rundir(const char *rundir);
 
-/* Returns 0 on success */
+/** 
+ * @brief Get the run directory.
+ * @return 0 on success.
+ */
 int client_get_rundir(char *out, size_t outlen);
 
-/* Open communication channels (FIFO or socket) */
+/** 
+ * @brief Open communication channels (FIFO or socket).
+ * @return 0 on success.
+*/
 int client_connect(void);
 
-/* Close communication channels */
+/**
+ * @brief Closes communication channels.
+ */
 void client_disconnect(void);
 
 /* --------- HIGH LEVEL API ----------- */
 
-/* Send LS request, return a_list_t* or NULL */
+/** 
+ * @brief Send LS request.
+ * @return a_list_t* or NULL 
+ */
 a_list_t *client_ls(void);
 
-/* Send RM request (task_id) */
+/** 
+ * @brief Send RM request (task_id).
+ * @return answer_t* or NULL
+ */
 answer_t *client_rm(uint64_t task_id);
 
-/* Send SO request (stdout of task) */
+/** 
+ * @brief Send SO request (stdout of task).
+ * @return a_output_t* or NULL
+ */
 a_output_t *client_stdout(uint64_t task_id);
 
-/* Send SE request (stderr of task) */
+/** 
+ * @brief Send SE request (stderr of task).
+ * @return a_output_t* or NULL
+ */
 a_output_t *client_stderr(uint64_t task_id);
 
-/* Send TX request (times/exitcodes) */
+/** 
+ * @brief Send TX request (times/exitcodes).
+ * @return a_timecode_t* or NULL
+ */
 a_timecode_t *client_times(uint64_t task_id);
 
-/* Send TM (terminate daemon) */
+/**
+ * @brief Send TM (terminate daemon).
+ * @return answer_t* or NULL
+ */
 answer_t *client_terminate(void);
 
-/* Create a simple task (CR) */
-answer_t *client_create(timing_t *timing, command_t *cmd);
+/** Pas encore pour ce jalon
+ * @brief Create a simple task (CR).
+ * @return answer_t* or NULL
+ *
+answer_t *client_create(timing_t *timing, command_t *cmd);/
 
-/* Create a composed task (CB) */
-answer_t *client_combine(timing_t *timing, composed_t *comp);
-
+/** 
+ * @brief Create a composed task (CB).
+ * @return answer_t* or NULL
+ *
+answer_t *client_combine(timing_t *timing, composed_t *comp);/
 #endif
