@@ -12,11 +12,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#define TADMOR_REQ_PIPE  "daemon_in"
+#define TADMOR_REQ_PIPE "daemon_in"
 #define TADMOR_REP_PIPE "daemon_out"
 
 static char g_run_dir[PATH_MAX] = {0};
-static char pipe_in[PATH_MAX] = {0}; /* client -> daemon */
+static char pipe_in[PATH_MAX] = {0};  /* client -> daemon */
 static char pipe_out[PATH_MAX] = {0}; /* daemon -> client */
 
 static int fd_in = -1;  // client -> daemon
@@ -80,13 +80,17 @@ static ssize_t read_all(int fd, void *buf, size_t count)
 {
     unsigned char *p = buf;
     size_t left = count;
-    while (left > 0) {
+    while (left > 0)
+    {
         ssize_t r = read(fd, p, left);
-        if (r < 0) {
-            if (errno == EINTR) continue;
+        if (r < 0)
+        {
+            if (errno == EINTR)
+                continue;
             return -1;
         }
-        if (r == 0) {
+        if (r == 0)
+        {
             /* EOF */
             return 0;
         }
@@ -99,11 +103,13 @@ static ssize_t read_all(int fd, void *buf, size_t count)
 /* send a request buffer (size sz) to the daemon */
 static int send_request(const void *req, size_t sz)
 {
-    if (fd_in < 0) {
+    if (fd_in < 0)
+    {
         errno = EBADF;
         return -1;
     }
-    if (write_all(fd_in, req, sz) != (ssize_t)sz) return -1;
+    if (write_all(fd_in, req, sz) != (ssize_t)sz)
+        return -1;
     return 0;
 }
 
@@ -111,16 +117,19 @@ static int send_request(const void *req, size_t sz)
 /* caller must free returned pointer (on success) */
 static void *read_answer(size_t sz)
 {
-    if (fd_out < 0) {
+    if (fd_out < 0)
+    {
         errno = EBADF;
         return NULL;
     }
 
     void *buf = malloc(sz);
-    if (!buf) return NULL;
+    if (!buf)
+        return NULL;
 
     ssize_t r = read_all(fd_out, buf, sz);
-    if (r != (ssize_t)sz) {
+    if (r != (ssize_t)sz)
+    {
         free(buf);
         /* if EOF (r==0) propagate as error */
         return NULL;
@@ -138,7 +147,8 @@ int client_connect(void)
     {
         if (!user)
             user = "nobody";
-        if (snprintf(g_run_dir, sizeof(g_run_dir), "/tmp/%s/erraid", user) < 0) {
+        if (snprintf(g_run_dir, sizeof(g_run_dir), "/tmp/%s/erraid", user) < 0)
+        {
             errno = ENAMETOOLONG; // nom de chemin trop long
             return -1;
         }
@@ -146,28 +156,31 @@ int client_connect(void)
 
     /* build pipes directory: "<rundir>/pipes" */
     char pipes_dir[PATH_MAX];
-    if (snprintf(pipes_dir, sizeof(pipes_dir), "%s/pipes", g_run_dir) < 0) {
+    if (snprintf(pipes_dir, sizeof(pipes_dir), "%s/pipes", g_run_dir) < 0)
+    {
         errno = ENAMETOOLONG;
         return -1;
     }
 
     /* build exact full paths */
-    if (snprintf(pipe_in, sizeof(pipe_in), "%s/%s", pipes_dir, TADMOR_REQ_PIPE) < 0) {
+    if (snprintf(pipe_in, sizeof(pipe_in), "%s/%s", pipes_dir, TADMOR_REQ_PIPE) < 0)
+    {
         errno = ENAMETOOLONG;
         return -1;
     }
-    if (snprintf(pipe_out, sizeof(pipe_out), "%s/%s", pipes_dir, TADMOR_REP_PIPE) < 0) {
+    if (snprintf(pipe_out, sizeof(pipe_out), "%s/%s", pipes_dir, TADMOR_REP_PIPE) < 0)
+    {
         errno = ENAMETOOLONG;
         return -1;
     }
 
     // Open pipe for writing requests
-    fd_in = open(path_in, O_WRONLY);
+    fd_in = open(pipe_in, O_WRONLY);
     if (fd_in < 0)
         return -1;
 
     // Open pipe for reading answers
-    fd_out = open(path_out, O_RDONLY);
+    fd_out = open(pipe_out, O_RDONLY);
     if (fd_out < 0)
     {
         int save = errno;
@@ -195,7 +208,7 @@ void client_disconnect(void)
 /**
  * Auxiliary method to send simple request.
  */
-static void *client_simple(uint16_t opcode, uint64_t task_id, size_t answer_t)
+static void *client_simple(uint16_t opcode, uint64_t task_id, size_t answer_size)
 {
     simple_request_t req = {
         .opcode = opcode,
