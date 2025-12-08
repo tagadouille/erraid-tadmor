@@ -95,11 +95,12 @@ void command_display(command_t *cmd){
 }
 
 command_t* add_simple_command(command_t* command, const arguments_t* simple_args){
-    if (!command){
+    
+    if (command == NULL){
         dprintf(STDERR_FILENO, "The command that has been passed is NULL\n");
         return NULL;
     }
-    if (!simple_args){
+    if (simple_args == NULL){
         dprintf(STDERR_FILENO, "simple_args is NULL\n");
         return command;
     }
@@ -107,12 +108,9 @@ command_t* add_simple_command(command_t* command, const arguments_t* simple_args
     command->type = SI;
 
     /* Ensure destination simple struct is in a known state */
-    command->args.simple.argc = 0;
-    command->args.simple.command = NULL;
-    command->args.simple.argv = NULL;
+    command->args.simple = *copy_arguments(simple_args);
 
-    // Copy arguments safely
-    if (!copy_arguments(&command->args.simple, simple_args)){
+    if (&(command->args.simple) == NULL){
         dprintf(STDERR_FILENO, "Failed to copy arguments\n");
         return NULL;
     }
@@ -247,6 +245,79 @@ void command_free(command_t *cmd){
 
     cmd->args.composed.count = 0;
     free(cmd);
+}
+
+command_t* command_copy(const command_t* src){
+    if (!src){
+        return NULL;
+    } 
+
+    command_t* cmd = malloc(sizeof(command_t));
+    if (!cmd) return NULL;
+
+    cmd->type = src->type;
+    
+    //simple command copy
+    if (src->type == SI) {
+        
+        cmd->args.simple = *copy_arguments(&(src->args.simple));
+
+        if (cmd->args.simple.command == NULL || cmd->args.simple.argv == NULL){
+            free(cmd);
+            return NULL;
+        }
+    }
+    //composed command
+    else {
+        uint32_t count = src->args.composed.count;
+
+        cmd->args.composed.count = count;
+        cmd->args.composed.cmds = calloc(count, sizeof(command_t*));
+
+        if (cmd->args.composed.cmds == NULL){
+            free(cmd);
+            return NULL;
+        }
+
+        // Deep recursive copy of each subcommand
+        for (uint32_t i = 0; i < count; i++){
+            cmd->args.composed.cmds[i] = command_copy(src->args.composed.cmds[i]);
+            
+            if (!cmd->args.composed.cmds[i]) {
+                command_free(cmd);
+                return NULL;
+            }
+        }
+    }
+    return cmd;
+}
+
+task_t* task_copy(task_t* og_task){
+    if (!og_task){
+        return NULL;
+    }
+
+    task_t* t = malloc(sizeof(task_t));
+    if (t == NULL){
+        return NULL;
+    }
+
+    t->id = og_task->id;
+
+    /* copy command */
+    t->cmd = command_copy(og_task->cmd);
+    if (t->cmd == NULL){
+        task_destroy(t);
+        return NULL;
+    }
+
+    /* copy timing */
+    t->timing = timing_copy(og_task->timing);
+    if (t->timing == NULL) {
+        task_destroy(t);
+        return NULL;
+    }
+    return t;
 }
 
 /**

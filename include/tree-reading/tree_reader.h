@@ -8,16 +8,6 @@
 
 #include "types/task.h"
 
-#define TASKPATH "Consignes/exemples-arborescences/" //The path to the task tree (provisional)
-
-/*Name of all the tasks directories (provisional)*/
-#define DIR1 "exemple-arborescence-1"
-#define DIR2 "exemple-arborescence-2"
-#define DIR3 "exemple-arborescence-3"
-#define DIR4 "exemple-arborescence-4"
-
-#define SUBDIR "/tmp-username-erraid"
-
 #define MAX_PATH pathconf("/", _PC_PATH_MAX) //The maximum path length of the computer
 #define BUFFER_SIZE 1024 //The size of the buffer for reading
 
@@ -29,6 +19,14 @@ enum Action_type {
     TIME_EXIT //To get the times and exit codes of the tasks
 };
 typedef enum Action_type Action_type;
+
+/**
+ * @brief do the listing of all the tasks at the incicated path and fill
+ * the all_task_t structure
+ * @param path the path the the folder where all the tasks are
+ * @return a pointer to the task_array, NULL if failure
+ */
+all_task_t* all_task_listing(const char* path);
 
 /**
 * @brief Read the given task tree located at path argument for the task with the id task_id

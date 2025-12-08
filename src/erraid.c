@@ -35,6 +35,9 @@ static char g_log_path[PATH_MAX] = "log";
 static char g_pid_path[PATH_MAX] = {0};
 static char tasksdir[PATH_MAX];
 
+string_t curr_output = {0};
+time_array_t* curr_time = NULL;
+
 /* --------------------------- SIGNAL HANDLER ---------------------------- */
 
 static void handle_signal(int sig) {

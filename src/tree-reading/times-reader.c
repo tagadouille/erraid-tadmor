@@ -73,15 +73,13 @@ int timing_reader(const char* path, int (*interpreter)(char* data, const char* p
 
 int times_exitcodes_interpreter(char* data, const char* path, ssize_t size){
     if(size > 0){
-        char* output = time_exitcode_show(data, size);
+        time_array_t* arr = time_exitcode_parse(data, size);
 
-        if(output == NULL){
+        if(arr == NULL){
             dprintf(STDERR_FILENO, "Error while showing the time-exitcodes file");
             return -1;
         }
-        dprintf(STDERR_FILENO, "%s\n", output);
-        free(output);
-        output = NULL;
+        
     }else{
         dprintf(STDERR_FILENO, "times-exitcodes file is empty at path %s\n", path);
         return -1;

@@ -156,73 +156,42 @@ arguments_t *arguments_parse(const char *buffer, unsigned int size)
     return args;
 }
 
-arguments_t *copy_arguments(arguments_t *dst, const arguments_t *src)
-{
-    // safety check
-    if (!dst || !src)
-    {
+arguments_t *copy_arguments(const arguments_t *src){
+    
+    arguments_t* dst = malloc(sizeof(arguments_t));
+
+    if(dst == NULL){
         return NULL;
     }
 
-    dst->argc = src->argc;
+    dst -> argc = src->argc;
 
-    // Copy command
-    if (src->command)
-    {
-        dst->command = string_copy(src->command);
-        if (!dst->command)
-        {
-            perror("string_copy");
-            return NULL;
-        }
-    }
-    else
-    {
-        dst->command = NULL;
+    dst -> command = string_copy(src -> command);
+
+    if (dst -> command == NULL){
+        goto fail;
     }
 
-    // Copy argv
-    uint32_t n_args = (src->argc > 0 ? src->argc - 1 : 0);
+    //Deep copy argv :
+    dst -> argv = calloc(src->argc, sizeof(string_t*));
 
-    if (n_args > 0)
-    {
-        dst->argv = calloc(n_args, sizeof(string_t *));
+    if (dst -> argv == NULL){
+        goto fail;
+    } 
 
-        if (!dst->argv)
-        {
-            perror("calloc");
-            string_free_heap(dst->command);
-            return NULL;
-        }
+    for (uint32_t i = 0; i < src -> argc; i++) {
+        dst -> argv[i] = string_copy(src -> argv[i]);
 
-        for (uint32_t i = 0; i < n_args; i++)
-        {
-            if (src->argv[i])
-            {
-                dst->argv[i] = string_copy(src->argv[i]);
-                if (!dst->argv[i])
-                {
-                    perror("string_copy");
-
-                    // Free already copied elements
-                    for (uint32_t j = 0; j < i; j++)
-                        string_free_heap(dst->argv[j]);
-                    free(dst->argv);
-                    string_free_heap(dst->command);
-                    return NULL;
-                }
-            }
-            else
-            {
-                dst->argv[i] = NULL; // initialize NULL pointers
-            }
-        }
+        if (dst -> argv[i] == NULL){
+            goto fail;
+        } 
     }
-    else
-    {
-        dst->argv = NULL;
-    }
+
     return dst;
+
+    fail:
+    arguments_free(dst);
+    return NULL;
 }
 
 void arguments_free(arguments_t *args)

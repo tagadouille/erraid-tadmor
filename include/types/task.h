@@ -44,10 +44,29 @@ typedef struct task {
     timing_t* timing;
 } task_t;
 
+typedef struct{
+    uint32_t nbtask;
+    task_t* all_task; //Array of size of nbtask
+} all_task_t;
+
 /**
  * @brief Allocate and initialize a new task.
  */
 task_t *task_create(uint64_t id);
+
+/**
+ * @brief return a pointer of a copy the task gived
+ * @param og_task the task to copy
+ * @return a pointer of a copy the task gived, NULL if failure
+ */
+task_t* task_copy(task_t* og_task);
+
+/**
+ * @brief copy a command
+ * @param src the command to be copied
+ * @return a pointer to the copy, NULL if failure
+ */
+command_t* command_copy(const command_t* src);
 
 /**
  * @brief Display the task information.

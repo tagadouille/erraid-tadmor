@@ -150,3 +150,13 @@ bool timing_should_run(const timing_t *t)
         return false;
     return timing_match_now(t);
 }
+
+timing_t* timing_copy(const timing_t* src){
+    if (!src) return NULL;
+
+    timing_t* t = malloc(sizeof(timing_t));
+    if (!t) return NULL;
+
+    memcpy(t, src, sizeof(timing_t));
+    return t;
+}

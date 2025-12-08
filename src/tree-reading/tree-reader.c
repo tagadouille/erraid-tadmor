@@ -37,6 +37,86 @@ int task_reader(const char* path, uint64_t task_id, Action_type action){
     return result;
 }
 
+all_task_t* all_task_listing(const char* path)
+{
+    DIR* dirp = opendir(path);
+    if (!dirp) {
+        perror("opendir for all task listing");
+        return NULL;
+    }
+
+    struct dirent* entry;
+    uint32_t nbtask = 0;
+
+    // count the number of task
+    while ((entry = readdir(dirp))) {
+        if (entry->d_name[0] == '.') continue;
+        nbtask++;
+    }
+
+    rewinddir(dirp);
+
+    //Allocate result container
+    all_task_t* result = malloc(sizeof(all_task_t));
+    if (!result) {
+        closedir(dirp);
+        return NULL;
+    }
+
+    result->nbtask = nbtask;
+    result->all_task = calloc(nbtask, sizeof(task_t));
+
+    if (result->all_task == NULL) {
+        free(result);
+        closedir(dirp);
+        return NULL;
+    }
+
+    uint32_t n = 0;
+
+    //load tasks
+    while ((entry = readdir(dirp))) {
+        if (entry->d_name[0] == '.') continue;
+
+        char* newpath = make_path(path, entry->d_name);
+        if (newpath == NULL) {
+            perror("make_path");
+            goto fail;
+        }
+
+        int res = task_finder(newpath, entry->d_name, LIST);
+        free(newpath);
+
+        if (res < 0) {
+            goto fail;
+        }
+
+        task_t* copy = task_copy(curr_task);
+        task_destroy(curr_task);
+
+        if (copy == NULL) {
+            goto fail;
+        }
+
+        result->all_task[n++] = *copy;
+        free(copy);
+    }
+
+    closedir(dirp);
+    return result;
+
+fail:
+    /* Free everything properly */
+    for (uint32_t i = 0; i < n; i++) {
+        task_destroy(&result->all_task[i]);
+    }
+    free(result->all_task);
+    free(result);
+    closedir(dirp);
+    return NULL;
+}
+
+
 int task_finder(const char* path, char* task_id, Action_type action){
     DIR* dirp = opendir(path);
 
