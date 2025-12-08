@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    /* set run directory for daemon */
+    //et run directory for daemon
     if (erraid_set_rundir(rundir) != 0) {
         fprintf(stderr, "Failed to set run directory '%s': %s\n", rundir, strerror(errno));
         return EXIT_FAILURE;
@@ -62,10 +62,10 @@ int main(int argc, char **argv) {
             return EXIT_FAILURE;
     }
 
-    /* Main run loop (blocks until signal) */
+    // Main run loop (blocks until signal)
     daemon_run();
 
-    /* Cleanup */
+    //Cleanup
     daemon_cleanup();
 
     return EXIT_SUCCESS;

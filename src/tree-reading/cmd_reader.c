@@ -14,14 +14,13 @@
 #include "types/task.h"
 #include "erraid.h"
 
-int cmd_reader(const char *path)
-{
+int cmd_reader(const char *path){
+
     int result = 0;
 
     char *type_path = make_path(path, "type");
 
-    if (type_path == NULL)
-    {
+    if (type_path == NULL){
         result = -1;
         goto error;
     }
@@ -29,15 +28,13 @@ int cmd_reader(const char *path)
     // Trying to acces to the type file
     command_type_t type = type_reader(type_path);
 
-    if (type == INVALID)
-    {
+    if (type == INVALID){
         dprintf(STDERR_FILENO, "Error while reading type file of task at path %s\n", path);
         result = -1;
         goto error;
     }
     // If the type is SI, construct the task by reading the argv file
-    if (type == SI)
-    {
+    if (type == SI){
         curr_task->cmd = type_processor(path, SI, curr_task->cmd, NULL);
 
         if (curr_task->cmd == NULL)
@@ -46,8 +43,7 @@ int cmd_reader(const char *path)
             goto error;
         }
     } // Else command_parser is used
-    else
-    {
+    else{
         command_t *cmd = create_command(curr_task->cmd, type);
         cmd = command_parser(path, cmd);
 
@@ -58,18 +54,18 @@ int cmd_reader(const char *path)
         }
         curr_task->cmd = cmd;
     }
-error:
-    if (result == -1)
-    {
+
+    error:
+    if (result == -1){
         dprintf(STDERR_FILENO, "Error while reading cmd folder of task at path %s\n", path);
     }
+
     free(type_path);
     type_path = NULL;
     return result;
 }
 
-static int numeric_cmp(const void *a, const void *b)
-{
+static int numeric_cmp(const void *a, const void *b){
     int na = atoi(*(char * const*)a);
     int nb = atoi(*(char * const*)b);
     return (na > nb) - (na < nb);
@@ -152,14 +148,13 @@ command_t *command_parser(const char *path, command_t *cmd)
             continue;
         }
         // We check if the entry is a directory
-        if (entry->d_type == DT_DIR)
-        {
+        if (entry->d_type == DT_DIR){
+
             char *end;
             errno = 0;
             strtol(entry->d_name, &end, 10);
 
-            if (*end != '\0' || errno == ERANGE)
-            {
+            if (*end != '\0' || errno == ERANGE){
                 continue;
             }
 
