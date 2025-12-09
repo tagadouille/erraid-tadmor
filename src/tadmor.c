@@ -100,21 +100,8 @@ static ssize_t read_all(int fd, void *buf, size_t count)
     return (ssize_t)count;
 }
 
-/* send a request buffer (size sz) to the daemon */
-static int send_request(const void *req, size_t sz)
-{
-    if (fd_in < 0)
-    {
-        errno = EBADF;
-        return -1;
-    }
-    if (write_all(fd_in, req, sz) != (ssize_t)sz)
-        return -1;
-    return 0;
-}
-
 /* allocate buffer and read exactly sz bytes from reply pipe */
-/* caller must free returned pointer (on success) */
+/* caller must free returned pointer (on success) 
 static void *read_answer(size_t sz)
 {
     if (fd_out < 0)
@@ -131,11 +118,11 @@ static void *read_answer(size_t sz)
     if (r != (ssize_t)sz)
     {
         free(buf);
-        /* if EOF (r==0) propagate as error */
+        /* if EOF (r==0) propagate as error 
         return NULL;
     }
     return buf;
-}
+}*/
 
 /* ------------------------- CONNECT --------------------------- */
 
@@ -226,32 +213,3 @@ answer_t *client_terminate(void)
 {
     return (answer_t *)client_simple(TM, 0, sizeof(answer_t));
 }
-
-/*
-answer_t *client_create(timing_t *timing, command_t *cmd)
-{
-    complex_request_t req = {
-        .opcode = CR,
-        .timing = *timing,
-        .u.command = *cmd
-    };
-
-    if (send_request(&req, sizeof(req)) < 0)
-        return NULL;
-
-    return (answer_t *)read_answer(sizeof(answer_t));
-}
-
-answer_t *client_combine(timing_t *timing, composed_t *comp)
-{
-    complex_request_t req = {
-        .opcode = CB,
-        .timing = *timing,
-        .u.composed = *comp
-    };
-
-    if (send_request(&req, sizeof(req)) < 0)
-        return NULL;
-
-    return (answer_t *)read_answer(sizeof(answer_t));
-}*/

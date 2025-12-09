@@ -26,9 +26,15 @@ int decode_uint32(int fd, uint32_t *v);
 int encode_uint64(int fd, uint64_t v);
 int decode_uint64(int fd, uint64_t *v);
 
+int encode_int32(int fd, int32_t v);
+int decode_int32(int fd, int32_t *v);
+
+int encode_int64(int fd, int64_t v);
+int decode_int64(int fd, int64_t *v);
+
 /* ============================================================
  * STRING ENCODING (string_t)
- * format: LENGTH(uint32) + DATA[LENGTH]
+ * format: LENGTH(uint32) + DATA[length]
  * ============================================================ */
 int encode_string(int fd, const string_t *s);
 int decode_string(int fd, string_t *s);
@@ -42,18 +48,10 @@ int decode_timing(int fd, timing_t *t);
 
 /* ============================================================
  * ARGUMENTS (ARGV)
- * ARGC(uint32) + ARGV[i]=string
+ * ARGC(uint32) + ARGV[i] = string
  * ============================================================ */
 int encode_arguments(int fd, const arguments_t *args);
 int decode_arguments(int fd, arguments_t *args);
-
-/* ============================================================
- * COMMAND
- * Simple : TYPE='SI' + ARGS
- * Complex: TYPE + NBCMDS(uint32) + CMD[i]
- * ============================================================ */
-int encode_command(int fd, const command_t *cmd);
-int decode_command(int fd, command_t *cmd);
 
 /* ============================================================
  * SIMPLE REQUEST (LS, RM, SO, SE, TX, TM)
@@ -64,28 +62,39 @@ int decode_simple_request(int fd, simple_request_t *req);
 
 /* ============================================================
  * COMPLEX REQUEST (CR, CB)
- * CR: OPCODE + TIMING + COMMAND
- * CB: OPCODE + TIMING + NBTASKS + TASKID[]
+ * CR: OPCODE + TIMING + ARGUMENTS
+ * CB: OPCODE + TIMING + TYPE(uint16)
+ *          + NBTASKS(uint32) + TASKID[]
  * ============================================================ */
 int encode_complex_request(int fd, const complex_request_t *req);
 int decode_complex_request(int fd, complex_request_t *req);
 
 /* ============================================================
- * ANSWERS (OK / ERR)
+ * ANSWERS (daemon -> client)
  * ============================================================ */
-int encode_answer(int fd, const answer_t *ans);
-int decode_answer(int fd, answer_t *ans);
 
-/* STDOUT / STDERR */
+/* ERROR: ANSTYPE='ER' + ERRCODE(uint16) */
+int encode_answer_err(int fd, uint16_t errcode);
+int decode_answer_err(int fd, uint16_t *errcode_out);
+
+/* OK with TASKID (CREATE, COMBINE) */
+int encode_answer_ok_taskid(int fd, uint64_t taskid);
+int decode_answer_ok_taskid(int fd, uint64_t *taskid_out);
+
+/* OK with no payload (REMOVE, TERMINATE) */
+int encode_answer_ok_nopayload(int fd);
+int decode_answer_ok_nopayload(int fd);
+
+/* LIST: OK + NBTASK + tasks */
+int encode_a_list(int fd, const a_list_t *ans);
+int decode_a_list(int fd, a_list_t *ans);
+
+/* STDOUT / STDERR: OK + string OR ER + errcode */
 int encode_a_output(int fd, const a_output_t *ans);
 int decode_a_output(int fd, a_output_t *ans);
 
-/* TIME_EXITCODE */
+/* TIMES_EXITCODES: OK + runs[] OR ER + errcode */
 int encode_a_timecode(int fd, const a_timecode_t *ans);
 int decode_a_timecode(int fd, a_timecode_t *ans);
-
-/* LIST */
-int encode_a_list(int fd, const a_list_t *ans);
-int decode_a_list(int fd, a_list_t *ans);
 
 #endif // SERIALIZATION_H
