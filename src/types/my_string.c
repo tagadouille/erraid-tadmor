@@ -1,11 +1,14 @@
 #include "types/my_string.h"
+#include <stdio.h>
+#include <stdlib.h>
 
-static char *alloc_copy(const char *src, size_t len)
-{
-    char *p = malloc(len + 1); // +1 for null terminator
-    if (!p)
+static char *alloc_copy(const char *src, size_t len){
+    char *p = malloc(len + 1);
+
+    if (p == NULL){
+        perror("malloc");
         return NULL;
-
+    }
     memcpy(p, src, len);
     p[len] = '\0';
     return p;
@@ -28,7 +31,7 @@ string_t string_create(const char *str, ssize_t length)
     }
 
     memcpy(s.data, str, (size_t)length);
-    s.data[length] = '\0'; // Null terminate the string
+    s.data[length] = '\0';
     s.length = (uint32_t)length;
     return s;
 }
@@ -81,28 +84,37 @@ string_t string_concat(const string_t *str1, const char *str2)
     return result;
 }
 
-string_t *string_copy(const string_t *src)
-{
-    if (!src || !src->data)
-        return NULL;
+string_t *string_copy(const string_t *src){
 
-    string_t *dst = malloc(sizeof(string_t));
-    if (!dst)
+    if (src == NULL){
+        dprintf(STDERR_FILENO, "The source string can't be null\n");
         return NULL;
+    }
 
+    string_t *dst = calloc(1, sizeof(string_t));
+
+    if (dst == NULL){
+        perror("calloc");
+        return NULL;
+    }
+    
     dst->length = src->length;
+
+    if (src->data == NULL) {
+        dst->data = NULL;
+        return dst;
+    }
+
     dst->data = alloc_copy(src->data, src->length);
-    if (!dst->data)
-    {
+    if (dst->data == NULL) {
+        dprintf(STDERR_FILENO, "Error calloc copy\n");
         free(dst);
         return NULL;
     }
-    /*
-    memcpy(dst->data, src->data, dst->length);
-    dst->data[dst->length] = '\0';*/
 
     return dst;
 }
+
 
 void string_free(string_t *str)
 {

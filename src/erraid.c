@@ -23,6 +23,7 @@
 
 #include "types/task.h"
 #include "tree-reading/tree_reader.h"
+#include "test.h"
 
 
 /* ---------------------------- CONFIG ---------------------------------- */
@@ -306,7 +307,7 @@ static int execute_simple(const command_t *cmd, const char *timespath, int outfd
         if (dup2(outfd, STDOUT_FILENO) < 0) _exit(127);
         if (dup2(errfd, STDERR_FILENO) < 0) _exit(127);
 
-        char **argv = arguments_to_argv(&cmd->args.simple);
+        char **argv = arguments_to_argv(cmd->args.simple);
         if (!argv) _exit(127);
 
         execvp(argv[0], argv);
@@ -493,6 +494,8 @@ void daemon_run(void) {
             sleep(SLEEP_INTERVAL);
             continue;
         }
+        //! provisoire
+        //test_task_read(tasksdir);
 
         struct dirent *ent;
         while ((ent = readdir(d))) {
@@ -500,9 +503,12 @@ void daemon_run(void) {
 
             char *endptr = NULL;
             errno = 0;
-            unsigned long idul = strtoul(ent->d_name, &endptr, 10);
+            unsigned long long idul = strtoul(ent->d_name, &endptr, 10);
             if (endptr == NULL || *endptr != '\0' || errno != 0) continue;
-            uint32_t id = (uint32_t)idul;
+            uint64_t id = (uint64_t)idul;
+
+            //! provisoire
+            //test_all(tasksdir, id);
 
             /* use existing tree reader which sets curr_task */
             if (task_reader(tasksdir, id, LIST) < 0) {
@@ -516,7 +522,7 @@ void daemon_run(void) {
                 continue;
             }
             
-            //task_display(curr_task);
+            task_display(curr_task);
 
             run_task_if_due(curr_task);
             task_destroy(curr_task);

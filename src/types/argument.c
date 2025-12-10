@@ -156,42 +156,52 @@ arguments_t *arguments_parse(const char *buffer, unsigned int size)
     return args;
 }
 
-arguments_t *copy_arguments(const arguments_t *src){
-    
-    arguments_t* dst = malloc(sizeof(arguments_t));
+arguments_t *copy_arguments(const arguments_t *src) {
 
-    if(dst == NULL){
+    if (src == NULL) {
+        dprintf(STDERR_FILENO, "the source arguments is NULL\n");
         return NULL;
     }
 
-    dst -> argc = src->argc;
-
-    dst -> command = string_copy(src -> command);
-
-    if (dst -> command == NULL){
-        goto fail;
+    arguments_t *dst = calloc(1, sizeof(arguments_t));
+    if (dst == NULL) {
+        perror("calloc");
+        return NULL;
     }
 
-    //Deep copy argv :
-    dst -> argv = calloc(src->argc, sizeof(string_t*));
+    dst->argc = src->argc;
 
-    if (dst -> argv == NULL){
-        goto fail;
-    } 
+    // copy command
+    dst->command = string_copy(src->command);
 
-    for (uint32_t i = 0; i < src -> argc; i++) {
-        dst -> argv[i] = string_copy(src -> argv[i]);
-
-        if (dst -> argv[i] == NULL){
-            goto fail;
-        } 
+    if (dst->command == NULL) {
+        dprintf(STDERR_FILENO, "Error : string copy\n");
+        arguments_free(dst);
+        return NULL;
     }
 
+    // copy argv
+    if (src->argc > 0) {
+        dst->argv = calloc(src->argc, sizeof(string_t*));
+
+        if (dst->argv == NULL) {
+            perror("calloc");
+            arguments_free(dst);
+            return NULL;
+        }
+
+        for (uint32_t i = 0; i < src->argc; i++) {
+
+            dst->argv[i] = string_copy(src->argv[i]);
+
+            if (dst->argv[i] == NULL) {
+                dprintf(STDERR_FILENO, "Error : string copy\n");
+                arguments_free(dst);
+                return NULL;
+            }
+        }
+    }
     return dst;
-
-    fail:
-    arguments_free(dst);
-    return NULL;
 }
 
 void arguments_free(arguments_t *args)

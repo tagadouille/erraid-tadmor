@@ -26,7 +26,7 @@ struct command{
     command_type_t type;
 
     union{
-        arguments_t simple;
+        arguments_t* simple;
         struct
         {
             uint32_t count;

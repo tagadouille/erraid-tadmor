@@ -37,4 +37,16 @@ bool time_exitcode_append(const char *path, const time_exitcode_t *record);
  */
 time_array_t *time_exitcode_parse(const char *data, ssize_t size);
 
+/**
+ * @brief display the time_exitcode_t structure
+ * @param te a pointer to a time_exitcode_t structure
+ */
+void time_exitcode_show(const time_exitcode_t* te);
+
+/**
+ * @brief display all the time_exitcode_t structure of the array
+ * @param te_arr a pointer to a time_array_t structure
+ */
+void all_time_show(time_array_t* te_arr);
+
 #endif

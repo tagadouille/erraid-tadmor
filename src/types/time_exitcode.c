@@ -59,3 +59,31 @@ time_array_t *time_exitcode_parse(const char *data, ssize_t size)
 
     return arr;
 }
+
+void time_exitcode_show(const time_exitcode_t* te){
+    if (te == NULL){
+        dprintf(STDERR_FILENO, "ERROR time exitcode null\n");
+        return;
+    }
+
+    // Conversion
+    time_t t = (time_t)te->time;
+    struct tm tm_info;
+    localtime_r(&t, &tm_info);
+
+    char buffer[64];
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm_info);
+
+    dprintf(STDOUT_FILENO, "%s : ", buffer);
+    dprintf(STDOUT_FILENO, "%u\n", te->exitcode);
+}
+
+void all_time_show(time_array_t* te_arr){
+    if(te_arr == NULL){
+        dprintf(STDOUT_FILENO, "The array of times exitcodes is null\n");
+    }
+    for (uint32_t i = 0; i < te_arr -> nbruns; i++){
+        time_exitcode_show(&(te_arr -> all_timecode)[i]);
+    }
+    
+}
