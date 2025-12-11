@@ -50,6 +50,25 @@ void task_display(task_t* task){
     dprintf(STDOUT_FILENO, "\n");
 }
 
+/**
+ * @brief Display the arg of a command
+ */
+static void display_arg(string_t* string){
+    if(string == NULL){
+        dprintf(STDERR_FILENO, "The string can't be null");
+    }
+
+    if(string -> data == NULL){
+        dprintf(STDERR_FILENO, "The data of the string can't be null");
+    }
+    dprintf(STDOUT_FILENO, "%u\n", string -> length);
+    for (size_t i = 0; i < string -> length; i++)
+    {
+        dprintf(STDOUT_FILENO, "%c", string -> data[i]);
+    }
+    
+}
+
 void command_display(command_t *cmd){
     if (cmd == NULL){
         dprintf(STDERR_FILENO, "NULL command\n");
@@ -58,6 +77,10 @@ void command_display(command_t *cmd){
 
     switch (cmd->type){
         case SI:
+            if(cmd->args.simple == NULL){
+                dprintf(STDERR_FILENO, "Error : The simple command can't be null\n");
+                return;
+            }
             if(cmd->args.simple->command == NULL){
                 dprintf(STDERR_FILENO, "Error : NULL command string\n");
                 return;
@@ -66,11 +89,11 @@ void command_display(command_t *cmd){
                 dprintf(STDERR_FILENO, "Error : NULL command data\n");
                 return;
             }
-            dprintf(STDERR_FILENO, "%s ", cmd->args.simple->command->data);
+            display_arg(cmd->args.simple->command);
 
             if(cmd->args.simple->argv != NULL){
                 for (uint32_t i = 0; i < cmd->args.simple->argc - 1; i++){
-                    dprintf(STDERR_FILENO, "%s", cmd->args.simple->argv[i]->data);
+                    display_arg(cmd->args.simple->argv[i]);
 
                     if(i != cmd->args.simple->argc - 1){
                         dprintf(STDERR_FILENO, " ");
@@ -95,7 +118,7 @@ void command_display(command_t *cmd){
     }
 }
 
-command_t* add_simple_command(command_t* command, const arguments_t* simple_args){
+command_t* add_simple_command(command_t* command, arguments_t* simple_args){
     
     if (command == NULL){
         dprintf(STDERR_FILENO, "The command that has been passed is NULL\n");
@@ -108,13 +131,30 @@ command_t* add_simple_command(command_t* command, const arguments_t* simple_args
 
     command->type = SI;
 
+    dprintf(STDERR_FILENO, "copy_arguments: src=%p, src->command=%p\n", simple_args, simple_args ? simple_args->command : NULL);
+
+    dprintf(STDERR_FILENO, "arg->command->data first bytes: %02x %02x %02x %02x\n",
+        (unsigned char)simple_args->command->data[0],
+        (unsigned char)simple_args->command->data[1],
+        (unsigned char)simple_args->command->data[2],
+        (unsigned char)simple_args->command->data[3]);
+
+
+
     /* Ensure destination simple struct is in a known state */
+    dprintf(STDERR_FILENO, "cmd->args.simple (before copy): %p\n",
+        command->args.simple);
+
     command->args.simple = copy_arguments(simple_args);
 
-    if (&(command->args.simple) == NULL){
-        dprintf(STDERR_FILENO, "Failed to copy arguments\n");
+    if (command->args.simple == NULL) {
+        dprintf(STDERR_FILENO, "Failed to copy arguments in add_simple_command\n");
         return NULL;
     }
+
+    dprintf(STDERR_FILENO, "cmd->args.simple (after copy): %p, cmd->args.simple->command=%p\n",
+            command->args.simple, command->args.simple->command);
+    
     return command;
 }
 
@@ -167,62 +207,68 @@ command_t* create_command(command_t* command, command_type_t type){
     return command;
 }
 
-command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, command_type_t type){
-    
-    if(cmd == NULL){
-        if(curr_task == NULL){
-            dprintf(STDERR_FILENO, "curr_task must be initialize before reading task\n");
-        }
+command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, command_type_t type) {
+    int created_cmd = 0; // Indicate if we create curr_task->cmd in this function
+
+    if (curr_task == NULL) {
+        dprintf(STDERR_FILENO, "curr_task must be initialized before reading task\n");
+        return NULL;
+    }
+
+    if (cmd == NULL) {
+
         curr_task->cmd = create_command(cmd, type);
 
-        if(curr_task->cmd == NULL){
+        if (curr_task->cmd == NULL) {
             dprintf(STDERR_FILENO, "Error while creating command structure\n");
             return NULL;
         }
         cmd = curr_task->cmd;
-    }
-
-    // Remove trailing newlines
-    while (size > 0 && (buffer[size - 1] == '\n' || buffer[size - 1] == '\r'))
-        size--;
-
-    // Ignore empty or whitespace-only content
-    int only_spaces = 1;
-    for (unsigned int i = 0; i < size; i++) {
-        if (buffer[i] != ' ' && buffer[i] != '\t') {
-            only_spaces = 0;
-            break;
-        }
-    }
-    if (size == 0 || only_spaces) {
-        return cmd; // skip empty argument
+        created_cmd = 1;
     }
 
     // Parsing the buffer to extract arguments
     arguments_t* arg = arguments_parse(buffer, size);
-    
-    if(arg == NULL){   
+
+    dprintf(STDERR_FILENO, "arg: %p, arg->command: %p\n", arg, arg ? arg->command : NULL);
+
+    if (arg == NULL) {
         dprintf(STDERR_FILENO, "Error while parsing argv content\n");
+
+        if (created_cmd) {
+            command_free(curr_task->cmd);
+            curr_task->cmd = NULL; 
+        }
         return NULL;
     }
 
     // Filling the command structure based on its type
-    if(type == SI){
-
-        cmd = add_simple_command(cmd, arg);
-
-        if(cmd == NULL){
+    if (type == SI) {
+        command_t *new_cmd = add_simple_command(cmd, arg);
+        if (new_cmd == NULL) {
             dprintf(STDERR_FILENO, "Error while creating simple command\n");
             arguments_free(arg);
-            free(arg);
+
+            if (created_cmd) {
+                command_free(curr_task->cmd);
+                curr_task->cmd = NULL;
+            }
+            return NULL;
         }
+
+        cmd = new_cmd;
+
         arguments_free(arg);
-        free(arg);
+
     } else {
         dprintf(STDERR_FILENO, "Error : Complex commands are not accepted for command_filler\n");
         arguments_free(arg);
-        free(arg);
-        command_free(cmd);
+
+        // Si on a créé curr_task->cmd ici, on doit le libérer pour éviter laisser un pointeur dangling
+        if (created_cmd) {
+            command_free(curr_task->cmd);
+            curr_task->cmd = NULL;
+        }
         return NULL;
     }
     return cmd;

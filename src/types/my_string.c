@@ -14,27 +14,26 @@ static char *alloc_copy(const char *src, size_t len){
     return p;
 }
 
-string_t string_create(const char *str, ssize_t length)
-{
+string_t string_create(const char *str, ssize_t length){
+
     string_t s = {NULL, 0};
 
-    // Handle NULL input
     if (!str || length <= 0)
-    {
         return s;
-    }
 
-    s.data = alloc_copy(str, (size_t)length);
+    // Allouer length + 1 pour le '\0'
+    s.data = malloc((size_t)length + 1);
     if (!s.data)
-    {
-        return s; // Return empty string on allocation failure
-    }
+        return s;
 
     memcpy(s.data, str, (size_t)length);
     s.data[length] = '\0';
+
     s.length = (uint32_t)length;
+    dprintf(STDERR_FILENO, "string_create: length=%d, data='%.*s'\n", (int)length, (int)length, str);
     return s;
 }
+
 
 string_t string_append(const string_t *str1, const string_t *str2)
 {
@@ -88,6 +87,11 @@ string_t *string_copy(const string_t *src){
 
     if (src == NULL){
         dprintf(STDERR_FILENO, "The source string can't be null\n");
+        return NULL;
+    }
+
+    if (src->data == NULL) {
+        dprintf(STDERR_FILENO, "The source string data can't be null\n");
         return NULL;
     }
 

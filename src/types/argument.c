@@ -52,6 +52,9 @@ static string_t *read_one_string(const char *buf, size_t size, size_t *offset)
     s->length = len;
 
     *offset += len;
+
+    dprintf(STDERR_FILENO, "read_one_string: offset=%zu, len=%u, str='%.*s'\n", *offset, len, len, s->data);
+
     return s;
 }
 
@@ -98,6 +101,8 @@ bool arguments_parse_struct(const string_t *buf, unsigned int size, arguments_t 
     }
 
     /* --- Read command first --- */
+    dprintf(STDERR_FILENO, "offset before reading command: %zu\n", offset);
+
     args->command = read_one_string(buf->data, size, &offset);
     if (!args->command)
     {
@@ -145,6 +150,13 @@ arguments_t *arguments_parse(const char *buffer, unsigned int size)
         string_free(&buf);
         return NULL;
     }
+
+    dprintf(STDERR_FILENO, "buff: ");
+for (unsigned int i = 0; i < size; i++) {
+    dprintf(STDERR_FILENO, "%02X ", (unsigned char)buffer[i]);
+}
+dprintf(STDERR_FILENO, "\n");
+
 
     if (!arguments_parse_struct(&buf, size, args))
     {
@@ -232,6 +244,7 @@ void arguments_free(arguments_t *args)
         args->argv = NULL;
     }
     args->argc = 0;
+    free(args);
 }
 
 char **arguments_to_argv(const arguments_t *args)
