@@ -79,6 +79,7 @@ all_task_t* all_task_listing(const char* path){
     while((entry = readdir(dirp))) {
         if(entry->d_name[0] == '.') continue;
 
+        //Conversion of the folder name to uint64_t
         errno = 0;
         char *end;
 
@@ -105,7 +106,6 @@ all_task_t* all_task_listing(const char* path){
         if(res < 0){
             goto fail;
         }
-        dprintf(STDOUT_FILENO, "id : %lu, type : %u\n", curr_task -> id, curr_task -> cmd -> type);
 
         task_t* copy = task_copy(curr_task);
         task_destroy(curr_task);

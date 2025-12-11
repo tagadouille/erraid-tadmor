@@ -155,6 +155,7 @@ arguments_t *arguments_parse(const char *buffer, unsigned int size)
 }
 
 arguments_t *copy_arguments(const arguments_t *src) {
+    
     if (src == NULL) {
         dprintf(STDERR_FILENO, "copy_arguments: src == NULL\n");
         return NULL;

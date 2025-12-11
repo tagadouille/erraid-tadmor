@@ -120,6 +120,7 @@ void command_display(command_t *cmd){
 }
 
 command_t* add_simple_command(command_t* command, arguments_t* simple_args){
+
     if (command == NULL){
         dprintf(STDERR_FILENO, "add_simple_command: command == NULL\n");
         return NULL;
@@ -137,7 +138,6 @@ command_t* add_simple_command(command_t* command, arguments_t* simple_args){
         return NULL;
     }
 
-    // assign only after copy succeeded
     command->args.simple = copied;
 
     return command;
@@ -145,6 +145,7 @@ command_t* add_simple_command(command_t* command, arguments_t* simple_args){
 
 
 command_t* add_complex_command(command_t* og_command, command_t* command){
+
     if(command == NULL){
         dprintf(STDERR_FILENO, "the command passed in parameter is NULL\n");
         return NULL;
@@ -153,12 +154,15 @@ command_t* add_complex_command(command_t* og_command, command_t* command){
         dprintf(STDERR_FILENO, "the original command is NULL or not of type SQ\n");
         return NULL;
     }
+
     // Add the new command to the composed commands array
     if(og_command->args.composed.count % 10 == 0){
+
         command_t** new_cmds = realloc(
             og_command->args.composed.cmds, 
             sizeof(command_t*) * (og_command->args.composed.count + 10)
         );
+
         if(new_cmds == NULL){
             perror("realloc");
             return NULL;
@@ -194,7 +198,6 @@ command_t* create_command(command_t* command, command_type_t type){
 }
 
 command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, command_type_t type) {
-    int created_cmd = 0; // Indicate if we create curr_task->cmd in this function
 
     if (curr_task == NULL) {
         dprintf(STDERR_FILENO, "curr_task must be initialized before reading task\n");
@@ -210,23 +213,30 @@ command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, comma
             return NULL;
         }
         cmd = curr_task->cmd;
-        created_cmd = 1;
     }
 
     // Parsing the buffer to extract arguments
     arguments_t* arg = arguments_parse(buffer, size);
 
+    if(type == SI){
+        command_t *new_cmd = add_simple_command(cmd, arg);
 
-    command_t *new_cmd = add_simple_command(cmd, arg);
-
-    
-    return new_cmd;
+        if(new_cmd == NULL){
+            dprintf(STDERR_FILENO, "Error while creating simple command\n");
+            arguments_free(arg);
+            return NULL;
+        }
+        arguments_free(arg);
+        return new_cmd;
+    }
+    else {
+        dprintf(STDERR_FILENO, "Error : Complex commands are not accepted for command_filler\n");
+        arguments_free(arg);
+        command_free(cmd);
+        return NULL;
+    }
 }
 
-/**
- * @brief Helper to recursively free a command structure.
- *        Works for both SI and SQ commands.
- */
 void command_free(command_t *cmd){
     if (cmd == NULL)
         return;
@@ -265,6 +275,7 @@ command_t* command_copy(const command_t* src) {
 
     cmd->type = src->type;
 
+    /* simple command */
     if (src->type == SI) {
 
         if(src->args.simple == NULL){
@@ -335,14 +346,13 @@ task_t* task_copy(task_t* og_task){
     t->id = og_task->id;
 
     //copy command
-    dprintf(STDOUT_FILENO, "bef\n");
     t->cmd = command_copy(og_task->cmd);
 
     if (t->cmd == NULL){
         task_destroy(t);
         return NULL;
     }
-    dprintf(STDOUT_FILENO, "cmd cpy reussi\n");
+
     //copy timing
     t->timing = timing_copy(og_task->timing);
     if (t->timing == NULL) {

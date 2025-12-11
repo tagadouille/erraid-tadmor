@@ -1,18 +1,9 @@
+#define _GNU_SOURCE
+
 #include "types/my_string.h"
 #include <stdio.h>
 #include <stdlib.h>
-
-static char *alloc_copy(const char *src, size_t len){
-    char *p = malloc(len + 1);
-
-    if (p == NULL){
-        perror("malloc");
-        return NULL;
-    }
-    memcpy(p, src, len);
-    p[len] = '\0';
-    return p;
-}
+#include <string.h>
 
 string_t string_create(const char *str, ssize_t length){
 
@@ -21,7 +12,6 @@ string_t string_create(const char *str, ssize_t length){
     if (!str || length <= 0)
         return s;
 
-    // Allouer length + 1 pour le '\0'
     s.data = malloc((size_t)length + 1);
     if (!s.data)
         return s;
@@ -30,7 +20,7 @@ string_t string_create(const char *str, ssize_t length){
     s.data[length] = '\0';
 
     s.length = (uint32_t)length;
-    dprintf(STDERR_FILENO, "string_create: length=%d, data='%.*s'\n", (int)length, (int)length, str);
+
     return s;
 }
 
@@ -84,6 +74,7 @@ string_t string_concat(const string_t *str1, const char *str2)
 }
 
 string_t *string_copy(const string_t *src) {
+
     if (src == NULL) {
         dprintf(STDERR_FILENO, "string_copy: src == NULL\n");
         return NULL;
@@ -101,7 +92,7 @@ string_t *string_copy(const string_t *src) {
 
     dst->length = src->length;
     if (dst->length == 0) {
-        dst->data = strdup(""); // toujours non-NULL
+        dst->data = strdup(""); // ever not-NULL
         if (!dst->data) { free(dst); return NULL; }
         return dst;
     }

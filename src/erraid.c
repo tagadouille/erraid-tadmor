@@ -494,8 +494,6 @@ void daemon_run(void) {
             sleep(SLEEP_INTERVAL);
             continue;
         }
-        //! provisoire
-        //test_task_read(tasksdir);
 
         struct dirent *ent;
         while ((ent = readdir(d))) {
@@ -507,22 +505,19 @@ void daemon_run(void) {
             if (endptr == NULL || *endptr != '\0' || errno != 0) continue;
             uint64_t id = (uint64_t)idul;
 
-            //! provisoire
-            //test_all(tasksdir, id);
-
             /* use existing tree reader which sets curr_task */
             if (task_reader(tasksdir, id, LIST) < 0) {
-                write_log_msg("task_reader failed for %u", id);
+                write_log_msg("task_reader failed for %lu", id);
                 continue;
             }else{
-                write_log_msg("task_reader worked for %u", id);
+                write_log_msg("task_reader worked for %lu", id);
             }
             if (!curr_task) {
-                write_log_msg("No curr_task for id %u", id);
+                write_log_msg("No curr_task for id %lu", id);
                 continue;
             }
             
-            task_display(curr_task);
+            //task_display(curr_task);
 
             run_task_if_due(curr_task);
             task_destroy(curr_task);
