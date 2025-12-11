@@ -11,7 +11,7 @@
  * Note: this file assumes the following helper types exist (adjust if different):
  *   string_t { uint32_t length; char *data; }
  *   arguments_t { string_t *command; uint32_t argc; string_t **argv; }
- *   timing_t { uint64_t minutes; uint32_t hours; uint8_t days_of_week; }
+ *   timing_t { uint64_t minutes; uint32_t hours; uint8_t daysofweek; }
  *   command_t { command_type_t type; union { arguments_t simple; struct { uint16_t count; command_t **cmds; } composed; } args; }
  *   a_list_t, a_timecode_t, a_output_t, answer_t, simple_request_t, complex_request_t exist as in your headers.
  *
@@ -197,14 +197,14 @@ int encode_timing(int fd, const timing_t *t) {
     if (!t) return -1;
     if (encode_uint64(fd, t->minutes) < 0) return -1;
     if (encode_uint32(fd, t->hours) < 0) return -1;
-    if (encode_uint8(fd, t->days_of_week) < 0) return -1;
+    if (encode_uint8(fd, t->daysofweek) < 0) return -1;
     return 0;
 }
 int decode_timing(int fd, timing_t *t) {
     if (!t) return -1;
     if (decode_uint64(fd, &t->minutes) < 0) return -1;
     if (decode_uint32(fd, &t->hours) < 0) return -1;
-    if (decode_uint8(fd, &t->days_of_week) < 0) return -1;
+    if (decode_uint8(fd, &t->daysofweek) < 0) return -1;
     return 0;
 }
 
@@ -477,7 +477,7 @@ int encode_a_list(int fd, const a_list_t *ans)
     if (encode_uint32(fd, ans->nbtask) < 0) return -1;
     for (uint32_t i = 0; i < ans->nbtask; ++i) {
         /* task id */
-        if (encode_uint64(fd, ans->all_task[i].task_id) < 0) return -1;
+        if (encode_uint64(fd, ans->all_task[i].id) < 0) return -1;
         /* timing */
         if (encode_timing(fd, &ans->all_task[i].timing) < 0) return -1;
         /* commandline: build a single string from the command */
@@ -501,7 +501,7 @@ int decode_a_list(int fd, a_list_t *ans)
         ans->all_task = calloc(ans->nbtask, sizeof(task_t));
         if (!ans->all_task) return -1;
         for (uint32_t i = 0; i < ans->nbtask; ++i) {
-            if (decode_uint64(fd, &ans->all_task[i].task_id) < 0) { free(ans->all_task); return -1; }
+            if (decode_uint64(fd, &ans->all_task[i].id) < 0) { free(ans->all_task); return -1; }
             ans->all_task[i].timing = malloc(sizeof(timing_t));
             if (!ans->all_task[i].timing) { free(ans->all_task); return -1; }
             if (decode_timing(fd, ans->all_task[i].timing) < 0) { free(ans->all_task[i].timing); free(ans->all_task); return -1; }

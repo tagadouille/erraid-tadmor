@@ -4,11 +4,11 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "request.h"
-#include "answer.h"
+#include "communication/request.h"
+#include "communication/answer.h"
 #include "types/timing.h"
 #include "types/task.h"
-#include "types/arguments.h"
+#include "types/argument.h"
 #include "types/my_string.h"
 
 /* ============================================================

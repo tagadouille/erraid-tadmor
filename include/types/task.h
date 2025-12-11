@@ -42,6 +42,8 @@ typedef struct task {
     uint64_t id;
     command_t *cmd;
     timing_t* timing;
+    char *commandline;        
+    uint32_t commandline_len;
 } task_t;
 
 /**
@@ -110,4 +112,4 @@ void task_destroy(task_t *task);
  */
 void command_execute(const command_t *cmd);
 
-#endifa
+#endif

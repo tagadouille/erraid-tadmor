@@ -194,7 +194,7 @@ void client_disconnect(void)
 
 /**
  * Auxiliary method to send simple request.
- */
+ 
 static void *client_simple(uint16_t opcode, uint64_t task_id, size_t answer_size)
 {
     simple_request_t req = {
@@ -207,9 +207,9 @@ static void *client_simple(uint16_t opcode, uint64_t task_id, size_t answer_size
 
     // Read exactly answer_size bytes from the daemon
     return read_answer(answer_size);
-}
+}*/
 
 answer_t *client_terminate(void)
 {
-    return (answer_t *)client_simple(TM, 0, sizeof(answer_t));
+    //return (answer_t *)client_simple(TM, 0, sizeof(answer_t));
 }

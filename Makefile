@@ -6,6 +6,7 @@ LDLIBS  :=
 
 # --- Répertoires ---
 SRCDIR  := src
+TESTDIR := tests
 OBJDIR  := build
 
 # --- Fichiers sources principaux ---
@@ -19,7 +20,7 @@ SRC_ALL := $(shell find $(SRCDIR) -name "*.c")
 SRC_COMMON := $(filter-out $(SRC_ERRAID_MAIN) $(SRC_TADMOR_MAIN), $(SRC_ALL))
 
 # --- Objets ---
-obj_from_src = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$1)
+obj_from_src = $(foreach f,$1,$(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(f)))
 
 OBJ_ERRAID := $(call obj_from_src,$(SRC_ERRAID_MAIN) $(SRC_COMMON))
 OBJ_TADMOR := $(call obj_from_src,$(SRC_TADMOR_MAIN) $(SRC_COMMON))
@@ -27,7 +28,7 @@ OBJ_TADMOR := $(call obj_from_src,$(SRC_TADMOR_MAIN) $(SRC_COMMON))
 # --- Executables ---
 TARGETS := erraid tadmor
 
-.PHONY: all clean distclean
+.PHONY: all clean distclean test_daemon test_client
 
 # --- Cible par défaut ---
 all: $(TARGETS)
@@ -39,8 +40,34 @@ erraid: $(OBJ_ERRAID)
 tadmor: $(OBJ_TADMOR)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
+# --- Tests (compilation indépendante) ---
+
+test_daemon: $(TESTDIR)/test_daemon.c
+	$(CC) $(CFLAGS) -I include -o $@ \
+	    $(TESTDIR)/test_daemon.c \
+	    $(SRCDIR)/pipes.c \
+	    $(SRCDIR)/serialization.c \
+	    $(SRCDIR)/communication/communication.c \
+	    $(SRCDIR)/communication/answer.c \
+	    $(SRCDIR)/communication/request.c \
+		$(SRCDIR)/tree-reading/tree-reader.c \
+		$(SRCDIR)/types/my_string.c 
+
+
+
+test_client: $(TESTDIR)/test_client.c
+	$(CC) $(CFLAGS) -I include -o $@ \
+	    $(TESTDIR)/test_client.c \
+	    $(SRCDIR)/pipes.c \
+	    $(SRCDIR)/serialization.c \
+	    $(SRCDIR)/communication/communication.c \
+	    $(SRCDIR)/communication/answer.c \
+	    $(SRCDIR)/communication/request.c \
+		$(SRCDIR)/tree-reading/tree-reader.c \
+		$(SRCDIR)/types/my_string.c 
+
+
 # --- Règle générique pour compiler .c → .o ---
-# Les headers sont utilisés via leurs chemins relatifs
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -48,6 +75,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c
 # --- Nettoyage ---
 clean:
 	rm -rf $(OBJDIR)
+	rm -f test_daemon test_client
 
 distclean: clean
 	rm -f $(TARGETS)
