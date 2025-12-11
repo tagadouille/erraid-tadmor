@@ -83,58 +83,47 @@ string_t string_concat(const string_t *str1, const char *str2)
     return result;
 }
 
-string_t *string_copy(const string_t *src){
-
-    if (src == NULL){
-        dprintf(STDERR_FILENO, "The source string can't be null\n");
+string_t *string_copy(const string_t *src) {
+    if (src == NULL) {
+        dprintf(STDERR_FILENO, "string_copy: src == NULL\n");
         return NULL;
     }
-
-    if (src->data == NULL) {
-        dprintf(STDERR_FILENO, "The source string data can't be null\n");
+    if (src->length > 0 && src->data == NULL) {
+        dprintf(STDERR_FILENO, "string_copy: src->length=%u but src->data == NULL\n", src->length);
         return NULL;
     }
 
     string_t *dst = calloc(1, sizeof(string_t));
-
-    if (dst == NULL){
-        perror("calloc");
+    if (!dst) {
+        perror("calloc string_copy");
         return NULL;
     }
-    
-    dst->length = src->length;
 
-    if (src->data == NULL) {
-        dst->data = NULL;
+    dst->length = src->length;
+    if (dst->length == 0) {
+        dst->data = strdup(""); // toujours non-NULL
+        if (!dst->data) { free(dst); return NULL; }
         return dst;
     }
 
-    dst->data = alloc_copy(src->data, src->length);
-    if (dst->data == NULL) {
-        dprintf(STDERR_FILENO, "Error calloc copy\n");
+    dst->data = malloc((size_t)dst->length + 1);
+    if (!dst->data) {
+        perror("malloc string_copy");
         free(dst);
         return NULL;
     }
 
+    memcpy(dst->data, src->data, dst->length);
+    dst->data[dst->length] = '\0';
     return dst;
 }
 
-
-void string_free(string_t *str)
-{
-    if (!str)
+void string_free(string_t* src){
+    if(src == NULL){
         return;
-    free(str->data);
-    str->data = NULL;
-    str->length = 0;
-}
-
-void string_free_heap(string_t *str)
-{
-    if (!str)
-        return;
-    free(str->data);
-    free(str);
+    }
+    free(src -> data);
+    free(src);
 }
 
 const char* string_get(const string_t* str) {
