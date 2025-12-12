@@ -9,8 +9,7 @@
  * @brief Represents a single execution record (timestamp + exit code).
  * Serialization format: TIME <uint64_t> | EXITCODE <int32_t>
  */
-typedef struct 
-{
+typedef struct __attribute__((packed)) {
     int64_t time;     // timestamp of execution
     uint16_t exitcode;  // Exit status of the task
 } time_exitcode_t;

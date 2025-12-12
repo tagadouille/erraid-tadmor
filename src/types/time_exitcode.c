@@ -14,17 +14,17 @@ char *time_exitcode_show(const char *data, ssize_t size)
 {
 
     const ssize_t REC_SIZE = sizeof(int64_t) + sizeof(uint16_t);
-
+    size = (size / 10) * 10;
     // Validation du buffer
     if (data == NULL || size <= 0)
     {
-        dprintf(STDERR_FILENO, "Invalid buffer size=%ld (not a multiple of 12)\n", size);
+        dprintf(STDERR_FILENO, "Invalid buffer size=%ld (not a multiple of %ld)\n", size, REC_SIZE);
         return NULL;
     }
 
     if (size % REC_SIZE != 0)
     {
-        dprintf(STDERR_FILENO, "Invalid buffer size=%ld (not a multiple of 12)\n", size);
+        dprintf(STDERR_FILENO, "Invalid buffer size=%ld (not a multiple of %ld)\n", size, REC_SIZE);
         return NULL;
     }
 

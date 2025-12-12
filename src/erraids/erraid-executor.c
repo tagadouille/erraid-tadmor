@@ -1,6 +1,7 @@
 #include "types/task.h"
 #include "erraid.h"
 #include "erraids/erraid-helper.h"
+#include "types/time_exitcode.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -12,18 +13,18 @@
 static int append_times_exitcodes(const char* path, int exitcode) {
 
     int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
-    if (fd < 0) return -1;
+    if (fd < 0) {
+        write_log_msg("Error: failed to open times-exitcodes file at path %s\n", path);
+        perror("open");
+        return -1;
+    }
 
-    struct __attribute__((packed)) rec {
-        uint64_t ts;
-        uint32_t code;
-    } r;
+    time_exitcode_t te = {hton64((int64_t)time(NULL)), htons((uint16_t)exitcode)};
 
-    r.ts = hton64((uint64_t)time(NULL));
-    r.code = htonl((uint32_t)exitcode);
-
-    ssize_t w = write(fd, &r, sizeof(r));
-    if (w != sizeof(r)) {
+    ssize_t w = write(fd, &te, sizeof(time_exitcode_t));
+    write_log_msg("Number of bytes write : %zd\n", w);
+    if (w != sizeof(time_exitcode_t)) {
+        perror("write");
         close(fd);
         return -1;
     }
@@ -32,7 +33,6 @@ static int append_times_exitcodes(const char* path, int exitcode) {
     close(fd);
     return 0;
 }
-
 
 /* Execute a simple command and write stdout/stderr into task dir (overwrite),
    append times-exitcodes entry. */
