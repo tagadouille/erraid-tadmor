@@ -10,39 +10,14 @@
 #include <stdlib.h>
 #include <endian.h>
 
-bool time_exitcode_append(const char *path, const time_exitcode_t *record)
+char *time_exitcode_show(const char *data, ssize_t size)
 {
-    // Open file in append mode, create if it doesn't exist
-    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644); // 0644 : rw-r--r--
-    if (fd < 0)
-        return false;
 
-    // Convert to big-endian before writing (on inverse l'ordre des octets)
-    int64_t t = htobe64(record->time);
-    uint16_t c = htobe16(record->exitcode);
-
-    // Write timestamp and exitcode
-    if (write(fd, &t, sizeof(t)) != sizeof(t))
-    {
-        close(fd);
-        return false;
-    }
-    if (write(fd, &c, sizeof(c)) != sizeof(c))
-    {
-        close(fd);
-        return false;
-    }
-
-    close(fd);
-    return true;
-}
-
-char *time_exitcode_show(const char *data, ssize_t size){
-    
-    const ssize_t REC_SIZE = sizeof(int64_t) + sizeof(uint16_t); 
+    const ssize_t REC_SIZE = sizeof(int64_t) + sizeof(uint16_t);
 
     // Validation du buffer
-    if (data == NULL || size <= 0) {
+    if (data == NULL || size <= 0)
+    {
         dprintf(STDERR_FILENO, "Invalid buffer size=%ld (not a multiple of 12)\n", size);
         return NULL;
     }
@@ -97,5 +72,5 @@ char *time_exitcode_show(const char *data, ssize_t size){
     if (strlen(output) == 0)
         strcpy(output, "(No previous executions)\n");
 
-    return output;   // caller must free()
+    return output; // caller must free()
 }
