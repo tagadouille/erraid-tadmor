@@ -47,22 +47,131 @@ int client_get_rundir(char *out, size_t outlen)
     return 0;
 }
 
-answer_t* tadmor_create_answer(uint16_t anstype, uint64_t task_id, uint16_t errcode)
+void tadmor_disconnect(void)
 {
-    return create_answer(anstype, task_id, errcode);
+    // Todo: implement disconnection logic if needed, but delete if not necessary
 }
 
-a_list_t* tadmor_create_list(uint16_t anstype, uint32_t nbtask, task_t* all_task)
+void tadmor_print_answer(answer_t* answer)
 {
-    return create_a_list(anstype, nbtask, all_task);
+    if (answer == NULL)
+    {
+        perror("NULL answer");
+        return;
+    }
+
+    switch (answer->anstype)
+    {
+    case OK:
+        dprintf(STDOUT_FILENO, "%lu\n", answer->task_id);
+        break;
+    
+    case ERR:
+        switch (answer->errcode)
+        {
+        case NF:
+            dprintf(STDERR_FILENO, "Error: Not Found\n");
+            break;
+        case NR:
+            dprintf(STDERR_FILENO, "Error: Not Running\n");
+            break;
+        default:
+            dprintf(STDERR_FILENO, "Error: Unknown error\n");
+            break;
+        }
+        break;
+    default:
+        dprintf(STDERR_FILENO, "Error: Invalid answer type\n");
+        break;
+    }
 }
 
-a_timecode_t* tadmor_create_timecode(uint16_t anstype, uint32_t nbrun, time_exitcode_t* all_timecode)
+void tadmor_print_list(a_list_t* list)
 {
-    return create_a_timecode_t(anstype, nbrun, all_timecode);
+    if (list == NULL)
+    {
+        perror("NULL list");
+        return;
+    }
+
+    for (uint32_t i = 0; i < list->nbtask; i++)
+    {
+        task_t* t = &(list->all_task[i]);
+
+        // check for NULL task
+        if (t == NULL)
+        {
+            dprintf(STDERR_FILENO, "NULL task encountered\n");
+            continue; // skip to next task
+        }
+
+        task_display(t);
+        // ! Il manque la partie où les timings sont comme ça : * * * dans timing_to_string
+    }
 }
 
-a_output_t* tadmor_create_output(uint16_t anstype, string_t output, uint16_t errcode)
+void tadmor_print_timecode(a_timecode_t* timecode)
 {
-    return create_a_output_t(anstype, output, errcode);
+    if (timecode == NULL)
+    {
+        perror("NULL timecode");
+        return;
+    }
+
+    if (timecode->anstype == ERR)
+    {
+        dprintf(STDERR_FILENO, "Error: %u\n", timecode->errcode);
+        return;
+    }
+    
+    for (uint32_t i = 0; i < timecode->nbrun; i++)
+    {
+        time_exitcode_t *tc = &(timecode->all_timecode[i]);
+
+        time_exitcode_show(tc);
+    }
+}
+
+void tadmor_print_output(a_output_t* output)
+{
+    if (output == NULL)
+    {
+        perror("NULL output");
+        return;
+    }
+
+    if (output->anstype == ERR)
+    {
+        if (out->errcode == NF)
+            dprintf(STDERR_FILENO, "Error: task not found\n");
+        else if (out->errcode == NR)
+            dprintf(STDERR_FILENO, "Error: no run available\n");
+        return;
+    }
+
+    // Print the output data
+    if (output->output.data != NULL)
+    {
+        dprintf(STDOUT_FILENO, "%s", output->output.data);
+    }
+}
+
+void tadmor_print_response(uint16_t opcode, void* res)
+{
+    switch (opcode)
+    {
+    case LS:
+        tadmor_print_list((a_list_t*)res);
+        break;
+    case TX:
+        tadmor_print_timecode((a_timecode_t*)res);
+        break;
+    case SO: // Même traitement pour STDOUT et STDERR
+    case SE:
+        tadmor_print_output((a_output_t*)res);
+        break;
+    default:
+        tadmor_print_answer((answer_t*)res);
+        break;
+    }
 }
