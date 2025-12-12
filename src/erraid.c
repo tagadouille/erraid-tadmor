@@ -143,18 +143,17 @@ static int run_task_if_due(task_t *task)
 
 /* ------------------------------ Timing util ---------------------------- */
 /* wait until the next minute boundary (sleep until seconds == 0) */
-static void wait_next_minute(void) {
+void wait_next_minute(void)
+{
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
 
-    time_t now = ts.tv_sec;
+    time_t sec = ts.tv_sec;
     long nsec = ts.tv_nsec;
 
-    // prochaine minute
-    time_t target = (now / 60 + 1) * 60;
+    time_t target = (sec / 60 + 1) * 60;
 
-    // combien dormir exactement ?
-    long sec_to_sleep = target - now;
+    long sec_to_sleep = target - sec;
     long nsec_to_sleep = -nsec;
 
     if (nsec_to_sleep < 0) {
@@ -166,14 +165,16 @@ static void wait_next_minute(void) {
     nanosleep(&req, NULL);
 }
 
+
 /* ------------------------------ MAIN LOOP ------------------------------ */
 
 void daemon_run(void) {
     write_log_msg("Daemon main loop started.");
 
-    wait_next_minute(); //For be synced with minute start
-
     while (running) {
+
+        wait_next_minute();
+
         write_log_msg("Scanning tasks directory…");
 
         DIR *d = opendir(tasksdir);
@@ -184,8 +185,6 @@ void daemon_run(void) {
             sleep(SLEEP_INTERVAL);
             continue;
         }
-
-        wait_next_minute();
 
         struct dirent *ent;
         while ((ent = readdir(d))) {
@@ -216,8 +215,6 @@ void daemon_run(void) {
             curr_task = NULL;
         }
         closedir(d);
-
-        wait_next_minute();
     }
 
     write_log_msg("Daemon main loop stopping.");
