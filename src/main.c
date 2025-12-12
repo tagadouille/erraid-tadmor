@@ -8,6 +8,7 @@
 #include <errno.h>
 
 #include "erraid.h"
+#include "erraids/erraid-helper.h"
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
