@@ -146,23 +146,16 @@ static int run_task_if_due(task_t *task)
 void wait_next_minute(void)
 {
     struct timespec ts;
+
+    // Lire temps actuel
     clock_gettime(CLOCK_REALTIME, &ts);
 
-    time_t sec = ts.tv_sec;
-    long nsec = ts.tv_nsec;
+    // Arrondir à la minute suivante
+    ts.tv_sec = ts.tv_sec - (ts.tv_sec % 60) + 60;
+    ts.tv_nsec = 0;
 
-    time_t target = (sec / 60 + 1) * 60;
-
-    long sec_to_sleep = target - sec;
-    long nsec_to_sleep = -nsec;
-
-    if (nsec_to_sleep < 0) {
-        sec_to_sleep -= 1;
-        nsec_to_sleep += 1000000000L;
-    }
-
-    struct timespec req = { sec_to_sleep, nsec_to_sleep };
-    nanosleep(&req, NULL);
+    // Dormir jusqu'à cette date absolue
+    while (clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, NULL) == EINTR);
 }
 
 
