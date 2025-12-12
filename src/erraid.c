@@ -48,6 +48,48 @@ static void handle_signal(int sig) {
     (void)sig;
     running = 0;
 }
+/* ---------------------------- DAEMON MODE ------------------------------ */
+
+int daemon_init(void) {
+    if (g_run_dir[0] == '\0') {
+        const char *user = getenv("USER");
+        if (!user) user = "nobody";
+        snprintf(g_run_dir, sizeof(g_run_dir), "/tmp/%s/erraid", user);
+    }
+
+    if (ensure_rundir() != 0) return -1;
+
+    pid_t pid = fork();
+    if (pid < 0) return -1;
+    if (pid > 0) _exit(EXIT_SUCCESS);
+
+    if (setsid() < 0) return -1;
+
+    pid = fork();
+    if (pid < 0) return -1;
+    if (pid > 0) _exit(EXIT_SUCCESS);
+
+    umask(0);
+    if (chdir(g_run_dir) != 0) { fprintf(stderr, "chdir failed: %s\n", strerror(errno)); }
+
+    g_log_fd = open(g_log_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (g_log_fd < 0) {
+        fprintf(stderr, "Cannot open log file '%s': %s\n", g_log_path, strerror(errno));
+        return -1;
+    }
+
+    dup2(g_log_fd, STDOUT_FILENO);
+    dup2(g_log_fd, STDERR_FILENO);
+
+    struct sigaction sa = {0};
+    sa.sa_handler = handle_signal;
+    sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGINT,  &sa, NULL);
+    sigaction(SIGHUP,  &sa, NULL);
+
+    write_log_msg("Daemon initialized (rundir=%s)", g_run_dir);
+    return 0;
+}
 
 /* Execute command: SI or SQ */
 static int run_task_if_due(task_t *task)
@@ -98,72 +140,38 @@ static int run_task_if_due(task_t *task)
     return res;
 }
 
-/* ---------------------------- DAEMON MODE ------------------------------ */
-
-int daemon_init(void) {
-    if (g_run_dir[0] == '\0') {
-        const char *user = getenv("USER");
-        if (!user) user = "nobody";
-        snprintf(g_run_dir, sizeof(g_run_dir), "/tmp/%s/erraid", user);
-    }
-
-    if (ensure_rundir() != 0) return -1;
-
-    pid_t pid = fork();
-    if (pid < 0) return -1;
-    if (pid > 0) _exit(EXIT_SUCCESS);
-
-    if (setsid() < 0) return -1;
-
-    pid = fork();
-    if (pid < 0) return -1;
-    if (pid > 0) _exit(EXIT_SUCCESS);
-
-    umask(0);
-    if (chdir(g_run_dir) != 0) { fprintf(stderr, "chdir failed: %s\n", strerror(errno)); }
-
-    g_log_fd = open(g_log_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
-    if (g_log_fd < 0) {
-        fprintf(stderr, "Cannot open log file '%s': %s\n", g_log_path, strerror(errno));
-        return -1;
-    }
-
-    dup2(g_log_fd, STDOUT_FILENO);
-    dup2(g_log_fd, STDERR_FILENO);
-
-    struct sigaction sa = {0};
-    sa.sa_handler = handle_signal;
-    sigaction(SIGTERM, &sa, NULL);
-    sigaction(SIGINT,  &sa, NULL);
-    sigaction(SIGHUP,  &sa, NULL);
-
-    write_log_msg("Daemon initialized (rundir=%s)", g_run_dir);
-    return 0;
-}
 
 /* ------------------------------ Timing util ---------------------------- */
 /* wait until the next minute boundary (sleep until seconds == 0) */
 static void wait_next_minute(void) {
-    time_t now = time(NULL);
-    struct tm tm_now;
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
 
-    if (localtime_r(&now, &tm_now) == NULL) {
-        sleep(60);
-        return;
+    time_t now = ts.tv_sec;
+    long nsec = ts.tv_nsec;
+
+    // prochaine minute
+    time_t target = (now / 60 + 1) * 60;
+
+    // combien dormir exactement ?
+    long sec_to_sleep = target - now;
+    long nsec_to_sleep = -nsec;
+
+    if (nsec_to_sleep < 0) {
+        sec_to_sleep -= 1;
+        nsec_to_sleep += 1000000000L;
     }
 
-    int sec = tm_now.tm_sec;
-    int wait = 60 - sec;
-    if (wait <= 0) wait = 60;
-
-    for (int i = 0; i < wait && running; ++i)
-        sleep(1);
+    struct timespec req = { sec_to_sleep, nsec_to_sleep };
+    nanosleep(&req, NULL);
 }
 
 /* ------------------------------ MAIN LOOP ------------------------------ */
 
 void daemon_run(void) {
     write_log_msg("Daemon main loop started.");
+
+    wait_next_minute(); //For be synced with minute start
 
     while (running) {
         write_log_msg("Scanning tasks directory…");
@@ -176,6 +184,8 @@ void daemon_run(void) {
             sleep(SLEEP_INTERVAL);
             continue;
         }
+
+        wait_next_minute();
 
         struct dirent *ent;
         while ((ent = readdir(d))) {

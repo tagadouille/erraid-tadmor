@@ -22,7 +22,7 @@ static int append_times_exitcodes(const char* path, int exitcode) {
     time_exitcode_t te = {hton64((int64_t)time(NULL)), htons((uint16_t)exitcode)};
 
     ssize_t w = write(fd, &te, sizeof(time_exitcode_t));
-    write_log_msg("Number of bytes write : %zd\n", w);
+
     if (w != sizeof(time_exitcode_t)) {
         perror("write");
         close(fd);
