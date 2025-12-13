@@ -10,7 +10,7 @@
 #include <arpa/inet.h>
 #include <endian.h>
 
-#define MAX_TASKS sizeof(uint64_t)
+#define MAX_TASKS 1000000
 
 static time_t last_run_minute[MAX_TASKS];
 
