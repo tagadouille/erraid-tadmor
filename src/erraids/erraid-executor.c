@@ -175,7 +175,7 @@ static int execute_task(task_t* task, time_t minute_now){
 
     // Delete the file if they already exist : 
 
-    /*if (unlink(outpath) < 0 && errno != ENOENT) {
+    if (unlink(outpath) < 0 && errno != ENOENT) {
         perror("unlink");
         write_log_msg("Error: can't delete file at path %s", outpath);
         return -1;
@@ -185,7 +185,7 @@ static int execute_task(task_t* task, time_t minute_now){
         perror("unlink");
         write_log_msg("Error: can't delete file at path %s", errpath);
         return -1;
-    }*/
+    }
 
     // Execution
     return execute_command(task->cmd, timespath, outpath, errpath, minute_now);
@@ -205,7 +205,10 @@ int run_task_if_due(task_t *task, time_t minute_now){
     if (!timing_match_at(task->timing, minute_now))
         return 0;
 
-    last_run_minute[task->id] = minute_now;
+    // Execution of the task
+    int ret = execute_task(task, minute_now);
+    if (ret >= 0)
+        last_run_minute[task->id] = minute_now;
 
-    return execute_task(task, minute_now);
+    return ret;
 }
