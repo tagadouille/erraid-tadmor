@@ -70,35 +70,24 @@ char *timing_to_string(const timing_t *t)
     return out;
 }
 
-bool timing_match_now(const timing_t *t)
-{
-    if (!t) return false;
-
-    time_t now = time(NULL);
-    if (now == (time_t)-1) return false;
+bool timing_match_now(const timing_t *t, time_t minute_now){
 
     struct tm tm_now;
-    if (localtime_r(&now, &tm_now) == NULL) return false;
-
-    // Ignorer tm_sec, ne comparer que les minutes et heures
-    int curr_min = tm_now.tm_min;
-    int curr_hour = tm_now.tm_hour;
-    int curr_wday = tm_now.tm_wday;
+    localtime_r(&minute_now, &tm_now);
 
     if (t->minutes != 0 && !mask_is_full(t->minutes, 60)) {
-        if (!(t->minutes & (1ULL << curr_min))) return false;
+        if (!(t->minutes & (1ULL << tm_now.tm_min))) return false;
     }
-
     if (t->hours != 0 && !mask_is_full(t->hours, 24)) {
-        if (!(t->hours & (1U << curr_hour))) return false;
+        if (!(t->hours & (1U << tm_now.tm_hour))) return false;
     }
-
     if (t->daysofweek != 0 && !mask_is_full(t->daysofweek, 7)) {
-        if (!(t->daysofweek & (1U << curr_wday))) return false;
+        if (!(t->daysofweek & (1U << tm_now.tm_wday))) return false;
     }
 
     return true;
 }
+
 
 
 //TODO Refaire ça
@@ -141,11 +130,4 @@ void timing_show(const timing_t *t)
     char *txt = timing_to_string(t);
     dprintf(STDOUT_FILENO, "%s ", txt);
     free(txt);
-}
-
-bool timing_should_run(const timing_t *t)
-{
-    if (!t)
-        return false;
-    return timing_match_now(t);
 }

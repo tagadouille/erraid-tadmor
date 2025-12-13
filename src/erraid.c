@@ -92,18 +92,17 @@ int daemon_init(void) {
 }
 
 /* Execute command: SI or SQ */
-static int run_task_if_due(task_t *task)
+static int run_task_if_due(task_t *task, time_t minute_now)
 {
     if (!task || !task->cmd || !task->timing) return -1;
 
-    if (!timing_match_now(task->timing)) {
+    if (!timing_match_now(task->timing, minute_now)) {
         write_log_msg("Task %u NOT due at this minute", task->id);
         return 0;
     }
 
     write_log_msg("Executing task %u", task->id);
 
-    /* use correct format for uint32_t id */
     char id[32];
     snprintf(id, sizeof(id), "%u", (unsigned)task->id);
 
@@ -143,7 +142,7 @@ static int run_task_if_due(task_t *task)
 
 /* ------------------------------ Timing util ---------------------------- */
 /* wait until the next minute boundary (sleep until seconds == 0) */
-void wait_next_minute(void)
+static time_t wait_next_minute(void)
 {
     struct timespec ts;
 
@@ -155,12 +154,13 @@ void wait_next_minute(void)
     ts.tv_nsec = 0;
 
     // Dormir jusqu'à cette date absolue
-    while (clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, NULL) == EINTR);
+    clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, NULL);
+    return ts.tv_sec;
 }
 
 
 /* ------------------------------ MAIN LOOP ------------------------------ */
-static void scan_directory(DIR* dirp){
+static void scan_directory(DIR* dirp, time_t minute_now){
 
     if(dirp == NULL) {
         write_log_msg("Error : The DIR struct can't be null");
@@ -193,7 +193,7 @@ static void scan_directory(DIR* dirp){
         
         //task_display(curr_task);
 
-        run_task_if_due(curr_task);
+        run_task_if_due(curr_task, minute_now);
         task_destroy(curr_task);
         curr_task = NULL;
     }
@@ -204,7 +204,7 @@ void daemon_run(void) {
 
     while (running) {
 
-        wait_next_minute();
+        time_t minute_now = wait_next_minute();
 
         write_log_msg("Scanning tasks directory…");
 
@@ -217,7 +217,7 @@ void daemon_run(void) {
             continue;
         }
 
-        scan_directory(d);       
+        scan_directory(d, minute_now);
     }
 
     write_log_msg("Daemon main loop stopping.");
