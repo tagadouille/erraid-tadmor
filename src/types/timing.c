@@ -70,17 +70,24 @@ char *timing_to_string(const timing_t *t)
     return out;
 }
 
-bool timing_match_at(const timing_t *t, time_t when)
+bool timing_match_at(const timing_t *t, time_t now)
 {
     struct tm tm_now;
-    localtime_r(&when, &tm_now);
+    localtime_r(&now, &tm_now);
+    
+    // comparer seulement heures et minutes
+    if (t->minutes != 0 && !mask_is_full(t->minutes, 60))
+        if (!(t->minutes & (1ULL << tm_now.tm_min))) return false;
 
-    if (t->minutes && !(t->minutes & (1ULL << tm_now.tm_min))) return false;
-    if (t->hours   && !(t->hours   & (1U   << tm_now.tm_hour))) return false;
-    if (t->daysofweek && !(t->daysofweek & (1U << tm_now.tm_wday))) return false;
+    if (t->hours != 0 && !mask_is_full(t->hours, 24))
+        if (!(t->hours & (1U << tm_now.tm_hour))) return false;
+
+    if (t->daysofweek != 0 && !mask_is_full(t->daysofweek, 7))
+        if (!(t->daysofweek & (1U << tm_now.tm_wday))) return false;
 
     return true;
 }
+
 
 //TODO Refaire ça
 timing_t* timing_create(const char *data, ssize_t size)
