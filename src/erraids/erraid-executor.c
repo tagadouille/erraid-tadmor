@@ -34,10 +34,20 @@ int append_times_exitcodes(const char* path, uint16_t exitcode, time_t timestamp
 
 /* Execute a simple command and write stdout/stderr into task dir (overwrite),
    append times-exitcodes entry. */
-static int execute_simple(const command_t *cmd, const char *timespath, int outfd, int errfd,
+static int execute_simple(const command_t *cmd, const char *timespath, const char * outpath, const char * errpath,
                           int is_subcmd, time_t minute_now)
 {
     if (!cmd) return -1;
+
+    int outfd = open(outpath, O_CREAT | O_WRONLY | O_APPEND, 0644);
+    int errfd = open(errpath, O_CREAT | O_WRONLY | O_APPEND, 0644);
+
+    if (outfd < 0 || errfd < 0) {
+        write_log_msg("Cannot open stdout/stderr at path %s", tasksdir);
+        if (outfd >= 0) close(outfd);
+        if (errfd >= 0) close(errfd);
+        return -1;
+    }
 
     pid_t pid = fork();
     if (pid < 0) {
@@ -47,6 +57,7 @@ static int execute_simple(const command_t *cmd, const char *timespath, int outfd
     }
 
     if (pid == 0) {
+        
         if (dup2(outfd, STDOUT_FILENO) < 0) _exit(127);
         if (dup2(errfd, STDERR_FILENO) < 0) _exit(127);
 
@@ -56,6 +67,9 @@ static int execute_simple(const command_t *cmd, const char *timespath, int outfd
         execvp(argv[0], argv);
         _exit(127);
     }
+
+    close(outfd);
+    close(errfd);
 
     int status;
     waitpid(pid, &status, 0);
@@ -69,7 +83,7 @@ static int execute_simple(const command_t *cmd, const char *timespath, int outfd
 }
 
 
-static int execute_complexe(const command_t *cmd, const char *timespath, int outfd, int errfd, time_t minute_now){
+static int execute_complexe(const command_t *cmd, const char *timespath, const char * outpath, const char * errpath, time_t minute_now){
     
     if (!cmd || cmd->type != SQ)
         return -1;
@@ -79,10 +93,7 @@ static int execute_complexe(const command_t *cmd, const char *timespath, int out
     uint32_t count = cmd->args.composed.count;
     for (uint32_t i = 0; i < count; i++) {
 
-        int fd_out = dup(outfd);
-        int fd_err = dup(errfd);
-
-        int ret = execute_simple(cmd->args.composed.cmds[i], timespath, fd_out, fd_err, 1, minute_now);
+        int ret = execute_simple(cmd->args.composed.cmds[i], timespath, outpath, errpath, 1, minute_now);
 
         final_exitcode = ret;
     }
@@ -100,15 +111,15 @@ static int execute_complexe(const command_t *cmd, const char *timespath, int out
  * @param errfd the file descriptor of the stderr file
  * @param minute_now the minute when the task will be executed
  */
-static int execute_command(const command_t *cmd, const char *timespath, int outfd, int errfd, time_t minute_now){
+static int execute_command(const command_t *cmd, const char *timespath, const char * outpath, const char * errpath, time_t minute_now){
 
     if (!cmd) return -1;
 
     if (cmd->type == SI)
-        return execute_simple(cmd, timespath, outfd, errfd, 0, minute_now);
+        return execute_simple(cmd, timespath, outpath, errpath, 0, minute_now);
 
     if (cmd->type == SQ)
-        return execute_complexe(cmd, timespath, outfd, errfd, minute_now);
+        return execute_complexe(cmd, timespath, outpath, errpath, minute_now);
 
     return -1;
 }
@@ -141,23 +152,22 @@ static int execute_task(task_t* task, time_t minute_now){
         return -1;
     }
 
-    int outfd = open(outpath, O_CREAT | O_WRONLY | O_APPEND | O_TRUNC, 0644);
-    int errfd = open(errpath, O_CREAT | O_WRONLY | O_APPEND | O_TRUNC, 0644);
+    // Delete the file if they already exist : 
 
-    if (outfd < 0 || errfd < 0) {
-        write_log_msg("Cannot open stdout/stderr for task %u: %s / %s", task->id, strerror(errno), tasksdir);
-        if (outfd >= 0) close(outfd);
-        if (errfd >= 0) close(errfd);
+    if (unlink(outpath) < 0 && errno != ENOENT) {
+        perror("unlink");
+        write_log_msg("Error: can't delete file at path %s", outpath);
+        return -1;
+    }
+
+    if (unlink(errpath) < 0 && errno != ENOENT) {
+        perror("unlink");
+        write_log_msg("Error: can't delete file at path %s", errpath);
         return -1;
     }
 
     // Execution
-    int res = execute_command(task->cmd, timespath, outfd, errfd, minute_now);
-
-    close(outfd);
-    close(errfd);
-
-    return res;
+    return execute_command(task->cmd, timespath, outpath, errpath, minute_now);
 }
 
 
