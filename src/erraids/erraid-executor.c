@@ -229,7 +229,9 @@ int run_task_if_due(task_t *task, time_t minute_now){
     if (!timing_match_at(task->timing, minute_now))
         return 0;
 
-    last_run_minute[task->id] = minute_now;
+    int ret = execute_task(task, minute_now);
+    if (ret >= 0)
+        last_run_minute[task->id] = minute_now;
 
-    return execute_task(task, minute_now);
+    return ret;
 }
