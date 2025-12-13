@@ -130,3 +130,13 @@ void timing_show(const timing_t *t)
     dprintf(STDOUT_FILENO, "%s ", txt);
     free(txt);
 }
+
+timing_t* timing_copy(const timing_t* src){
+    if (!src) return NULL;
+
+    timing_t* t = malloc(sizeof(timing_t));
+    if (!t) return NULL;
+
+    memcpy(t, src, sizeof(timing_t));
+    return t;
+}

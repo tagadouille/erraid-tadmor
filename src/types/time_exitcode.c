@@ -10,11 +10,10 @@
 #include <stdlib.h>
 #include <endian.h>
 
-char *time_exitcode_show(const char *data, ssize_t size)
+time_array_t *time_exitcode_parse(const char *data, ssize_t size)
 {
-
     const ssize_t REC_SIZE = sizeof(int64_t) + sizeof(uint16_t);
-    size = (size / 10) * 10;
+
     // Validation du buffer
     if (data == NULL || size <= 0)
     {
@@ -28,49 +27,67 @@ char *time_exitcode_show(const char *data, ssize_t size)
         return NULL;
     }
 
-    // Output final buffer (2 KB is enough)
-    char *output = malloc(2048);
-    if (!output)
+    size_t nrecords = size / REC_SIZE;
+
+    // Allocation of the principal structure
+    time_array_t *arr = malloc(sizeof(time_array_t));
+    if (!arr)
         return NULL;
-    output[0] = '\0';
+
+    arr->nbruns = nrecords;
+    arr->all_timecode = calloc(nrecords, sizeof(time_exitcode_t));
+    
+    if (!arr->all_timecode){
+        free(arr);
+        return NULL;
+    }
 
     size_t offset = 0;
-    char line[128];
 
-    while (offset + REC_SIZE <= (size_t)size)
+    for (size_t i = 0; i < nrecords; i++)
     {
         // ---- timestamp ----
         int64_t t_be;
         memcpy(&t_be, data + offset, sizeof(int64_t));
-        time_t ts = (time_t)be64toh(t_be);
         offset += sizeof(int64_t);
+
+        arr->all_timecode[i].time = (int64_t)be64toh(t_be);
 
         // ---- exitcode ----
         uint16_t c_be;
         memcpy(&c_be, data + offset, sizeof(uint16_t));
-        unsigned int exitcode = be16toh(c_be);
         offset += sizeof(uint16_t);
 
-        // ---- format timestamp ----
-        char time_str[32];
-        struct tm *tm_info = localtime(&ts);
-
-        if (tm_info)
-            strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
-        else
-            strcpy(time_str, "Invalid time");
-
-        // ---- format line ----
-        snprintf(line, sizeof(line), "%s %d\n", time_str, exitcode);
-
-        // ---- append to output ----
-        if (strlen(output) + strlen(line) < 2047)
-            strcat(output, line);
+        arr->all_timecode[i].exitcode = (uint16_t)be16toh(c_be);
     }
 
-    // If no lines
-    if (strlen(output) == 0)
-        strcpy(output, "(No previous executions)\n");
+    return arr;
+}
 
-    return output; // caller must free()
+void time_exitcode_show(const time_exitcode_t* te){
+    if (te == NULL){
+        dprintf(STDERR_FILENO, "ERROR time exitcode null\n");
+        return;
+    }
+
+    // Conversion
+    time_t t = (time_t)te->time;
+    struct tm tm_info;
+    localtime_r(&t, &tm_info);
+
+    char buffer[64];
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm_info);
+
+    dprintf(STDOUT_FILENO, "%s : ", buffer);
+    dprintf(STDOUT_FILENO, "%u\n", te->exitcode);
+}
+
+void all_time_show(time_array_t* te_arr){
+    if(te_arr == NULL){
+        dprintf(STDOUT_FILENO, "The array of times exitcodes is null\n");
+    }
+    for (uint32_t i = 0; i < te_arr -> nbruns; i++){
+        time_exitcode_show(&(te_arr -> all_timecode)[i]);
+    }
+    
 }

@@ -14,6 +14,11 @@ typedef struct __attribute__((packed)) {
     uint16_t exitcode;  // Exit status of the task
 } time_exitcode_t;
 
+typedef struct{
+    uint32_t nbruns;
+    time_exitcode_t* all_timecode;
+} time_array_t;
+
 /**
  * @brief Append a new (time, exitcode) record to the log file.
  * @param path Path to "times-exitcodes" file.
@@ -23,10 +28,24 @@ typedef struct __attribute__((packed)) {
 bool time_exitcode_append(const char *path, const time_exitcode_t *record);
 
 /**
- * @brief Read and display all previous records from the file.
- * @param path Path to "times-exitcodes" file.
- * @return true on success, false on failure.
+ * @brief Parse the buffer that contains the content of the times_exitcodes
+ * file and return a pointer to the array of times_exitcodes
+ * @param data the buffer
+ * @param size the size of the buffer
+ * @return a pointer to the array of times_exitcodes, NULL pointer on failure
  */
-char *time_exitcode_show(const char *data, ssize_t size);
+time_array_t *time_exitcode_parse(const char *data, ssize_t size);
+
+/**
+ * @brief display the time_exitcode_t structure
+ * @param te a pointer to a time_exitcode_t structure
+ */
+void time_exitcode_show(const time_exitcode_t* te);
+
+/**
+ * @brief display all the time_exitcode_t structure of the array
+ * @param te_arr a pointer to a time_array_t structure
+ */
+void all_time_show(time_array_t* te_arr);
 
 #endif

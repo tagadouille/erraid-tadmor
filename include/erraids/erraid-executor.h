@@ -6,4 +6,4 @@
  * @param outfd the file descriptor of the stdout file
  * @param errfd the file descriptor of the stderr file
  */
-int execute_command(const command_t *cmd, const char *timespath, int outfd, int errfd);
+int execute_command(const command_t *cmd, const char *timespath, int outfd, int errfd, time_t minute_now);

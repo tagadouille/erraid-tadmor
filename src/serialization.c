@@ -270,10 +270,10 @@ static string_t *command_to_commandline(const command_t *cmd)
     if (cmd->type == SI) {
         /* compute length */
         size_t total = 0;
-        uint32_t argc = cmd->args.simple.argc;
+        uint32_t argc = cmd->args.simple->argc;
         if (argc == 0) return NULL;
         for (uint32_t i = 0; i < argc; ++i) {
-            string_t *s = cmd->args.simple.argv[i];
+            string_t *s = cmd->args.simple->argv[i];
             if (!s) return NULL;
             total += s->length;
             if (i + 1 < argc) total += 1; /* space */
@@ -286,7 +286,7 @@ static string_t *command_to_commandline(const command_t *cmd)
         if (!out->data) { free(out); return NULL; }
         size_t off = 0;
         for (uint32_t i = 0; i < argc; ++i) {
-            string_t *s = cmd->args.simple.argv[i];
+            string_t *s = cmd->args.simple->argv[i];
             memcpy(out->data + off, s->data, s->length);
             off += s->length;
             if (i + 1 < argc) {

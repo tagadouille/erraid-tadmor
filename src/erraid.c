@@ -24,6 +24,7 @@
 
 #include "types/task.h"
 #include "tree-reading/tree_reader.h"
+#include "test.h"
 
 
 /* ---------------------------- CONFIG ---------------------------------- */
@@ -46,6 +47,9 @@ char g_run_dir[PATH_MAX] = {0};
 
 int g_log_fd = -1;
 char tasksdir[PATH_MAX] = "";
+
+string_t curr_output = {0};
+time_array_t* curr_time = NULL;
 
 /* --------------------------- SIGNAL HANDLER ---------------------------- */
 
@@ -143,7 +147,7 @@ static int run_task_if_due(task_t *task, time_t minute_now)
         return -1;
     }
 
-    int res = execute_command(task->cmd, timespath, outfd, errfd);
+    int res = execute_command(task->cmd, timespath, outfd, errfd, minute_now);
 
     close(outfd);
     close(errfd);

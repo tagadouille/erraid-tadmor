@@ -5,8 +5,7 @@
 #include <stdlib.h>
 
 #include "tree-reading/tree_reader.h"
-
-//TODO : maybe change the STDOUT_FILE by smth else
+#include "erraid.h"
 
 int output_reader(const char* path, bool is_stderr){
 
@@ -36,15 +35,7 @@ int output_reader(const char* path, bool is_stderr){
         }else{
             //Detection of an anomaly
             if(nread != 0){
-                if(write(STDOUT_FILENO, buffer, nread) != nread){
-                    if(is_stderr)
-                        perror("write standard error to STDOUT");
-                    else{
-                        perror("write standard output to STDOUT");
-                    }
-                    result = -1;
-                    goto error;
-                }
+                curr_output = string_create(buffer, nread);
             }else{
                 break;
             }

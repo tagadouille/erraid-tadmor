@@ -1,25 +1,25 @@
-# --- Compilateur et options ---
+# --- Compilator and options ---
 CC      := gcc
 CFLAGS  := -Wall -Wextra -pedantic -std=c99 -O2 -I include
 LDFLAGS :=
 LDLIBS  :=
 
-# --- Répertoires ---
+# --- Directories ---
 SRCDIR  := src
 TESTDIR := tests
 OBJDIR  := build
 
-# --- Fichiers sources principaux ---
+# --- Pricipal source file ---
 SRC_ERRAID_MAIN := $(SRCDIR)/main.c
 SRC_TADMOR_MAIN := $(SRCDIR)/tadmor_main.c
 
-# --- Tous les .c dans src (récursif) ---
+# --- all the .c in src ---
 SRC_ALL := $(shell find $(SRCDIR) -name "*.c")
 
-# --- Sources communes (tout sauf les mains) ---
+# --- communes souces (all exept mains) ---
 SRC_COMMON := $(filter-out $(SRC_ERRAID_MAIN) $(SRC_TADMOR_MAIN), $(SRC_ALL))
 
-# --- Objets ---
+# --- Objects ---
 obj_from_src = $(foreach f,$1,$(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(f)))
 
 OBJ_ERRAID := $(call obj_from_src,$(SRC_ERRAID_MAIN) $(SRC_COMMON))
@@ -30,15 +30,15 @@ TARGETS := erraid tadmor
 
 .PHONY: all clean distclean test_daemon test_client
 
-# --- Cible par défaut ---
+# --- Default target ---
 all: $(TARGETS)
 
-# --- Règles pour les exécutables ---
+# --- Executables rules ---
 erraid: $(OBJ_ERRAID)
-	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+	$(CC) $(LDFLAGS) -o ./erraid $^ $(LDLIBS)
 
 tadmor: $(OBJ_TADMOR)
-	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+	$(CC) $(LDFLAGS) -o ./tadmor $^ $(LDLIBS)
 
 # --- Tests (compilation indépendante) ---
 
@@ -72,10 +72,11 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# --- Nettoyage ---
+# --- Cleaning ---
 clean:
 	rm -rf $(OBJDIR)
 	rm -f test_daemon test_client
+	find $(SRCDIR) -name "*.o" -delete
 
 distclean: clean
 	rm -f $(TARGETS)

@@ -52,6 +52,7 @@ static string_t *read_one_string(const char *buf, size_t size, size_t *offset)
     s->length = len;
 
     *offset += len;
+
     return s;
 }
 
@@ -118,7 +119,7 @@ bool arguments_parse_struct(const string_t *buf, unsigned int size, arguments_t 
 
     return true;
 
-error:
+    error:
     arguments_free(args);
     return false;
 }
@@ -148,111 +149,101 @@ arguments_t *arguments_parse(const char *buffer, unsigned int size)
 
     if (!arguments_parse_struct(&buf, size, args))
     {
-        string_free(&buf);
-        // free(args);
         return NULL;
     }
-    string_free(&buf);
     return args;
 }
 
-arguments_t *copy_arguments(arguments_t *dst, const arguments_t *src)
-{
-    // safety check
-    if (!dst || !src)
-    {
+arguments_t *copy_arguments(const arguments_t *src) {
+    
+    if (src == NULL) {
+        dprintf(STDERR_FILENO, "copy_arguments: src == NULL\n");
         return NULL;
     }
 
+    arguments_t *dst = calloc(1, sizeof(arguments_t));
+    if (!dst) {
+        perror("calloc copy_arguments");
+        return NULL;
+    }
     dst->argc = src->argc;
 
-    // Copy command
-    if (src->command)
-    {
+    // copy command
+    if (src->command) {
         dst->command = string_copy(src->command);
-        if (!dst->command)
-        {
-            perror("string_copy");
+
+        if (!dst->command) {
+            arguments_free(dst);
+            free(dst);
             return NULL;
         }
-    }
-    else
-    {
+    } else {
+        dprintf(STDERR_FILENO, "copy_arguments: warning src->command == NULL\n");
         dst->command = NULL;
     }
 
-    // Copy argv
-    uint32_t n_args = (src->argc > 0 ? src->argc - 1 : 0);
+    // copy argv array (if any)
+    uint32_t n_args = 0;
+    if (src->argc > 0) {
+        // determine how many argv entries you really have; here I assume src->argc includes command.
+        n_args = (src->argc > 0) ? (src->argc - 1) : 0;
+    }
 
-    if (n_args > 0)
-    {
+    if (n_args > 0) {
         dst->argv = calloc(n_args, sizeof(string_t *));
 
-        if (!dst->argv)
-        {
-            perror("calloc");
-            string_free_heap(dst->command);
+        if (!dst->argv) {
+            perror("calloc dst->argv");
+            arguments_free(dst);
+            free(dst);
             return NULL;
         }
 
-        for (uint32_t i = 0; i < n_args; i++)
-        {
-            if (src->argv[i])
-            {
-                dst->argv[i] = string_copy(src->argv[i]);
-                if (!dst->argv[i])
-                {
-                    perror("string_copy");
+        for (uint32_t i = 0; i < n_args; ++i) {
 
-                    // Free already copied elements
-                    for (uint32_t j = 0; j < i; j++)
-                        string_free_heap(dst->argv[j]);
-                    free(dst->argv);
-                    string_free_heap(dst->command);
+            if (src->argv && src->argv[i]) {
+                dst->argv[i] = string_copy(src->argv[i]);
+
+                if (!dst->argv[i]) {
+                    dprintf(STDERR_FILENO, "copy_arguments: string_copy(argv[%u]) failed\n", i);
+                    arguments_free(dst);
+                    free(dst);
                     return NULL;
                 }
-            }
-            else
-            {
-                dst->argv[i] = NULL; // initialize NULL pointers
+            } else {
+                dst->argv[i] = NULL;
             }
         }
-    }
-    else
-    {
+    } else {
         dst->argv = NULL;
     }
     return dst;
 }
 
-void arguments_free(arguments_t *args)
-{
-    if (args == NULL)
-    {
-        return;
+
+void arguments_free(arguments_t *a) {
+    if (!a) return;
+
+    if (a->command) {
+        if (a->command->data) { free(a->command->data); a->command->data = NULL; }
+        free(a->command);
+        a->command = NULL;
     }
 
-    if (args->command)
-    {
-        string_free_heap(args->command);
-        args->command = NULL;
-    }
-
-    if (args->argv)
-    {
-        //uint32_t n = (args->argc > 0 ? args->argc - 1 : 0);
-        for (uint32_t i = 0; i < args->argc; ++i)
-        {
-            if (args->argv[i])
-            {
-                string_free_heap(args->argv[i]);
-                args->argv[i] = NULL;
+    if (a->argv) {
+        // argv length may be a->argc (or a->argc-1 depending on your convention)
+        uint32_t n = a->argc;
+        for (uint32_t i = 0; i < n; ++i) {
+            if (a->argv[i]) {
+                if (a->argv[i]->data) { free(a->argv[i]->data); a->argv[i]->data = NULL; }
+                free(a->argv[i]);
+                a->argv[i] = NULL;
             }
         }
-        free(args->argv);
-        args->argv = NULL;
+        free(a->argv);
+        a->argv = NULL;
     }
-    args->argc = 0;
+    a->argc = 0;
 }
 
 char **arguments_to_argv(const arguments_t *args)

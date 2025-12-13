@@ -7,3 +7,5 @@ tadmor
 *.o 
 .log
 Consignes*
+tadmor
+build*

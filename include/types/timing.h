@@ -54,6 +54,13 @@ bool timing_match_at(const timing_t *t, time_t when);
 timing_t* timing_create(const char *path, ssize_t size);
 
 /**
+ * @brief copy a timing struct 
+ * @param a pointer to the struct to copy
+ * @return a pointer to the copy, NULL if failure
+ */
+timing_t* timing_copy(const timing_t* src);
+
+/**
  * @brief Display the timing information.
  * @param t Pointer to the timing_t structure to display.
  */
