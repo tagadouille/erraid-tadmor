@@ -10,23 +10,28 @@
 #include <arpa/inet.h>
 
 /* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] atomically+safe */
-static int append_times_exitcodes(const char* path, int exitcode, time_t minute_now) {
-
+static int append_times_exitcodes(const char* path, uint64_t timestamp, uint16_t exitcode) {
     int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
-    if (fd < 0) {
-        write_log_msg("Error: failed to open times-exitcodes file at path %s\n", path);
-        perror("open");
-        return -1;
-    }
+    if (fd < 0) return -1;
 
-    time_exitcode_t te = {hton64((int64_t)minute_now), htons((uint16_t)exitcode)};
+    uint8_t buf[10];
+    uint64_t ts_be = hton64(timestamp);
+    uint16_t ec_be = htons(exitcode);
 
-    ssize_t w = write(fd, &te, sizeof(time_exitcode_t));
+    // copier les 8 octets du timestamp
+    for (int i = 0; i < 8; i++)
+        buf[i] = (ts_be >> (56 - i*8)) & 0xFF;
 
-    if (w != sizeof(time_exitcode_t)) {
-        perror("write");
-        close(fd);
-        return -1;
+    // copier les 2 octets de l'exit code
+    buf[8] = (ec_be >> 8) & 0xFF;
+    buf[9] = ec_be & 0xFF;
+
+    // boucle d'écriture complète
+    ssize_t total = 0;
+    while (total < 10) {
+        ssize_t w = write(fd, buf + total, 10 - total);
+        if (w <= 0) { close(fd); return -1; }
+        total += w;
     }
 
     fsync(fd);
