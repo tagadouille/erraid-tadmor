@@ -13,16 +13,25 @@
 
 static time_t last_run_minute[MAX_TASKS];
 
-/* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] atomically+safe */
-int append_times_exitcodes(const char* path, uint16_t exitcode, time_t timestamp) {
+/**
+ * @brief Append one record to times-exitcodes 
+ * @return 0 if on success, -1 if an error occured
+ */
+static int append_times_exitcodes(const char* path, uint16_t exitcode, time_t timestamp) {
+
     int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
-    if (fd < 0) return -1;
+
+    if (fd < 0){
+        perror("open");
+        return -1;
+    }
 
     time_exitcode_t te;
     te.time = hton64((int64_t)timestamp);
     te.exitcode = htons(exitcode);
 
     if (write(fd, &te, sizeof(te)) != sizeof(te)) {
+        perror("write");
         close(fd);
         return -1;
     }
@@ -37,7 +46,10 @@ int append_times_exitcodes(const char* path, uint16_t exitcode, time_t timestamp
 static int execute_simple(const command_t *cmd, const char *timespath, const char * outpath, const char * errpath,
                           int is_subcmd, time_t minute_now)
 {
-    if (!cmd) return -1;
+    if (!cmd){
+        write_log_msg("Error : The given command is NULL for execute_simple");
+        return -1;
+    }
 
     int outfd = open(outpath, O_CREAT | O_WRONLY | O_APPEND, 0644);
     int errfd = open(errpath, O_CREAT | O_WRONLY | O_APPEND, 0644);
@@ -85,8 +97,14 @@ static int execute_simple(const command_t *cmd, const char *timespath, const cha
 
 static int execute_complexe(const command_t *cmd, const char *timespath, const char * outpath, const char * errpath, time_t minute_now){
     
-    if (!cmd || cmd->type != SQ)
+    if (!cmd){
+        write_log_msg("Error : The given command is NULL for execute_complex");
         return -1;
+    }
+    if(cmd->type != SQ){
+        write_log_msg("Error : The type of the given command is not SQ for execute_complex");
+        return -1;
+    }
 
     int final_exitcode = 0;
 
@@ -113,7 +131,10 @@ static int execute_complexe(const command_t *cmd, const char *timespath, const c
  */
 static int execute_command(const command_t *cmd, const char *timespath, const char * outpath, const char * errpath, time_t minute_now){
 
-    if (!cmd) return -1;
+    if (!cmd){
+        write_log_msg("Error : The given command is NULL for execute_command");
+        return -1;
+    }
 
     if (cmd->type == SI)
         return execute_simple(cmd, timespath, outpath, errpath, 0, minute_now);
@@ -154,7 +175,7 @@ static int execute_task(task_t* task, time_t minute_now){
 
     // Delete the file if they already exist : 
 
-    if (unlink(outpath) < 0 && errno != ENOENT) {
+    /*if (unlink(outpath) < 0 && errno != ENOENT) {
         perror("unlink");
         write_log_msg("Error: can't delete file at path %s", outpath);
         return -1;
@@ -164,7 +185,7 @@ static int execute_task(task_t* task, time_t minute_now){
         perror("unlink");
         write_log_msg("Error: can't delete file at path %s", errpath);
         return -1;
-    }
+    }*/
 
     // Execution
     return execute_command(task->cmd, timespath, outpath, errpath, minute_now);

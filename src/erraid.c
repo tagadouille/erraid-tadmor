@@ -18,7 +18,6 @@
 #include <stdint.h>
 
 #include <stdarg.h>
-#include <arpa/inet.h>
 #include <dirent.h>
 #include <sys/file.h>
 
