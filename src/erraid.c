@@ -31,9 +31,10 @@
 
 static volatile int running = 1;
 
-#define MAX_TASKS sizeof(uint64_t)
-
-static time_t last_run_minute[MAX_TASKS];
+/**
+ * All the tasks that was scanned
+ */
+static all_task_t* scanned_tasks = NULL;
 
 
 /**
@@ -100,61 +101,6 @@ int daemon_init(void) {
     return 0;
 }
 
-/* Execute command: SI or SQ */
-static int run_task_if_due(task_t *task, time_t minute_now)
-{
-     if (!task || !task->cmd || !task->timing)
-        return -1;
-
-    if (task->id >= MAX_TASKS)
-        return 0;
-
-    if (last_run_minute[task->id] == minute_now)
-        return 0;
-
-    if (!timing_match_at(task->timing, minute_now))
-        return 0;
-
-    last_run_minute[task->id] = minute_now;
-
-    write_log_msg("Executing task %u", task->id);
-
-    char id[32];
-    snprintf(id, sizeof(id), "%u", (unsigned)task->id);
-
-    char outpath[PATH_MAX], errpath[PATH_MAX], timespath[PATH_MAX];
-
-    if (snprintf(outpath, sizeof(outpath), "%s/%s/stdout", tasksdir, id) >= (int)sizeof(outpath)) {
-        write_log_msg("outpath too long for task %u", task->id);
-        return -1;
-    }
-    if (snprintf(errpath, sizeof(errpath), "%s/%s/stderr", tasksdir, id) >= (int)sizeof(errpath)) {
-        write_log_msg("errpath too long for task %u", task->id);
-        return -1;
-    }
-    if (snprintf(timespath, sizeof(timespath), "%s/%s/times-exitcodes", tasksdir, id) >= (int)sizeof(timespath)) {
-        write_log_msg("timespath too long for task %u", task->id);
-        return -1;
-    }
-
-    int outfd = open(outpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-    int errfd = open(errpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-
-    if (outfd < 0 || errfd < 0) {
-        write_log_msg("Cannot open stdout/stderr for task %u: %s / %s", task->id, strerror(errno), tasksdir);
-        if (outfd >= 0) close(outfd);
-        if (errfd >= 0) close(errfd);
-        return -1;
-    }
-
-    int res = execute_command(task->cmd, timespath, outfd, errfd, minute_now);
-
-    close(outfd);
-    close(errfd);
-
-    return res;
-}
-
 
 /* ------------------------------ Timing util ---------------------------- */
 /* wait until the next minute boundary (sleep until seconds == 0) */
@@ -163,77 +109,64 @@ static time_t wait_next_minute(void)
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
 
-    time_t next_minute = ts.tv_sec - (ts.tv_sec % 60) + 60;
-
-    ts.tv_sec = next_minute;
+    ts.tv_sec = ts.tv_sec - (ts.tv_sec % 60) + 60;
     ts.tv_nsec = 0;
 
     while (clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, NULL) == EINTR);
 
-    return next_minute;
+    return ts.tv_sec;
 }
 
-
 /* ------------------------------ MAIN LOOP ------------------------------ */
-static void scan_directory(DIR* dirp, time_t minute_now){
 
-    if(dirp == NULL) {
-        write_log_msg("Error : The DIR struct can't be null");
+static void scan_all_task(){
+
+    write_log_msg("Scanning tasks directory…");
+
+    scanned_tasks = all_task_listing(tasksdir);
+
+    if(scanned_tasks == NULL){
+        write_log_msg("Error : an error occured while scanning all the tasks of path %s", tasksdir);
         running = 0;
         return;
     }
-
-    struct dirent *ent;
-    while ((ent = readdir(dirp))) {
-        if (ent->d_name[0] == '.') continue;
-
-        // Conversion of char* to uint64_t
-        char *endptr = NULL;
-        errno = 0;
-        unsigned long idul = strtoul(ent->d_name, &endptr, 10);
-        if (endptr == NULL || *endptr != '\0' || errno != 0) continue;
-        uint64_t id = (uint64_t)idul;
-
-        /* use existing tree reader which sets curr_task */
-        if (task_reader(tasksdir, id, LIST) < 0) {
-            write_log_msg("task_reader failed for %u", id);
-            continue;
-        }else{
-            write_log_msg("task_reader worked for %u", id);
-        }
-        if (!curr_task) {
-            write_log_msg("No curr_task for id %u", id);
-            continue;
-        }
-        
-        //task_display(curr_task);
-
-        run_task_if_due(curr_task, minute_now);
-        task_destroy(curr_task);
-        curr_task = NULL;
-    }
-    closedir(dirp);
+    write_log_msg("The scan succeded ! \n");
 }
+
+/**
+ * @brief Execute all the task that was scanned
+ */
+static void execute_all_task(time_t minute_now){
+
+    if(scanned_tasks == NULL){
+        write_log_msg("Error : scanned_tasks is NULL, can't execute all the tasks");
+        return;
+    }
+
+    for (uint32_t i = 0; i < scanned_tasks -> nbtask; i++)
+    {
+        //task_display(&(scanned_tasks -> all_task)[i]);
+        run_task_if_due(&(scanned_tasks -> all_task)[i], minute_now);
+    }
+
+    write_log_msg("The execution is finish ! Go back to sleep.. zzz..\n");
+    
+}
+
 void daemon_run(void) {
     write_log_msg("Daemon main loop started.");
+    
+    // Scan of the tasks of the directory
+    scan_all_task();
 
+    // Execution loop of the tasks
     while (running) {
 
         time_t minute_now = wait_next_minute();
 
-        write_log_msg("Scanning tasks directory…");
-
-        DIR *d = opendir(tasksdir);
-
-        if (d == NULL) {
-            perror("opendir");
-            write_log_msg("Cannot open tasks/ directory: %s", tasksdir);
-            sleep(SLEEP_INTERVAL);
-            continue;
-        }
-
-        scan_directory(d, minute_now);
+        execute_all_task(minute_now);
     }
 
+    free(scanned_tasks);
     write_log_msg("Daemon main loop stopping.");
 }

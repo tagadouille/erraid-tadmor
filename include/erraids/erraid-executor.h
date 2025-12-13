@@ -1,9 +1,9 @@
 #include "types/task.h"
+#include <time.h>
+
 /**
- * Execute a command in function of the type
- * @param cmd the command to execute
- * @param timespath the path where the times-exitcodes file is
- * @param outfd the file descriptor of the stdout file
- * @param errfd the file descriptor of the stderr file
+ * @brief run the task if the task is due
+ * @param task the task to run
+ * @param minute_now the minute when the task will be executed
  */
-int execute_command(const command_t *cmd, const char *timespath, int outfd, int errfd, time_t minute_now);
+int run_task_if_due(task_t *task, time_t minute_now);

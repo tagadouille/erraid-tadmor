@@ -9,13 +9,17 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 
+#define MAX_TASKS sizeof(uint64_t)
+
+static time_t last_run_minute[MAX_TASKS];
+
 /* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] atomically+safe */
 int append_times_exitcodes(const char* path, uint16_t exitcode, time_t timestamp) {
     int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
     if (fd < 0) return -1;
 
     time_exitcode_t te;
-    te.time = hton64((int64_t)timestamp);   // timestamp de la minute courante
+    te.time = hton64((int64_t)timestamp);
     te.exitcode = htons(exitcode);
 
     if (write(fd, &te, sizeof(te)) != sizeof(te)) {
@@ -88,7 +92,15 @@ static int execute_complexe(const command_t *cmd, const char *timespath, int out
     return final_exitcode;
 }
 
-int execute_command(const command_t *cmd, const char *timespath, int outfd, int errfd, time_t minute_now){
+/**
+ * Execute a command in function of the type
+ * @param cmd the command to execute
+ * @param timespath the path where the times-exitcodes file is
+ * @param outfd the file descriptor of the stdout file
+ * @param errfd the file descriptor of the stderr file
+ * @param minute_now the minute when the task will be executed
+ */
+static int execute_command(const command_t *cmd, const char *timespath, int outfd, int errfd, time_t minute_now){
 
     if (!cmd) return -1;
 
@@ -99,4 +111,70 @@ int execute_command(const command_t *cmd, const char *timespath, int outfd, int 
         return execute_complexe(cmd, timespath, outfd, errfd, minute_now);
 
     return -1;
+}
+
+/**
+ * @brief proceed of the execution of the task
+ * @param task the task to be executed
+ */
+static int execute_task(task_t* task, time_t minute_now){
+    write_log_msg("Executing task %u", task->id);
+
+    char id[32];
+    snprintf(id, sizeof(id), "%u", (unsigned)task->id);
+
+    // Creation of the pathes to the outputs files
+    char outpath[PATH_MAX], errpath[PATH_MAX], timespath[PATH_MAX];
+
+    if (snprintf(outpath, sizeof(outpath), "%s/%s/stdout", tasksdir, id) >= (int)sizeof(outpath)) {
+        write_log_msg("outpath too long for task %u", task->id);
+        return -1;
+    }
+
+    if (snprintf(errpath, sizeof(errpath), "%s/%s/stderr", tasksdir, id) >= (int)sizeof(errpath)) {
+        write_log_msg("errpath too long for task %u", task->id);
+        return -1;
+    }
+
+    if (snprintf(timespath, sizeof(timespath), "%s/%s/times-exitcodes", tasksdir, id) >= (int)sizeof(timespath)) {
+        write_log_msg("timespath too long for task %u", task->id);
+        return -1;
+    }
+
+    int outfd = open(outpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    int errfd = open(errpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+
+    if (outfd < 0 || errfd < 0) {
+        write_log_msg("Cannot open stdout/stderr for task %u: %s / %s", task->id, strerror(errno), tasksdir);
+        if (outfd >= 0) close(outfd);
+        if (errfd >= 0) close(errfd);
+        return -1;
+    }
+
+    // Execution
+    int res = execute_command(task->cmd, timespath, outfd, errfd, minute_now);
+
+    close(outfd);
+    close(errfd);
+
+    return res;
+}
+
+
+int run_task_if_due(task_t *task, time_t minute_now){
+
+    // Some verification of if the task must be execute
+     if (!task || !task->cmd || !task->timing)
+        return -1;
+
+    // If the task was already launched
+    if (last_run_minute[task->id] == minute_now)
+        return 0;
+
+    if (!timing_match_at(task->timing, minute_now))
+        return 0;
+
+    last_run_minute[task->id] = minute_now;
+
+    return execute_task(task, minute_now);
 }
