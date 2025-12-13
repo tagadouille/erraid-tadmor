@@ -141,8 +141,8 @@ static int execute_task(task_t* task, time_t minute_now){
         return -1;
     }
 
-    int outfd = open(outpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-    int errfd = open(errpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    int outfd = open(outpath, O_CREAT | O_WRONLY | O_APPEND | O_TRUNC, 0644);
+    int errfd = open(errpath, O_CREAT | O_WRONLY | O_APPEND | O_TRUNC, 0644);
 
     if (outfd < 0 || errfd < 0) {
         write_log_msg("Cannot open stdout/stderr for task %u: %s / %s", task->id, strerror(errno), tasksdir);
