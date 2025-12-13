@@ -63,19 +63,20 @@ static int append_times_exitcodes(const char *path, uint16_t exitcode, time_t ti
     if (fd < 0)
         return -1;
 
+    uint8_t buffer[10];
     uint64_t t_be = to_be64((uint64_t)timestamp);
     uint16_t e_be = to_be16(exitcode);
 
-    if (write(fd, &t_be, 8) != 8) {
+    memcpy(buffer, &t_be, 8);
+    memcpy(buffer + 8, &e_be, 2);
+
+    ssize_t w = write(fd, buffer, sizeof(buffer));
+    if (w != sizeof(buffer)) {
         close(fd);
         return -1;
     }
 
-    if (write(fd, &e_be, 2) != 2) {
-        close(fd);
-        return -1;
-    }
-
+    fsync(fd);
     close(fd);
     return 0;
 }
