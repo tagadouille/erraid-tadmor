@@ -56,7 +56,7 @@ void tadmor_print_answer(answer_t* answer)
 {
     if (answer == NULL)
     {
-        perror("NULL answer");
+        dprintf(STDERR_FILENO, "NULL answer");
         return;
     }
 
@@ -90,7 +90,7 @@ void tadmor_print_list(a_list_t* list)
 {
     if (list == NULL)
     {
-        perror("NULL list");
+        dprintf(STDERR_FILENO, "NULL list");
         return;
     }
 
@@ -136,7 +136,7 @@ void tadmor_print_output(a_output_t* output)
 {
     if (output == NULL)
     {
-        perror("NULL output");
+        dprintf(STDERR_FILENO, "NULL output");
         return;
     }
 

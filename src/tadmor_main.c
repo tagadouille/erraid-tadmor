@@ -77,7 +77,7 @@ static int client_handle_command(uint16_t code, const char *input){
         free_simple_request(request);
 
         //TODO receive the answer and print it
-        //tadmor_print_answer(NULL);
+        //tadmor_print_response(NULL);
     }
     else{
         //TODO requête complexe jalon-3
