@@ -47,15 +47,15 @@ static int append_times_exitcodes(const char *path, uint16_t exitcode, time_t ti
     if (fd < 0)
         return -1;
 
-    uint64_t t_be = hton64((uint64_t)timestamp);
-    uint32_t e_be = htonl((uint32_t)exitcode);
+    uint64_t t_be = htobe64((uint64_t)timestamp);
+    uint16_t e_be = htobe16(exitcode);
 
-    if (write(fd, &t_be, sizeof(t_be)) != sizeof(t_be)) {
+    if (write(fd, &t_be, 8) != 8) {
         close(fd);
         return -1;
     }
 
-    if (write(fd, &e_be, sizeof(e_be)) != sizeof(e_be)) {
+    if (write(fd, &e_be, 2) != 2) {
         close(fd);
         return -1;
     }
