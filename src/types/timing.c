@@ -74,16 +74,22 @@ bool timing_match_at(const timing_t *t, time_t now)
 {
     struct tm tm_now;
     localtime_r(&now, &tm_now);
-    
-    // comparer seulement heures et minutes
-    if (t->minutes != 0 && !mask_is_full(t->minutes, 60))
+
+    // minutes
+    if (t->minutes != 0 && !mask_is_full(t->minutes, 60)) {
         if (!(t->minutes & (1ULL << tm_now.tm_min))) return false;
+    }
 
-    if (t->hours != 0 && !mask_is_full(t->hours, 24))
+    // heures
+    if (t->hours != 0 && !mask_is_full(t->hours, 24)) {
         if (!(t->hours & (1U << tm_now.tm_hour))) return false;
+    }
 
-    if (t->daysofweek != 0 && !mask_is_full(t->daysofweek, 7))
-        if (!(t->daysofweek & (1U << tm_now.tm_wday))) return false;
+    // jours de la semaine : bit 0 = lundi
+    if (t->daysofweek != 0 && !mask_is_full(t->daysofweek, 7)) {
+        int wday = tm_now.tm_wday == 0 ? 6 : tm_now.tm_wday - 1; // décaler dimanche (0) à 6
+        if (!(t->daysofweek & (1U << wday))) return false;
+    }
 
     return true;
 }
