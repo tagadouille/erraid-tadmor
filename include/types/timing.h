@@ -44,7 +44,7 @@ char *timing_to_string(const timing_t *t);
  * @param t Pointer to the timing_t structure to check against.
  * @return true if the current time matches, false otherwise.
  */
-bool timing_match_now(const timing_t *t, time_t minute_now);
+bool timing_match_at(const timing_t *t, time_t when);
 
 /**
  * @brief Read and interpret a binary timing file into a readable string.

@@ -96,7 +96,7 @@ static int run_task_if_due(task_t *task, time_t minute_now)
 {
     if (!task || !task->cmd || !task->timing) return -1;
 
-    if (!timing_match_now(task->timing, minute_now)) {
+    if (!timing_match_at(task->timing, minute_now)) {
         write_log_msg("Task %u NOT due at this minute", task->id);
         return 0;
     }
@@ -142,20 +142,20 @@ static int run_task_if_due(task_t *task, time_t minute_now)
 
 /* ------------------------------ Timing util ---------------------------- */
 /* wait until the next minute boundary (sleep until seconds == 0) */
-static time_t wait_next_minute(void)
-{
-    struct timespec ts;
+static time_t wait_before_next_minute(void){
 
-    // Lire temps actuel
+    struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
 
-    // Arrondir à la minute suivante
-    ts.tv_sec = ts.tv_sec - (ts.tv_sec % 60) + 60;
+    time_t next_minute = ts.tv_sec - (ts.tv_sec % 60) + 60;
+
+    // Se réveiller à HH:MM:59
+    ts.tv_sec  = next_minute - 1;
     ts.tv_nsec = 0;
 
-    // Dormir jusqu'à cette date absolue
-    clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, NULL);
-    return ts.tv_sec;
+    while (clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, NULL) == EINTR);
+
+    return next_minute; // minute logique exécutée
 }
 
 
@@ -204,7 +204,7 @@ void daemon_run(void) {
 
     while (running) {
 
-        time_t minute_now = wait_next_minute();
+        time_t minute_now = wait_before_next_minute();
 
         write_log_msg("Scanning tasks directory…");
 
