@@ -30,6 +30,11 @@
 
 static volatile int running = 1;
 
+#define MAX_TASKS sizeof(uint64_t)
+
+static time_t last_run_minute[MAX_TASKS];
+
+
 /**
  * The current log path
  */
@@ -94,12 +99,19 @@ int daemon_init(void) {
 /* Execute command: SI or SQ */
 static int run_task_if_due(task_t *task, time_t minute_now)
 {
-    if (!task || !task->cmd || !task->timing) return -1;
+     if (!task || !task->cmd || !task->timing)
+        return -1;
 
-    if (!timing_match_at(task->timing, minute_now)) {
-        write_log_msg("Task %u NOT due at this minute", task->id);
+    if (task->id >= MAX_TASKS)
         return 0;
-    }
+
+    if (last_run_minute[task->id] == minute_now)
+        return 0;
+
+    if (!timing_match_at(task->timing, minute_now))
+        return 0;
+
+    last_run_minute[task->id] = minute_now;
 
     write_log_msg("Executing task %u", task->id);
 
@@ -142,20 +154,19 @@ static int run_task_if_due(task_t *task, time_t minute_now)
 
 /* ------------------------------ Timing util ---------------------------- */
 /* wait until the next minute boundary (sleep until seconds == 0) */
-static time_t wait_before_next_minute(void){
-
+static time_t wait_next_minute(void)
+{
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
 
-    time_t next_minute = ts.tv_sec - (ts.tv_sec % 60) + 60;
-
-    // Se réveiller à HH:MM:59
-    ts.tv_sec  = next_minute - 1;
+    // Calculer la prochaine minute pile
+    ts.tv_sec = ts.tv_sec - (ts.tv_sec % 60) + 60;
     ts.tv_nsec = 0;
 
+    // dormir jusqu'à ce moment
     while (clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, NULL) == EINTR);
 
-    return next_minute; // minute logique exécutée
+    return ts.tv_sec; // minute courante exécutée
 }
 
 
@@ -204,7 +215,7 @@ void daemon_run(void) {
 
     while (running) {
 
-        time_t minute_now = wait_before_next_minute();
+        time_t minute_now = wait_next_minute();
 
         write_log_msg("Scanning tasks directory…");
 
