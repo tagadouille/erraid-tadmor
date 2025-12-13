@@ -8,6 +8,7 @@
 #include <sys/wait.h>
 #include <stdint.h>
 #include <arpa/inet.h>
+#include <endian.h>
 
 #define MAX_TASKS sizeof(uint64_t)
 
@@ -41,14 +42,29 @@ static time_t last_run_minute[MAX_TASKS];
     return 0;
 }*/
 
+static inline uint64_t to_be64(uint64_t x)
+{
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    return ((uint64_t)htonl(x & 0xFFFFFFFFULL) << 32) |
+            htonl(x >> 32);
+#else
+    return x;
+#endif
+}
+
+static inline uint16_t to_be16(uint16_t x)
+{
+    return htons(x);
+}
+
 static int append_times_exitcodes(const char *path, uint16_t exitcode, time_t timestamp)
 {
     int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
     if (fd < 0)
         return -1;
 
-    uint64_t t_be = htobe64((uint64_t)timestamp);
-    uint16_t e_be = htobe16(exitcode);
+    uint64_t t_be = to_be64((uint64_t)timestamp);
+    uint16_t e_be = to_be16(exitcode);
 
     if (write(fd, &t_be, 8) != 8) {
         close(fd);
