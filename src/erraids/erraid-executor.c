@@ -193,7 +193,7 @@ static int execute_task(task_t* task, time_t minute_now){
 
 
 int run_task_if_due(task_t *task, time_t minute_now){
-
+    
     // Some verification of if the task must be execute
      if (!task || !task->cmd || !task->timing)
         return -1;
@@ -205,10 +205,7 @@ int run_task_if_due(task_t *task, time_t minute_now){
     if (!timing_match_at(task->timing, minute_now))
         return 0;
 
-    // Execution of the task
-    int ret = execute_task(task, minute_now);
-    if (ret >= 0)
-        last_run_minute[task->id] = minute_now;
+    last_run_minute[task->id] = minute_now;
 
-    return ret;
+    return execute_task(task, minute_now);
 }

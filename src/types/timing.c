@@ -73,8 +73,7 @@ char *timing_to_string(const timing_t *t)
 bool timing_match_at(const timing_t *t, time_t now)
 {
     struct tm tm_now;
-    time_t minute_now = now - (now % 60);
-    localtime_r(&minute_now, &tm_now);
+    localtime_r(&now, &tm_now);
 
     // minutes
     if (t->minutes != 0 && !mask_is_full(t->minutes, 60)) {
