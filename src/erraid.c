@@ -161,13 +161,11 @@ static time_t wait_next_minute(void)
 
     time_t next_minute = ts.tv_sec - (ts.tv_sec % 60) + 60;
 
-    ts.tv_sec  = next_minute - 1;
+    ts.tv_sec = next_minute + 1;
     ts.tv_nsec = 0;
 
-    // Dormir jusqu'à ce moment absolu
     while (clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, NULL) == EINTR);
 
-    // Retourner la minute logique (celle qui va être exécutée)
     return next_minute;
 }
 
