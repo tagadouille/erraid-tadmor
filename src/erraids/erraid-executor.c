@@ -52,7 +52,7 @@ static int execute_simple(const command_t *cmd, const char *timespath, int outfd
         if (dup2(outfd, STDOUT_FILENO) < 0) _exit(127);
         if (dup2(errfd, STDERR_FILENO) < 0) _exit(127);
 
-        char **argv = arguments_to_argv(&cmd->args.simple);
+        char **argv = arguments_to_argv(cmd->args.simple);
         if (!argv) _exit(127);
 
         execvp(argv[0], argv);
