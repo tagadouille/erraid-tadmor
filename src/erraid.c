@@ -160,7 +160,45 @@ void wait_next_minute(void)
 
 
 /* ------------------------------ MAIN LOOP ------------------------------ */
+static void scan_directory(DIR* dirp){
 
+    if(dirp == NULL) {
+        write_log_msg("Error : The DIR struct can't be null");
+        running = 0;
+        return;
+    }
+
+    struct dirent *ent;
+    while ((ent = readdir(dirp))) {
+        if (ent->d_name[0] == '.') continue;
+
+        // Conversion of char* to uint64_t
+        char *endptr = NULL;
+        errno = 0;
+        unsigned long idul = strtoul(ent->d_name, &endptr, 10);
+        if (endptr == NULL || *endptr != '\0' || errno != 0) continue;
+        uint64_t id = (uint64_t)idul;
+
+        /* use existing tree reader which sets curr_task */
+        if (task_reader(tasksdir, id, LIST) < 0) {
+            write_log_msg("task_reader failed for %u", id);
+            continue;
+        }else{
+            write_log_msg("task_reader worked for %u", id);
+        }
+        if (!curr_task) {
+            write_log_msg("No curr_task for id %u", id);
+            continue;
+        }
+        
+        //task_display(curr_task);
+
+        run_task_if_due(curr_task);
+        task_destroy(curr_task);
+        curr_task = NULL;
+    }
+    closedir(dirp);
+}
 void daemon_run(void) {
     write_log_msg("Daemon main loop started.");
 
@@ -179,35 +217,7 @@ void daemon_run(void) {
             continue;
         }
 
-        struct dirent *ent;
-        while ((ent = readdir(d))) {
-            if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) continue;
-
-            char *endptr = NULL;
-            errno = 0;
-            unsigned long idul = strtoul(ent->d_name, &endptr, 10);
-            if (endptr == NULL || *endptr != '\0' || errno != 0) continue;
-            uint32_t id = (uint32_t)idul;
-
-            /* use existing tree reader which sets curr_task */
-            if (task_reader(tasksdir, id, LIST) < 0) {
-                write_log_msg("task_reader failed for %u", id);
-                continue;
-            }else{
-                write_log_msg("task_reader worked for %u", id);
-            }
-            if (!curr_task) {
-                write_log_msg("No curr_task for id %u", id);
-                continue;
-            }
-            
-            //task_display(curr_task);
-
-            run_task_if_due(curr_task);
-            task_destroy(curr_task);
-            curr_task = NULL;
-        }
-        closedir(d);
+        scan_directory(d);       
     }
 
     write_log_msg("Daemon main loop stopping.");
