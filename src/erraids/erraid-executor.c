@@ -10,28 +10,17 @@
 #include <arpa/inet.h>
 
 /* Append one record to times-exitcodes: [be64 timestamp][be32 exitcode] atomically+safe */
-static int append_times_exitcodes(const char* path, uint64_t timestamp, uint16_t exitcode) {
+int append_times_exitcodes(const char* path, uint16_t exitcode, time_t timestamp) {
     int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
     if (fd < 0) return -1;
 
-    uint8_t buf[10];
-    uint64_t ts_be = hton64(timestamp);
-    uint16_t ec_be = htons(exitcode);
+    time_exitcode_t te;
+    te.time = hton64((int64_t)timestamp);   // timestamp de la minute courante
+    te.exitcode = htons(exitcode);
 
-    // copier les 8 octets du timestamp
-    for (int i = 0; i < 8; i++)
-        buf[i] = (ts_be >> (56 - i*8)) & 0xFF;
-
-    // copier les 2 octets de l'exit code
-    buf[8] = (ec_be >> 8) & 0xFF;
-    buf[9] = ec_be & 0xFF;
-
-    // boucle d'écriture complète
-    ssize_t total = 0;
-    while (total < 10) {
-        ssize_t w = write(fd, buf + total, 10 - total);
-        if (w <= 0) { close(fd); return -1; }
-        total += w;
+    if (write(fd, &te, sizeof(te)) != sizeof(te)) {
+        close(fd);
+        return -1;
     }
 
     fsync(fd);
