@@ -17,7 +17,7 @@ static time_t last_run_minute[MAX_TASKS];
  * @brief Append one record to times-exitcodes 
  * @return 0 if on success, -1 if an error occured
  */
-static int append_times_exitcodes(const char* path, uint16_t exitcode, time_t timestamp) {
+/*static int append_times_exitcodes(const char* path, uint16_t exitcode, time_t timestamp) {
 
     int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
 
@@ -39,7 +39,31 @@ static int append_times_exitcodes(const char* path, uint16_t exitcode, time_t ti
     fsync(fd);
     close(fd);
     return 0;
+}*/
+
+static int append_times_exitcodes(const char *path, uint16_t exitcode, time_t timestamp)
+{
+    int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
+    if (fd < 0)
+        return -1;
+
+    uint64_t t_be = hton64((uint64_t)timestamp);
+    uint32_t e_be = htonl((uint32_t)exitcode);
+
+    if (write(fd, &t_be, sizeof(t_be)) != sizeof(t_be)) {
+        close(fd);
+        return -1;
+    }
+
+    if (write(fd, &e_be, sizeof(e_be)) != sizeof(e_be)) {
+        close(fd);
+        return -1;
+    }
+
+    close(fd);
+    return 0;
 }
+
 
 /* Execute a simple command and write stdout/stderr into task dir (overwrite),
    append times-exitcodes entry. */
