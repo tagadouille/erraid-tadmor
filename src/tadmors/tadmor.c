@@ -12,9 +12,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#define TADMOR_REQ_PIPE "daemon_in"
-#define TADMOR_REP_PIPE "daemon_out"
-
 void tadmor_disconnect(void)
 {
     // Todo: implement disconnection logic if needed, but delete if not necessary
@@ -82,7 +79,7 @@ void tadmor_print_timecode(a_timecode_t* timecode)
 {
     if (timecode == NULL)
     {
-        perror("NULL timecode");
+        dprintf(STDERR_FILENO, "Error : NULL timecode");
         return;
     }
 

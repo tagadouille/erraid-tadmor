@@ -10,13 +10,15 @@
 #include <unistd.h>
 #include <errno.h>
 
+extern char* pipe_path = NULL;
+
 /* ============================================================
  * CLIENT : ENVOYER UNE SIMPLE REQUÊTE ET LIRE UNE RÉPONSE
  * ============================================================ */
-int client_send_simple( const char *rundir, const simple_request_t *req, answer_t *ans, int has_task){
+int client_send_simple(const char *pipe_dir, const simple_request_t *req, answer_t *ans, int has_task){
     int fd_req, fd_rep;
 
-    if (client_open_request(rundir, &fd_req) < 0)
+    if (client_open_request(pipe_dir, &fd_req) < 0)
         return -1;
     
     if (encode_simple_request(fd_req, req) < 0) {
@@ -25,7 +27,7 @@ int client_send_simple( const char *rundir, const simple_request_t *req, answer_
     }
     close(fd_req);
 
-    if (client_open_reply(rundir, &fd_rep) < 0)
+    if (client_open_reply(pipe_dir, &fd_rep) < 0)
         return -1;
 
     if(ans == NULL){
@@ -80,11 +82,11 @@ int daemon_read_simple(int fd_req, simple_request_t *req){
 /* ============================================================
  * DEMON : ENVOYER UNE SIMPLE RÉPONSE
  * ============================================================ */
-int daemon_reply_simple(const char *rundir, const answer_t *ans, int has_task)
+int daemon_reply_simple(const char *pipe_dir, const answer_t *ans, int has_task)
 {
     int fd_rep;
 
-    if (daemon_open_reply(rundir, &fd_rep) < 0)
+    if (daemon_open_reply(pipe_dir, &fd_rep) < 0)
         return -1;
 
     if(ans == NULL){

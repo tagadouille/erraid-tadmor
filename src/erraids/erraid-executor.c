@@ -14,34 +14,6 @@
 
 static time_t last_run_minute[MAX_TASKS];
 
-/**
- * @brief Append one record to times-exitcodes 
- * @return 0 if on success, -1 if an error occured
- */
-/*static int append_times_exitcodes(const char* path, uint16_t exitcode, time_t timestamp) {
-
-    int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
-
-    if (fd < 0){
-        perror("open");
-        return -1;
-    }
-
-    time_exitcode_t te;
-    te.time = hton64((int64_t)timestamp);
-    te.exitcode = htons(exitcode);
-
-    if (write(fd, &te, sizeof(te)) != sizeof(te)) {
-        perror("write");
-        close(fd);
-        return -1;
-    }
-
-    fsync(fd);
-    close(fd);
-    return 0;
-}*/
-
 static inline uint64_t to_be64(uint64_t x)
 {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -57,6 +29,10 @@ static inline uint16_t to_be16(uint16_t x)
     return htons(x);
 }
 
+/**
+ * @brief Append one record to times-exitcodes 
+ * @return 0 if on success, -1 if an error occured
+ */
 static int append_times_exitcodes(const char *path, uint16_t exitcode, time_t timestamp)
 {
     int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);

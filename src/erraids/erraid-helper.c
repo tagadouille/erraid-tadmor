@@ -1,5 +1,6 @@
 #include "erraids/erraid.h"
 #include "erraids/erraid-helper.h"
+#include "communication/communication.h"
 
 #include <errno.h>
 #include <string.h>
@@ -17,6 +18,39 @@ int erraid_get_rundir(char *out, size_t len) {
     strncpy(out, g_run_dir, len-1);
     out[len-1] = '\0';
     return 0;
+}
+
+/**
+ * @brief rename the pipe_path
+ * @param new_path the new path name
+ * @return 0 if succes, -1 if failure
+ */
+static int pipe_path_rename(char* new_path){
+    
+    if(new_path == NULL){
+        dprintf(STDERR_FILENO, "Error : the new_path can't be null\n");
+        return -1;
+    }
+
+    if(pipe_path == NULL){
+        dprintf(STDERR_FILENO, "Error : the pipe_path can't be null\n");
+        return -1;
+    }
+
+    // delete the pipes if they already exit
+    if(unlink(pipe_path REQUEST_PIPE) < 0 && errno != ENOENT){
+        dprintf(STDERR_FILENO, "Error : can't delete the request pipe, it's not serious\n");
+    }
+    if(unlink(pipe_path REPLY_PIPE) < 0 && errno != ENOENT){
+        dprintf(STDERR_FILENO, "Error : can't delete the request pipe, it's not serious\n");
+    }
+
+    pipe_path = new_path;
+    return 0;
+}
+
+static int pipe_path_initialisation(){
+    
 }
 
 int ensure_rundir(void) {

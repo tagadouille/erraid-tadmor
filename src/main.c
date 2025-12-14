@@ -14,11 +14,16 @@
 #define PATH_MAX 4096
 #endif
 
-/* Default run directory: /tmp/$USER/erraid */
-static void default_rundir(char *out, size_t n) {
+/**
+ * @brief Create the default run directory for erraid and the pipes: /tmp/$USER/erraid and /tmp/$USER/erraid/pipes
+*/
+static void default_rundir(char *erraid_path, char* pipe_path) {
+
     const char *user = getenv("USER");
     if (!user) user = "nobody";
-    snprintf(out, n, "/tmp/%s/erraid", user);
+
+    snprintf(out, erraid_path, "/tmp/%s/erraid", user);
+    snprintf(out, pipe_path, "/tmp/%s/erraid", user);
 }
 
 static void usage(const char *prog) {
@@ -31,9 +36,11 @@ static void usage(const char *prog) {
 int main(int argc, char **argv) {
     int opt;
     char rundir[PATH_MAX];
+    char pipedir[PATH_MAX];
 
-    default_rundir(rundir, sizeof(rundir));
+    default_rundir(rundir, pipedir);
 
+    // TODO Continuer ici le parours et la création des pipes
     while ((opt = getopt(argc, argv, "r:fh")) != -1) {
        if(opt=='r') {
             if (optarg && strlen(optarg) < sizeof(rundir)) {

@@ -59,13 +59,17 @@ static int client_handle_command(uint16_t code, const char *input){
             return -1;
         }
 
-        //TODO send the request
         //!Provisoire :
-        dprintf(STDOUT_FILENO, "Une requête de type %u et de id %zu a été faite \n", request -> opcode, request -> task_id);
-        free_simple_request(request);
+        dprintf(STDOUT_FILENO, "Une requête de type %u et de id %zu a été faite et va être envoyé\n", request -> opcode, request -> task_id);
 
-        //TODO receive the answer and print it
-        //tadmor_print_response(NULL);
+        // Sending the request
+        answer_t ans;
+
+        if(client_send_simple(rundir, request, &ans) < 0){
+            dprintf(STDERR_FILENO, "Error : an error occured while sending an simple request\n");
+            return -1;
+        }
+        tadmor_print_answer(&ans);
     }
     else{
         //TODO requête complexe jalon-3
