@@ -1,7 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "communication/communication.h"
 #include "serialization.h"
-#include "pipes.h"
+#include "communication/pipes.h"
 
 #include <unistd.h>
 #include <errno.h>

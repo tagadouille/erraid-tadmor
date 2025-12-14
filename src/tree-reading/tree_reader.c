@@ -14,7 +14,7 @@
 #include "tree-reading/times_reader.h"
 #include "tree-reading/tree_reader.h"
 #include "tree-reading/output_reader.h"
-#include "erraid.h"
+#include "erraids/erraid.h"
 
 int task_reader(const char* path, uint64_t task_id, Action_type action){
     curr_task = task_create(task_id);

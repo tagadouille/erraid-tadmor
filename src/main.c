@@ -7,7 +7,7 @@
 #include <limits.h>
 #include <errno.h>
 
-#include "erraid.h"
+#include "erraids/erraid.h"
 #include "erraids/erraid-helper.h"
 
 #ifndef PATH_MAX

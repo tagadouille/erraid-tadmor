@@ -5,7 +5,7 @@
 #include "communication/request.h"
 #include "tadmor.h"
 #include "tree-reading/tree_reader.h"
-#include "erraid.h"
+#include "erraids/erraid.h"
 #include "types/time_exitcode.h"
 
 a_list_t* handle_ls(char *rundir)

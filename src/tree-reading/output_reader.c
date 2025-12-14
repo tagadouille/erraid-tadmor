@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 #include "tree-reading/tree_reader.h"
-#include "erraid.h"
+#include "erraids/erraid.h"
 
 int output_reader(const char* path, bool is_stderr){
 

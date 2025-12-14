@@ -2,7 +2,7 @@
 
 #include "types/time_exitcode.h"
 #include "tree-reading/tree_reader.h"
-#include "erraid.h"
+#include "erraids/erraid.h"
 #include "test.h"
 
 static void test_time_exit_read(char* task_dir, uint64_t id){

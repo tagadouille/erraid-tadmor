@@ -9,7 +9,7 @@
 #include "types/timing.h"
 #include "types/time_exitcode.h"
 #include "tree-reading/tree_reader.h"
-#include "erraid.h"
+#include "erraids/erraid.h"
 
 /**
  * @brief Create a new empty task with the given ID.

@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
-#include "pipes.h"
+#include "communication/pipes.h"
 
 #include <sys/stat.h>
 #include <sys/types.h>

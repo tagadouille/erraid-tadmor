@@ -1,4 +1,4 @@
-#include "erraid.h"
+#include "erraids/erraid.h"
 #include "erraids/erraid-helper.h"
 #include "erraids/erraid-log.h"
 #include "erraids/erraid-executor.h"

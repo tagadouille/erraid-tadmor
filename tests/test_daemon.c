@@ -3,7 +3,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "pipes.h"
+#include "communication/pipes.h"
 #include "serialization.h"
 #include "communication/request.h"
 
