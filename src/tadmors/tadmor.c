@@ -15,38 +15,6 @@
 #define TADMOR_REQ_PIPE "daemon_in"
 #define TADMOR_REP_PIPE "daemon_out"
 
-static char g_run_dir[PATH_MAX] = {0};
-
-/* --------------------------- RUNDIR --------------------------- */
-
-int client_set_rundir(const char *rundir)
-{
-    // Check if input is valid and fits in the buffer
-    if (!rundir || strlen(rundir) >= sizeof(g_run_dir))
-    {
-        errno = EINVAL; // signal une erreur : 'Invalid Value/argument'
-        return -1;
-    }
-    // Copy path
-    strncpy(g_run_dir, rundir, sizeof(g_run_dir) - 1);
-    g_run_dir[sizeof(g_run_dir) - 1] = '\0';
-    return 0;
-}
-
-int client_get_rundir(char *out, size_t outlen)
-{
-    // Check arguments
-    if (!out || outlen == 0)
-    {
-        errno = EINVAL;
-        return -1;
-    }
-    // Copy rundir
-    strncpy(out, g_run_dir, outlen - 1);
-    out[outlen - 1] = '\0';
-    return 0;
-}
-
 void tadmor_disconnect(void)
 {
     // Todo: implement disconnection logic if needed, but delete if not necessary

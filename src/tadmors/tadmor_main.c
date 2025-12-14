@@ -20,16 +20,6 @@
 #endif
 
 /* --------------------------------------------------------------
- * default rundir: /tmp/$USER/tadmor
- * -------------------------------------------------------------- */
-static void default_rundir(char *buf, size_t n)
-{
-    const char *user = getenv("USER");
-    if (!user) user = "nobody";
-    snprintf(buf, n, "/tmp/%s/tadmor", user);
-}
-
-/* --------------------------------------------------------------
  * Mini-parser: take the full command line and dispatch it
  * -------------------------------------------------------------- */
 static int client_handle_command(uint16_t code, const char *input){
@@ -168,9 +158,6 @@ static int argument_handler(int opt, int argc, char** argv){
 int main(int argc, char **argv)
 {
     int opt;
-    char rundir[PATH_MAX];
-
-    default_rundir(rundir, sizeof(rundir));
 
     // Handle the differents arguments
     while ((opt = getopt(argc, argv, "qe:o:x:lr:c:s:p:e:")) != -1) {
