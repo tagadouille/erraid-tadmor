@@ -75,6 +75,9 @@ static int client_handle_command(uint16_t code, const char *input){
         //!Provisoire :
         dprintf(STDOUT_FILENO, "Une requête de type %u et de id %zu a été faite \n", request -> opcode, request -> task_id);
         free_simple_request(request);
+
+        //TODO receive the answer and print it
+        //tadmor_print_response(NULL);
     }
     else{
         //TODO requête complexe jalon-3
@@ -176,16 +179,5 @@ int main(int argc, char **argv)
         argument_handler(opt, argc, argv);
     }
 
-    /* Prepare client */
-    /*if (client_set_rundir(rundir) != 0) {
-        fprintf(stderr, "client_set_rundir failed: %s\n", strerror(errno));
-        return EXIT_FAILURE;
-    }
-
-    if (client_connect() != 0) {
-        fprintf(stderr, "client_connect failed: %s\n", strerror(errno));
-        return EXIT_FAILURE;
-    }
-    client_disconnect();
-    return (rc == 0) ? EXIT_SUCCESS : EXIT_FAILURE;*/
+    return 0;
 }

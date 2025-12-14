@@ -16,11 +16,6 @@
 #define TADMOR_REP_PIPE "daemon_out"
 
 static char g_run_dir[PATH_MAX] = {0};
-static char pipe_in[PATH_MAX] = {0};  /* client -> daemon */
-static char pipe_out[PATH_MAX] = {0}; /* daemon -> client */
-
-static int fd_in = -1;  // client -> daemon
-static int fd_out = -1; // daemon -> client
 
 /* --------------------------- RUNDIR --------------------------- */
 
@@ -52,165 +47,131 @@ int client_get_rundir(char *out, size_t outlen)
     return 0;
 }
 
-/* ---------------------- internal helpers --------------------- */
-
-/* write exactly 'count' bytes (handle short writes and EINTR) */
-static ssize_t write_all(int fd, const void *buf, size_t count)
+void tadmor_disconnect(void)
 {
-    const unsigned char *p = buf;
-    size_t left = count;
-    while (left > 0)
-    {
-        ssize_t w = write(fd, p, left);
-        if (w < 0)
-        {
-            if (errno == EINTR)
-                continue;
-            return -1;
-        }
-        p += w;
-        left -= (size_t)w;
-    }
-    return (ssize_t)count;
+    // Todo: implement disconnection logic if needed, but delete if not necessary
 }
 
-/** @brief read exactly 'count' bytes (handle short reads and EINTR)
- *  @return number of bytes read (== count) or -1 on error or 0 on EOF */
-static ssize_t read_all(int fd, void *buf, size_t count)
+void tadmor_print_answer(answer_t* answer)
 {
-    unsigned char *p = buf;
-    size_t left = count;
-    while (left > 0)
+    if (answer == NULL)
     {
-        ssize_t r = read(fd, p, left);
-        if (r < 0)
-        {
-            if (errno == EINTR)
-                continue;
-            return -1;
-        }
-        if (r == 0)
-        {
-            /* EOF */
-            return 0;
-        }
-        p += r;
-        left -= (size_t)r;
+        dprintf(STDERR_FILENO, "NULL answer");
+        return;
     }
-    return (ssize_t)count;
+
+    switch (answer->anstype)
+    {
+    case OK:
+        dprintf(STDOUT_FILENO, "%lu\n", answer->task_id);
+        break;
+    
+    case ERR:
+        switch (answer->errcode)
+        {
+        case NF:
+            dprintf(STDERR_FILENO, "Error: Not Found\n");
+            break;
+        case NR:
+            dprintf(STDERR_FILENO, "Error: Not Running\n");
+            break;
+        default:
+            dprintf(STDERR_FILENO, "Error: Unknown error\n");
+            break;
+        }
+        break;
+    default:
+        dprintf(STDERR_FILENO, "Error: Invalid answer type\n");
+        break;
+    }
 }
 
-/* allocate buffer and read exactly sz bytes from reply pipe */
-/* caller must free returned pointer (on success) 
-static void *read_answer(size_t sz)
+void tadmor_print_list(a_list_t* list)
 {
-    if (fd_out < 0)
+    if (list == NULL)
     {
-        errno = EBADF;
-        return NULL;
+        dprintf(STDERR_FILENO, "NULL list");
+        return;
     }
 
-    void *buf = malloc(sz);
-    if (!buf)
-        return NULL;
-
-    ssize_t r = read_all(fd_out, buf, sz);
-    if (r != (ssize_t)sz)
+    for (uint32_t i = 0; i < list->nbtask; i++)
     {
-        free(buf);
-        if EOF (r==0) propagate as error 
-        return NULL;
-    }
-    return buf;
-}*/
+        task_t* t = &(list->all_task[i]);
 
-/* ------------------------- CONNECT --------------------------- */
-
-int client_connect(void)
-{
-    // If rundir not set, generate default rundir under /tmp/$USER/erraid
-    const char *user = getenv("USER");
-    if (g_run_dir[0] == '\0')
-    {
-        if (!user)
-            user = "nobody";
-        if (snprintf(g_run_dir, sizeof(g_run_dir), "/tmp/%s/erraid", user) < 0)
+        // check for NULL task
+        if (t == NULL)
         {
-            errno = ENAMETOOLONG; // nom de chemin trop long
-            return -1;
+            dprintf(STDERR_FILENO, "NULL task encountered\n");
+            continue; // skip to next task
         }
-    }
 
-    /* build pipes directory: "<rundir>/pipes" */
-    char pipes_dir[PATH_MAX];
-    if (snprintf(pipes_dir, sizeof(pipes_dir), "%s/pipes", g_run_dir) < 0)
-    {
-        errno = ENAMETOOLONG;
-        return -1;
+        task_display(t);
+        // ! Il manque la partie où les timings sont comme ça : * * * dans timing_to_string
     }
-
-    /* build exact full paths */
-    if (snprintf(pipe_in, sizeof(pipe_in), "%s/%s", pipes_dir, TADMOR_REQ_PIPE) < 0)
-    {
-        errno = ENAMETOOLONG;
-        return -1;
-    }
-    if (snprintf(pipe_out, sizeof(pipe_out), "%s/%s", pipes_dir, TADMOR_REP_PIPE) < 0)
-    {
-        errno = ENAMETOOLONG;
-        return -1;
-    }
-
-    // Open pipe for writing requests
-    fd_in = open(pipe_in, O_WRONLY);
-    if (fd_in < 0)
-        return -1;
-
-    // Open pipe for reading answers
-    fd_out = open(pipe_out, O_RDONLY);
-    if (fd_out < 0)
-    {
-        int save = errno;
-        close(fd_in);
-        fd_in = -1;
-        errno = save;
-        return -1;
-    }
-    return 0;
 }
 
-void client_disconnect(void)
+void tadmor_print_timecode(a_timecode_t* timecode)
 {
-    // Close both pipes if they are opened
-    if (fd_in >= 0)
-        close(fd_in);
-    if (fd_out >= 0)
-        close(fd_out);
-    fd_in = -1;
-    fd_out = -1;
+    if (timecode == NULL)
+    {
+        perror("NULL timecode");
+        return;
+    }
+
+    if (timecode->anstype == ERR)
+    {
+        dprintf(STDERR_FILENO, "Error: %u\n", timecode->errcode);
+        return;
+    }
+    
+    for (uint32_t i = 0; i < timecode->nbrun; i++)
+    {
+        time_exitcode_t *tc = &(timecode->all_timecode[i]);
+
+        time_exitcode_show(tc);
+    }
 }
 
-/* -------------------------- API CALLS -------------------------- */
-
-/**
- * Auxiliary method to send simple request.
- 
-static void *client_simple(uint16_t opcode, uint64_t task_id, size_t answer_size)
+void tadmor_print_output(a_output_t* output)
 {
-    simple_request_t req = {
-        .opcode = opcode,
-        .task_id = task_id};
+    if (output == NULL)
+    {
+        dprintf(STDERR_FILENO, "NULL output");
+        return;
+    }
 
-    // Send the request to the daemon
-    if (send_request(&req, sizeof(req)) < 0)
-        return NULL;
+    if (output->anstype == ERR)
+    {
+        if (output->errcode == NF)
+            dprintf(STDERR_FILENO, "Error: task not found\n");
+        else if (output->errcode == NR)
+            dprintf(STDERR_FILENO, "Error: no run available\n");
+        return;
+    }
 
-    // Read exactly answer_size bytes from the daemon
-    return read_answer(answer_size);
-}*/
+    // Print the output data
+    if (output->output.data != NULL)
+    {
+        dprintf(STDOUT_FILENO, "%s", output->output.data);
+    }
+}
 
-answer_t *client_terminate(void)
+void tadmor_print_response(uint16_t opcode, void* res)
 {
-    //return (answer_t *)client_simple(TM, 0, sizeof(answer_t));
-    return NULL;
+    switch (opcode)
+    {
+    case LS:
+        tadmor_print_list((a_list_t*)res);
+        break;
+    case TX:
+        tadmor_print_timecode((a_timecode_t*)res);
+        break;
+    case SO: // Même traitement pour STDOUT et STDERR
+    case SE:
+        tadmor_print_output((a_output_t*)res);
+        break;
+    default:
+        tadmor_print_answer((answer_t*)res);
+        break;
+    }
 }

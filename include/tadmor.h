@@ -20,32 +20,49 @@ int client_set_rundir(const char *rundir);
  */
 int client_get_rundir(char *out, size_t outlen);
 
-/** 
- * @brief Open communication channels (FIFO or socket).
- * @return 0 on success.
-*/
-int client_connect(void);
+/**
+ * @brief Create a basic answer (OK or ERR).
+ */
+answer_t* tadmor_create_answer(uint16_t anstype, uint64_t task_id, uint16_t errcode);
 
 /**
- * @brief Closes communication channels.
+ * @brief Create a_list_t object (caller provides task array or NULL).
  */
-void client_disconnect(void);
+a_list_t* tadmor_create_list(uint16_t anstype, uint32_t nbtask, task_t* all_task);
 
 /**
- * @brief Send TM (terminate daemon).
- * @return answer_t* or NULL
+ * @brief Create a_timecode_t object (caller provides array or NULL).
  */
-answer_t *client_terminate(void);
+a_timecode_t* tadmor_create_timecode(uint16_t anstype, uint32_t nbrun, time_exitcode_t* all_timecode);
 
-/** Pas encore pour ce jalon
- * @brief Create a simple task (CR).
- * @return answer_t* or NULL
+/**
+ * @brief Create a_output_t object (caller provides string_t output).
  */
-answer_t *client_create(timing_t *timing, command_t *cmd);
+a_output_t* tadmor_create_output(uint16_t anstype, string_t output, uint16_t errcode);
 
-/** 
- * @brief Create a composed task (CB).
- * @return answer_t* or NULL
+/**
+ * @brief Disconnect the client from the deamon.
  */
-answer_t *client_combine(timing_t *timing, composed_t *comp);
+void tadmor_disconnect(void);
+
+/**
+ * @brief print an answer.
+ */
+void tadmor_print_answer(answer_t* answer);
+
+/**
+ * @brief print the list of tasks.
+ */
+void tadmor_print_list(a_list_t* list);
+
+/**
+ * @brief print a timecode.
+ */
+void tadmor_print_timecode(a_timecode_t* timecode);
+
+/**
+ * @brief print an output.
+ */
+void tadmor_print_output(a_output_t* output);
+
 #endif

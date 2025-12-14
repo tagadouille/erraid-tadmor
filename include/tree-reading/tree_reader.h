@@ -15,7 +15,7 @@
 enum Action_type {
     LIST = 10, //To list the tasks
     OUTPUT, //To get the standard output of the tasks
-    ERR, //To get the error outpout of the tasks
+    STDERR, //To get the error outpout of the tasks
     TIME_EXIT //To get the times and exit codes of the tasks
 };
 typedef enum Action_type Action_type;

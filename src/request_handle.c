@@ -1,0 +1,94 @@
+#define _GNU_SOURCE
+
+#include "request_handle.h"
+#include "communication/answer.h"
+#include "communication/request.h"
+#include "tadmor.h"
+#include "tree-reading/tree_reader.h"
+#include "erraid.h"
+#include "types/time_exitcode.h"
+
+a_list_t* handle_ls(char *rundir)
+{
+    all_task_t *list = all_task_listing(rundir);
+    if (list == NULL) {
+        return NULL;
+    }
+
+    return create_a_list(OK, list->nbtask, list->all_task);
+}
+
+a_timecode_t* handle_tx(char *rundir, uint64_t id)
+{
+    if (task_reader(rundir, id, TIME_EXIT) < 0) {
+        return create_a_timecode_t(ERR, 0, NULL);
+    }
+
+    return create_a_timecode_t(
+        OK,
+        curr_time->nbruns,
+        curr_time->all_timecode
+    );
+}
+
+a_output_t* handle_output(char *rundir, uint64_t id, bool is_stderr)
+{
+    if (task_reader(rundir, id, is_stderr ? ERR : OUTPUT) < 0) {
+        return create_a_output_t(ERR, curr_output, NF);
+    }
+
+    return create_a_output_t(OK, curr_output, 0);
+}
+
+answer_t* handle_rm(char *rundir, uint64_t id)
+{
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/%lu", rundir, id);
+
+    if (access(path, F_OK) != 0) {
+        return create_answer(ERR, id, NF);
+    }
+
+    if (remove(path) != 0) {
+        return create_answer(ERR, id, NR);
+    }
+
+    return create_answer(OK, id, 0);
+}
+
+answer_t* handle_tm(void)
+{
+    //terminate_daemon();
+    return create_answer(OK, 0, 0);
+}
+
+void* simple_request_handle(simple_request_t *req, char *rundir)
+{
+    if (req == NULL || rundir == NULL) {
+        return create_answer(ERR, 0, NR);
+    }
+
+    switch (req->opcode) {
+
+        case LS:
+            return handle_ls(rundir);
+
+        case TX:
+            return handle_tx(rundir, req->task_id);
+
+        case SO:
+            return handle_output(rundir, req->task_id, false);
+
+        case SE:
+            return handle_output(rundir, req->task_id, true);
+
+        case RM:
+            return handle_rm(rundir, req->task_id);
+
+        case TM:
+            return handle_tm();
+
+        default:
+            return create_answer(ERR, req->task_id, NR);
+    }
+}

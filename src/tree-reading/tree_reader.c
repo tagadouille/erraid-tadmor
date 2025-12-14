@@ -201,7 +201,7 @@ int extract_task_information(const char* path, Action_type action){
                 dprintf(STDERR_FILENO, "Error while reading stdout file of task at path %s\n", path);
                 result = -1;
             }break;
-        case ERR:
+        case STDERR:
             if(aux_extract_output(path, "stderr", output_reader, true) < 0){
                 dprintf(STDERR_FILENO, "Error while reading stderr file of task at path %s\n", path);
                 result = -1;
