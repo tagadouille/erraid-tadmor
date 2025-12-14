@@ -94,9 +94,9 @@ void tadmor_print_list(a_list_t* list)
         return;
     }
 
-    for (uint32_t i = 0; i < list->nbtask; i++)
+    for (uint32_t i = 0; i < list->all_task.nbtask; i++)
     {
-        task_t* t = &(list->all_task[i]);
+        task_t* t = &(list->all_task.all_task[i]);
 
         // check for NULL task
         if (t == NULL)
@@ -124,9 +124,9 @@ void tadmor_print_timecode(a_timecode_t* timecode)
         return;
     }
     
-    for (uint32_t i = 0; i < timecode->nbrun; i++)
+    for (uint32_t i = 0; i < timecode->time_arr.nbruns; i++)
     {
-        time_exitcode_t *tc = &(timecode->all_timecode[i]);
+        time_exitcode_t *tc = &(timecode->time_arr.all_timecode[i]);
 
         time_exitcode_show(tc);
     }

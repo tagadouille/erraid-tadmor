@@ -14,8 +14,6 @@
 #define PATH_MAX 4096
 #endif
 
-task_t* curr_task = NULL;
-
 /* Default run directory: /tmp/$USER/erraid */
 static void default_rundir(char *out, size_t n) {
     const char *user = getenv("USER");

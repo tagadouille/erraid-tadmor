@@ -28,6 +28,8 @@
 
 /* ---------------------------- CONFIG ---------------------------------- */
 
+task_t* curr_task = NULL;
+
 static volatile int running = 1;
 
 /**

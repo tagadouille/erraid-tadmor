@@ -1,9 +1,12 @@
+#include "communication/request.h"
+#include "communication/serialization/serialization.h"
 
 /* Complex request:
    - CR: OPCODE + TIMING + COMMAND (arguments)
    - CB: OPCODE + TIMING + TYPE(uint16) + NBTASKS(uint32) + TASKID[...]
 */
-int encode_complex_request(int fd, const complex_request_t *r)
+//TODO JALON3 corriger ce truc aussi
+/*int encode_complex_request(int fd, const complex_request_t *r)
 {
     if (!r) return -1;
     if (encode_uint16(fd, r->opcode) < 0) return -1;
@@ -23,7 +26,7 @@ int encode_complex_request(int fd, const complex_request_t *r)
         return 0;
     }
     return -1;
-}
+}*/
 
 int encode_simple_request(int fd, const simple_request_t *r)
 {

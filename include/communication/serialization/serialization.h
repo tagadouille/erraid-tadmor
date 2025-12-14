@@ -11,6 +11,13 @@
 #include "types/argument.h"
 #include "types/my_string.h"
 
+/* Safety limits to avoid malicious / corrupted sizes */
+#define LIMIT_MAX_STR_LEN   (1u << 20)   /* 1 MiB */
+#define LIMIT_MAX_ARGC      10000u
+#define LIMIT_MAX_CMDS      10000u
+#define LIMIT_MAX_TASKS     100000u
+#define LIMIT_MAX_RUNS      100000u
+
 /* ============================================================
  * LOW-LEVEL INTEGER ENCODING (BIG-ENDIAN)
  * ============================================================ */
@@ -31,5 +38,9 @@ int decode_int32(int fd, int32_t *v);
 
 int encode_int64(int fd, int64_t v);
 int decode_int64(int fd, int64_t *v);
+
+int read_full(int fd, void *buf, size_t size);
+
+int write_full(int fd, const void *buf, size_t size);
 
 #endif // SERIALIZATION_H

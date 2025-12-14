@@ -1,6 +1,8 @@
 #define _POSIX_C_SOURCE 200809L
 #include "communication/communication.h"
-#include "serialization.h"
+#include "communication/serialization/serialization.h"
+#include "communication/serialization/encode_request.h"
+#include "communication/serialization/decode_request.h"
 #include "communication/pipes.h"
 
 #include <unistd.h>

@@ -11,7 +11,7 @@ OBJDIR  := build
 
 # --- Pricipal source file ---
 SRC_ERRAID_MAIN := $(SRCDIR)/main.c
-SRC_TADMOR_MAIN := $(SRCDIR)/tadmor_main.c
+SRC_TADMOR_MAIN := $(SRCDIR)/tadmors/tadmor_main.c
 
 # --- all the .c in src ---
 SRC_ALL := $(shell find $(SRCDIR) -name "*.c")
