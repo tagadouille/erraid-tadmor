@@ -106,14 +106,12 @@ int encode_a_list(int fd, const a_list_t *ans)
 }
 
 /* REMOVE OK and TERMINATE OK are just ANSTYPE='OK' (no payload) */
-
 int encode_answer_ok_nopayload(int fd)
 {
     return encode_uint16(fd, (uint16_t)OK);
 }
 
 /* CREATE / COMBINE OK: ANSTYPE='OK' + TASKID(uint64) */
-
 int encode_answer_ok_taskid(int fd, uint64_t taskid)
 {
     if (encode_uint16(fd, (uint16_t)OK) < 0)
@@ -125,7 +123,6 @@ int encode_answer_ok_taskid(int fd, uint64_t taskid)
 /* Helper: encode an ERROR response:
    ANSTYPE='ER' (uint16) + ERRCODE (uint16)
 */
-
 int encode_answer_err(int fd, uint16_t errcode)
 {
     if (encode_uint16(fd, (uint16_t)ERR) < 0)

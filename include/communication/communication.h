@@ -5,10 +5,9 @@
 #include "answer.h"
 
 /* CLIENT */
-int client_send_simple(const char *rundir, const simple_request_t *req, answer_t *ans);
-
+int client_send_simple( const char *rundir, const simple_request_t *req, answer_t *ans, int has_task);
 /* DEMON */
 int daemon_read_simple(int fd_req, simple_request_t *req);
-int daemon_reply_simple(const char *rundir, const answer_t *ans);
+int daemon_reply_simple(const char *rundir, const answer_t *ans, int has_task);
 
 #endif
