@@ -1,6 +1,11 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "communication/request.h"
 #include "communication/serialization/serialization.h"
 #include "communication/serialization/en_decode_struct.h"
+
+#include <stdlib.h>
+#include <stdio.h>
 
 int decode_complex_request(int fd, complex_request_t *r)
 {

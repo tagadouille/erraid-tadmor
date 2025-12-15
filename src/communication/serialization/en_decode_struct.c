@@ -1,7 +1,12 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdlib.h>
 #include <stdint.h>
 #include "types/my_string.h"
 #include "communication/serialization/serialization.h"
+
+#include <stdlib.h>
+#include <stdio.h>
 
 /* --------------------- string encoding ---------------------
    Wire format: LENGTH (uint32) followed by LENGTH bytes (no terminal 0).
@@ -29,23 +34,32 @@ int encode_string(int fd, const string_t *s)
 
 int decode_string(int fd, string_t *s)
 {
-    if (!s)
+    if (!s){
+        dprintf(STDERR_FILENO, "Error : the string can't be NULL\n");
         return -1;
+    }
 
-    if (decode_uint32(fd, &s->length) < 0)
+    if (decode_uint32(fd, &s->length) < 0){
+        dprintf(STDERR_FILENO, "Error : can't decode the uint32 length of the string\n");
         return -1;
+    }
 
-    if (s->length > LIMIT_MAX_STR_LEN)
+    if (s->length > LIMIT_MAX_STR_LEN){
+        dprintf(STDERR_FILENO, "Error : the length of the string is too long\n");
         return -1;
+    }
 
     if (s->length > 0) {
         s->data = malloc((size_t)s->length + 1);
 
-        if (!s->data)
+        if (!s->data) {
+            dprintf(STDERR_FILENO, "Error : malloc failed for string data\n");
             return -1;
+        }
 
         if (read_full(fd, s->data, s->length) < 0) {
-            free(s->data);
+            string_free(s);
+            dprintf(STDERR_FILENO, "Error : can't read string data from fd\n");
             return -1;
         }
 

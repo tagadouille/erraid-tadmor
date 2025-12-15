@@ -68,31 +68,80 @@ int encode_a_timecode(int fd, const a_timecode_t *a)
    for each task: TASKID(uint64), TIMING, COMMANDLINE(string)
 */
 
+#include <stdio.h>
+#include <unistd.h>
+
 int encode_a_list(int fd, const a_list_t *ans)
 {
-    if (!ans)
-        return -1;
+    dprintf(2, "[encode_a_list] enter fd=%d ans=%p\n", fd, ans);
 
-    if (encode_uint16(fd, (uint16_t)OK) < 0)
+    if (!ans) {
+        dprintf(2, "[encode_a_list] ERROR: ans is NULL\n");
         return -1;
+    }
 
-    if (encode_uint32(fd, ans->all_task.nbtask) < 0)
+    dprintf(2, "[encode_a_list] nbtask=%u\n", ans->all_task.nbtask);
+
+    if (encode_uint16(fd, (uint16_t)OK) < 0) {
+        dprintf(2, "[encode_a_list] ERROR: encode_uint16(OK) failed\n");
         return -1;
+    }
+
+    dprintf(2, "[encode_a_list] wrote anstype=OK\n");
+
+    if (encode_uint32(fd, ans->all_task.nbtask) < 0) {
+        dprintf(2, "[encode_a_list] ERROR: encode_uint32(nbtask) failed\n");
+        return -1;
+    }
+
+    dprintf(2, "[encode_a_list] wrote nbtask=%u\n", ans->all_task.nbtask);
 
     for (uint32_t i = 0; i < ans->all_task.nbtask; ++i) {
-        if (encode_uint64(fd, ans->all_task.all_task[i].id) < 0)
-            return -1;
 
-        if (encode_timing(fd, ans->all_task.all_task[i].timing) < 0)
+        dprintf(2, "[encode_a_list] encoding task #%u\n", i);
+
+        dprintf(2, "[encode_a_list] task[%u].id=%lu\n",
+                i, ans->all_task.all_task[i].id);
+
+        if (encode_uint64(fd, ans->all_task.all_task[i].id) < 0) {
+            dprintf(2, "[encode_a_list] ERROR: encode_uint64(id) failed (i=%u)\n", i);
             return -1;
+        }
+
+        if (!ans->all_task.all_task[i].timing) {
+            dprintf(2, "[encode_a_list] ERROR: timing is NULL (i=%u)\n", i);
+            return -1;
+        }
+
+        if (encode_timing(fd, ans->all_task.all_task[i].timing) < 0) {
+            dprintf(2, "[encode_a_list] ERROR: encode_timing failed (i=%u)\n", i);
+            return -1;
+        }
+
+        dprintf(2, "[encode_a_list] timing encoded (i=%u)\n", i);
+
+        if (!ans->all_task.all_task[i].cmd) {
+            dprintf(2, "[encode_a_list] ERROR: cmd is NULL (i=%u)\n", i);
+            return -1;
+        }
 
         string_t *cline =
             command_to_commandline(ans->all_task.all_task[i].cmd);
 
-        if (!cline)
+        if (!cline) {
+            dprintf(2, "[encode_a_list] ERROR: command_to_commandline returned NULL (i=%u)\n", i);
             return -1;
+        }
+
+        dprintf(2,
+            "[encode_a_list] commandline len=%u data='%.*s'\n",
+            cline->length,
+            cline->length,
+            cline->data ? cline->data : "(null)"
+        );
 
         if (encode_string(fd, cline) < 0) {
+            dprintf(2, "[encode_a_list] ERROR: encode_string failed (i=%u)\n", i);
             free(cline->data);
             free(cline);
             return -1;
@@ -100,8 +149,11 @@ int encode_a_list(int fd, const a_list_t *ans)
 
         free(cline->data);
         free(cline);
+
+        dprintf(2, "[encode_a_list] task #%u encoded\n", i);
     }
 
+    dprintf(2, "[encode_a_list] SUCCESS\n");
     return 0;
 }
 

@@ -66,14 +66,17 @@ static int client_handle_command(uint16_t code, const char *input){
         //!Provisoire :
         dprintf(STDOUT_FILENO, "Une requête de type %u et de id %zu a été faite et va être envoyé\n", request -> opcode, request -> task_id);
 
-        // Sending the request
-        answer_t ans;
+        int fd_rep;
 
-        if(client_send_simple(request, &ans) < 0){
+        if(client_send_simple(request, &fd_rep) < 0){
             dprintf(STDERR_FILENO, "Error : an error occured while sending an simple request\n");
             return -1;
         }
-        tadmor_print_answer(&ans);
+
+        if (client_recv_answer(request->opcode, fd_rep) < 0) {
+            dprintf(STDERR_FILENO, "Error receiving answer\n");
+            return -1;
+        }
         free(request);
     }
     else{

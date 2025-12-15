@@ -53,12 +53,17 @@ int read_full(int fd, void *buf, size_t size)
     unsigned char *p = buf;
     size_t off = 0;
     while (off < size) {
+        dprintf(2, "[read_full] reading %zu bytes (off=%zu size=%zu)\n", size - off, off, size);
         ssize_t r = read(fd, p + off, size - off);
         if (r < 0) {
+            dprintf(2, "[read_full] read error: %s\n", strerror(errno));
             if (errno == EINTR) continue;
             return -1;
         }
-        if (r == 0) return -1; /* EOF => incomplete message */
+        if (r == 0){ 
+            dprintf(2, "[read_full] EOF reached\n");
+            return -1; 
+        }/* EOF => incomplete message */
         off += (size_t)r;
     }
     return 0;
@@ -112,7 +117,10 @@ int encode_uint32(int fd, uint32_t v) {
 }
 int decode_uint32(int fd, uint32_t *v) {
     uint32_t be;
-    if (read_full(fd, &be, sizeof(be)) < 0) return -1;
+    if (read_full(fd, &be, sizeof(be)) < 0) {
+        dprintf(STDERR_FILENO, "Error : can't read uint32 from fd\n");
+        return -1 ; 
+    };
     *v = ntohl(be);
     return 0;
 }

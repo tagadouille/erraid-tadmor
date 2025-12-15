@@ -10,7 +10,7 @@
 
 static int is_servant_running = 1;
 
-static int proceed_request(simple_request_t* req, int fd_request, int fd_response){
+static int proceed_request(simple_request_t* req, int fd_request, int* fd_response){
 
     if (daemon_read_simple(fd_request, req) < 0) {
         perror("decode_simple_request");
@@ -26,50 +26,39 @@ static int proceed_request(simple_request_t* req, int fd_request, int fd_respons
         return -1;
     }
 
-    if (daemon_open_reply(&fd_response) < 0){
+    if (daemon_open_reply(fd_response) < 0){
         write_log_msg("[daemon servant] Error : an error occured while opening the reply pipe");
         return -1;
     }
 
+    int ret = 0 ;
+
     switch (req->opcode){
         case SE:
         case SO:
-
-            if (encode_a_output(fd_response, (a_output_t *) ans) < 0) {
-                write_log_msg("[daemon servant] Error : an error occured while encode a_output");
-                close(fd_response);
-                return -1;
-            }
-            close(fd_response);
-            return 0;
+            ret = encode_a_output(*fd_response, (a_output_t *)ans);
+            break;
 
         case TX:
-
-            if (encode_a_timecode(fd_response, (a_timecode_t *) ans) < 0) {
-                write_log_msg("[daemon servant] Error : an error occured while encode a_timecode");
-                close(fd_response);
-                return -1;
-            }
-            close(fd_response);
-            return 0;
+            ret = encode_a_timecode(*fd_response, (a_timecode_t *) ans);
+            break ;
 
         case LS:
-             
-            if (encode_a_timecode(fd_response, (a_timecode_t *) ans) < 0) {
-                write_log_msg("[daemon servant] Error : an error occured while encode a_timecode");
-                close(fd_response);
-                return -1;
+            ret = encode_a_list(*fd_response, (a_list_t *) ans);
+            dprintf(STDOUT_FILENO, "Sent %u tasks\n", ((a_list_t *)ans)->all_task.nbtask);
+            if(ret < 0){
+                write_log_msg("[servant] Error encoding a_list answer");
             }
-            close(fd_response);
-            return 0;
+            break;
+        default:
+            write_log_msg("[servant] unknown opcode %u", req->opcode);
+            ret = -1;
+            break;
     }
-    close(fd_response);
+    close(*fd_response);
 
-    if (daemon_reply_simple((answer_t *) ans) < 0) {
-        perror("daemon_open_reply");
-        _exit(1);
-    }
-    return 0;
+    *fd_response = -1 ;
+    return ret;
 }
 
 void start_serve(){
@@ -79,23 +68,27 @@ void start_serve(){
     int fd_request;
     if (daemon_setup_pipes(&fd_request) < 0) {
         write_log_msg("[daemon servant] Error : failed to setup daemon pipes");
-        _exit(1);
+        return;
     }
-    int fd_response;
+    int fd_response = -1;
 
     write_log_msg("[daemon servant] Running start !");
 
     while(is_servant_running){
 
         write_log_msg("[daemon servant] Waiting for simple request...");
-        simple_request_t* req = NULL;
+        
+        simple_request_t req ;
 
-        if(proceed_request(req, fd_request, fd_response) < 0){
+        if(proceed_request(&req, fd_request, &fd_response) < 0){
             write_log_msg("[daemon servant] Error occured while proceeding the request");
-            _exit(1);
+            break;
         }
         write_log_msg("[daemon servant] Sent OK");
-    }
-    close(fd_response);
+    }if (fd_response >= 0)
+        close(fd_response);
+
     close(fd_request);
+
+    write_log_msg("[servant] stopped");
 }
