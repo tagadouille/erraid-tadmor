@@ -19,3 +19,5 @@ int decode_a_output(int fd, a_output_t *ans);
 /* TIMES_EXITCODES: OK + runs[] OR ER + errcode */
 
 int decode_a_timecode(int fd, a_timecode_t *ans);
+
+int decode_answer(int fd, const answer_t *ans);

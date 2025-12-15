@@ -130,3 +130,26 @@ int encode_answer_err(int fd, uint16_t errcode)
 
     return encode_uint16(fd, errcode);
 }
+
+int encode_answer(int fd, const answer_t *ans)
+{
+    if (!ans) return -1;
+
+    // Écrire le type
+    if (encode_uint16(fd, ans->anstype) < 0) return -1;
+
+    if (ans->anstype == OK) {
+        // OK = task_id
+        return encode_uint64(fd, ans->task_id);
+    }
+
+    if (ans->anstype == ERR) {
+        // ER = errcode
+        return encode_uint16(fd, ans->errcode);
+    }
+
+    // Type inconnu
+    return -1;
+}
+
+

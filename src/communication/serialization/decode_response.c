@@ -212,3 +212,27 @@ int decode_answer_err(int fd, uint16_t *errcode_out)
 
     return 0;
 }
+
+int decode_answer(int fd, answer_t *ans)
+{
+    if (!ans) return -1;
+
+    uint16_t anstype;
+    if (decode_uint16(fd, &anstype) < 0) return -1;
+
+    ans->anstype = anstype;
+
+    if (anstype == OK) {
+        if (decode_uint64(fd, &ans->task_id) < 0) return -1;
+        ans->errcode = 0;
+        return 0;
+    }
+
+    if (anstype == ERR) {
+        ans->task_id = 0;
+        if (decode_uint16(fd, &ans->errcode) < 0) return -1;
+        return 0;
+    }
+
+    return -1;
+}
