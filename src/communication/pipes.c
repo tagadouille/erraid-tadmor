@@ -1,5 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "communication/pipes.h"
+#include "communication/communication.h"
+#include "erraids/erraid-helper.h"
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -29,12 +31,23 @@ int pipe_path_rename(char* new_path){
     }
 
     // delete the pipes if they already exit
-    if(unlink(pipe_path REQUEST_PIPE) < 0 && errno != ENOENT){
+    char* reply = make_path_no_test(pipe_path, REPLY_PIPE);
+    char* request = make_path_no_test(pipe_path, REQUEST_PIPE);
+
+    if(reply == NULL || request == NULL){
+        dprintf(STDERR_FILENO, "Error : make_path_no_test fail at pipe_path_rename\n");
+        return -1;
+    }
+
+    if(unlink(request) < 0 && errno != ENOENT){
         dprintf(STDERR_FILENO, "Error : can't delete the request pipe, it's not serious\n");
     }
-    if(unlink(pipe_path REPLY_PIPE) < 0 && errno != ENOENT){
+    if(unlink(reply) < 0 && errno != ENOENT){
         dprintf(STDERR_FILENO, "Error : can't delete the request pipe, it's not serious\n");
     }
+
+    free(request);
+    free(reply);
 
     strcpy(pipe_path, new_path);
 
@@ -49,15 +62,30 @@ int pipe_path_rename(char* new_path){
         perror("realpath");
         return -1;
     }
-    strncpy(pipe_path, abs_pipe_path, sizeof(pipe_path)-1);
 
-    snprintf(pipe_path, sizeof(pipe_path), "%s/pipes", pipe_path);
-    pipe_path[sizeof(pipe_path)-1] = '\0';
+    size_t len = strlen(abs_pipe_path);
+
+    if (len >= sizeof(pipe_path))
+        return -1;
+
+    memcpy(pipe_path, abs_pipe_path, len + 1);
+
+    len = strlen(pipe_path);
+    const char *suffix = "/pipes";
+    size_t suffix_len = strlen(suffix);
+
+    if (len + suffix_len + 1 > sizeof(pipe_path)) {
+        return -1;
+    }
+
+    memcpy(pipe_path + len, suffix, suffix_len + 1);
+
+    pipe_path[sizeof(pipe_path) - 1] = '\0';
 
     return 0;
 }
 
-int daemon_setup_pipes(const char *rundir, int *req_rd)
+int daemon_setup_pipes(int *req_rd)
 {
     char *req_path = make_path(pipe_path, REQUEST_PIPE);
 
@@ -81,7 +109,7 @@ int daemon_setup_pipes(const char *rundir, int *req_rd)
     return 0;
 }
 
-int daemon_open_reply(const char *rundir, int *rep_wr)
+int daemon_open_reply(int *rep_wr)
 {
     char *rep_path = make_path(pipe_path, REPLY_PIPE);
     if (!rep_path)return -1;
@@ -99,8 +127,8 @@ int daemon_open_reply(const char *rundir, int *rep_wr)
    CLIENT : ouverture des pipes
    =========================== */
 
-int client_open_request(const char *rundir, int *req_wr)
-{
+int client_open_request(int *req_wr)
+{   
     char *req_path = make_path(pipe_path, REQUEST_PIPE);
     if( !req_path)return -1;
 
@@ -114,7 +142,7 @@ int client_open_request(const char *rundir, int *req_wr)
     return 0;
 }
 
-int client_open_reply(const char *rundir, int *rep_rd)
+int client_open_reply(int *rep_rd)
 {
     char *rep_path = make_path(pipe_path, REPLY_PIPE);
     if( !rep_path)return -1;

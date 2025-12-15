@@ -8,7 +8,7 @@
  *
  * Returns 0 on success, -1 on failure (errno is set).
  */
-int erraid_set_rundir(const char *rundir);
+int erraid_set_rundir(const char *rundir, const char* pipedir);
 
 /**
  * Get the current run directory into `out` (size: outlen).

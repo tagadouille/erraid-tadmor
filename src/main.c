@@ -17,13 +17,13 @@
 /**
  * @brief Create the default run directory for erraid and the pipes: /tmp/$USER/erraid and /tmp/$USER/erraid/pipes
 */
-static void default_rundir(char *erraid_path, char* pipe_path) {
+static void default_rundir(char *erraid_path, char* pipe_path, size_t err_size, size_t pipe_size) {
 
     const char *user = getenv("USER");
     if (!user) user = "nobody";
 
-    snprintf(out, erraid_path, "/tmp/%s/erraid", user);
-    snprintf(out, pipe_path, "/tmp/%s/pipes", user);
+    snprintf(erraid_path, err_size, "/tmp/%s/erraid", user);
+    snprintf(pipe_path, pipe_size, "/tmp/%s/pipes", user);
 }
 
 int main(int argc, char **argv) {
@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
     char rundir[PATH_MAX];
     char pipedir[PATH_MAX];
 
-    default_rundir(rundir, pipedir);
+    default_rundir(rundir, pipedir, PATH_MAX, PATH_MAX);
 
     while ((opt = getopt(argc, argv, "r:f")) != -1) {
        if(opt=='r') {
