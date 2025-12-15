@@ -377,15 +377,19 @@ int encode_complex_request(int fd, const complex_request_t *r)
     if (encode_timing(fd, &r->timing) < 0) return -1;
 
     if (r->opcode == CR) {
-        /* COMMAND = arguments */
-        if (encode_arguments(fd, &r->u.command_args) < 0) return -1;
+        if (r->u.command.type == SI) {
+            if (encode_arguments(fd, &r->u.command.args.simple) < 0) return -1;
+        } else {
+            // gérer les commandes composées si nécessaire
+            return -1; // ou autre logique
+        }
         return 0;
     } else if (r->opcode == CB) {
-        if (encode_uint16(fd, r->u.combine_type) < 0) return -1;
-        if (r->u.nb_task > LIMIT_MAX_TASKS) return -1;
-        if (encode_uint32(fd, r->u.nb_task) < 0) return -1;
-        for (uint32_t i = 0; i < r->u.nb_task; ++i) {
-            if (encode_uint64(fd, r->u.task_ids[i]) < 0) return -1;
+        if (encode_uint16(fd, r->u.composed.type) < 0) return -1;
+        if (r->u.composed.nb_task > LIMIT_MAX_TASKS) return -1;
+        if (encode_uint32(fd, r->u.composed.nb_task) < 0) return -1;
+        for (uint32_t i = 0; i < r->u.composed.nb_task; ++i) {
+            if (encode_uint64(fd, r->u.composed.task_ids[i]) < 0) return -1;
         }
         return 0;
     }
@@ -399,20 +403,23 @@ int decode_complex_request(int fd, complex_request_t *r)
     if (decode_timing(fd, &r->timing) < 0) return -1;
 
     if (r->opcode == CR) {
-        /* decode arguments into u.command_args */
-        if (decode_arguments(fd, &r->u.command_args) < 0) return -1;
+        if (r->u.command.type == SI) {
+            if (encode_arguments(fd, &r->u.command.args.simple) < 0) return -1;
+        } else {
+            return -1; 
+        }
         return 0;
     } else if (r->opcode == CB) {
-        if (decode_uint16(fd, &r->u.combine_type) < 0) return -1;
+        if (decode_uint16(fd, &r->u.composed.type) < 0) return -1;
         uint32_t n;
         if (decode_uint32(fd, &n) < 0) return -1;
         if (n > LIMIT_MAX_TASKS) return -1;
-        r->u.nb_task = n;
-        r->u.task_ids = calloc(n, sizeof(uint64_t));
-        if (!r->u.task_ids) return -1;
+        r->u.composed.nb_task = n;
+        r->u.composed.task_ids = calloc(n, sizeof(uint64_t));
+        if (!r->u.composed.task_ids) return -1;
         for (uint32_t i = 0; i < n; ++i) {
-            if (decode_uint64(fd, &r->u.task_ids[i]) < 0) {
-                free(r->u.task_ids);
+            if (decode_uint64(fd, &r->u.composed.task_ids[i]) < 0) {
+                free(r->u.composed.task_ids);
                 return -1;
             }
         }
@@ -479,7 +486,7 @@ int encode_a_list(int fd, const a_list_t *ans)
         /* task id */
         if (encode_uint64(fd, ans->all_task[i].id) < 0) return -1;
         /* timing */
-        if (encode_timing(fd, &ans->all_task[i].timing) < 0) return -1;
+        if (encode_timing(fd, ans->all_task[i].timing) < 0) return -1;
         /* commandline: build a single string from the command */
         string_t *cline = command_to_commandline(ans->all_task[i].cmd);
         if (!cline) return -1;
@@ -611,6 +618,53 @@ int decode_a_timecode(int fd, a_timecode_t *a)
         }
         return 0;
     }
+    return -1;
+}
+
+/* Generic answer encoding/decoding for simple OK/ERR answers */
+
+int encode_answer(int fd, const answer_t *ans)
+{
+    if (!ans) return -1;
+
+    // Écrire le type
+    if (encode_uint16(fd, ans->anstype) < 0) return -1;
+
+    if (ans->anstype == OK) {
+        // OK = task_id
+        return encode_uint64(fd, ans->task_id);
+    }
+
+    if (ans->anstype == ERR) {
+        // ER = errcode
+        return encode_uint16(fd, ans->errcode);
+    }
+
+    // Type inconnu
+    return -1;
+}
+
+int decode_answer(int fd, answer_t *ans)
+{
+    if (!ans) return -1;
+
+    uint16_t anstype;
+    if (decode_uint16(fd, &anstype) < 0) return -1;
+
+    ans->anstype = anstype;
+
+    if (anstype == OK) {
+        if (decode_uint64(fd, &ans->task_id) < 0) return -1;
+        ans->errcode = 0;
+        return 0;
+    }
+
+    if (anstype == ERR) {
+        ans->task_id = 0;
+        if (decode_uint16(fd, &ans->errcode) < 0) return -1;
+        return 0;
+    }
+
     return -1;
 }
 

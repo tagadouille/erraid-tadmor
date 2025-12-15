@@ -97,4 +97,8 @@ int decode_a_output(int fd, a_output_t *ans);
 int encode_a_timecode(int fd, const a_timecode_t *ans);
 int decode_a_timecode(int fd, a_timecode_t *ans);
 
+/* General answer encoder/decoder */
+int encode_answer(int fd, const answer_t *ans);
+int decode_answer(int fd, answer_t *ans);
+
 #endif // SERIALIZATION_H
