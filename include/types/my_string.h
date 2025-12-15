@@ -45,15 +45,9 @@ string_t* string_copy(const string_t* src);
 
 /**
  * @brief Free the memory allocated for a string_t.
- * @param str Pointer to string_t to free
+ * @param src Pointer to string_t to free
  */
-void string_free(string_t* str);
-
-/**
- * @brief Free the memory allocated for a string_t on the heap.
- * @param str Pointer to string_t to free
- */
-void string_free_heap(string_t* str);
+void string_free(string_t* src);
 
 /**
  * @brief Get the C string from a string_t.

@@ -70,32 +70,26 @@ char *timing_to_string(const timing_t *t)
     return out;
 }
 
-bool timing_match_now(const timing_t *t)
+bool timing_match_at(const timing_t *t, time_t now)
 {
-    if (!t)
-        return false;
-
-    time_t now = time(NULL);
-    if (now == (time_t)-1)
-        return false;
-
     struct tm tm_now;
-    if (localtime_r(&now, &tm_now) == NULL)
-        return false;
+    time_t minute_now = now - (now % 60);
+    localtime_r(&minute_now, &tm_now);
 
+    // minutes
     if (t->minutes != 0 && !mask_is_full(t->minutes, 60)) {
-        if (!(t->minutes & (1ULL << tm_now.tm_min)))
-            return false;
+        if (!(t->minutes & (1ULL << tm_now.tm_min))) return false;
     }
 
+    // heures
     if (t->hours != 0 && !mask_is_full(t->hours, 24)) {
-        if (!(t->hours & (1U << tm_now.tm_hour)))
-            return false;
+        if (!(t->hours & (1U << tm_now.tm_hour))) return false;
     }
 
+    // jours de la semaine : bit 0 = lundi
     if (t->daysofweek != 0 && !mask_is_full(t->daysofweek, 7)) {
-        if (!(t->daysofweek & (1U << tm_now.tm_wday)))
-            return false;
+        int wday = tm_now.tm_wday == 0 ? 6 : tm_now.tm_wday - 1; // décaler dimanche (0) à 6
+        if (!(t->daysofweek & (1U << wday))) return false;
     }
 
     return true;
@@ -144,9 +138,12 @@ void timing_show(const timing_t *t)
     free(txt);
 }
 
-bool timing_should_run(const timing_t *t)
-{
-    if (!t)
-        return false;
-    return timing_match_now(t);
+timing_t* timing_copy(const timing_t* src){
+    if (!src) return NULL;
+
+    timing_t* t = malloc(sizeof(timing_t));
+    if (!t) return NULL;
+
+    memcpy(t, src, sizeof(timing_t));
+    return t;
 }

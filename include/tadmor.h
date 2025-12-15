@@ -8,44 +8,31 @@
 #include "communication/request.h"
 #include "communication/answer.h"
 
-/** 
- * @brief Set the Default run directory: /tmp/$USER/erraid.
- * @return 0 on success.
+/**
+ * @brief Disconnect the client from the deamon.
  */
-int client_set_rundir(const char *rundir);
-
-/** 
- * @brief Get the run directory.
- * @return 0 on success.
- */
-int client_get_rundir(char *out, size_t outlen);
-
-/** 
- * @brief Open communication channels (FIFO or socket).
- * @return 0 on success.
-*/
-int client_connect(void);
+void tadmor_disconnect(void);
 
 /**
- * @brief Closes communication channels.
+ * @brief print an answer.
  */
-void client_disconnect(void);
+void tadmor_print_answer(answer_t* answer);
 
 /**
- * @brief Send TM (terminate daemon).
- * @return answer_t* or NULL
+ * @brief print the list of tasks.
  */
-answer_t *client_terminate(void);
+void tadmor_print_list(a_list_t* list);
 
-/** Pas encore pour ce jalon
- * @brief Create a simple task (CR).
- * @return answer_t* or NULL
+/**
+ * @brief print a timecode.
  */
-answer_t *client_create(timing_t *timing, command_t *cmd);
+void tadmor_print_timecode(a_timecode_t* timecode);
 
-/** 
- * @brief Create a composed task (CB).
- * @return answer_t* or NULL
+/**
+ * @brief print an output.
  */
-answer_t *client_combine(timing_t *timing, composed_t *comp);
+void tadmor_print_output(a_output_t* output);
+
+void tadmor_print_response(uint16_t opcode, void* res);
+
 #endif

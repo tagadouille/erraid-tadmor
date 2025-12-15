@@ -3,6 +3,9 @@ main
 test_reader
 .vscode*
 erraid
+tadmor
 *.o 
 .log
 Consignes*
+tadmor
+build*

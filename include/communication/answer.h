@@ -36,8 +36,7 @@ typedef struct{
 
     uint16_t anstype;
     uint16_t errcode;
-    uint32_t nbrun;
-    time_exitcode_t* all_timecode; //An array of size nbrun
+    time_array_t time_arr;
 
 }a_timecode_t;
 
@@ -47,8 +46,7 @@ typedef struct{
 typedef struct{
 
     uint16_t anstype;
-    uint32_t nbtask;
-    task_t* all_task; //Array of size of nbtask
+    all_task_t all_task;
 
 }a_list_t;
 

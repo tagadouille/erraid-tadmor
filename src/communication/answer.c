@@ -45,14 +45,13 @@ a_list_t* create_a_list(uint16_t anstype, uint32_t nbtask, task_t* all_task){
         perror("malloc");
         return NULL;
     }
-    a_list -> nbtask = nbtask;
-    a_list -> all_task = all_task;
+    a_list -> all_task.nbtask = nbtask;
+    a_list -> all_task.all_task = all_task;
 
     return a_list;
-    
 }
 
-a_timecode_t* create_a_timecode_t(uint16_t anstype, uint32_t nbrun, time_exitcode_t* all_timecode){
+a_timecode_t* create_a_timecode_t(uint16_t anstype, uint32_t nbruns, time_exitcode_t* all_timecode){
 
     if(anstype != ERR && anstype != OK){
         dprintf(STDERR_FILENO, "The anstype is incorrect\n");
@@ -70,8 +69,8 @@ a_timecode_t* create_a_timecode_t(uint16_t anstype, uint32_t nbrun, time_exitcod
         time -> errcode = NF;
         return time;
     }
-    time -> nbrun = nbrun;
-    time -> all_timecode = all_timecode;
+    time -> time_arr.nbruns = nbruns;
+    time -> time_arr.all_timecode = all_timecode;
 
     return time;
 }
@@ -101,8 +100,6 @@ a_output_t* create_a_output_t(uint16_t anstype, string_t output, uint16_t errcod
     return a_output;
 }
 
-
-
 void free_answer(answer_t* answer){
     if(answer != NULL){
         free(answer);
@@ -110,12 +107,17 @@ void free_answer(answer_t* answer){
 }
 
 void free_a_list(a_list_t* list) {
-    if (list == NULL){
+    if (!list || !list->all_task.all_task)
         return;
+
+    for (uint32_t i = 0; i < list->all_task.nbtask; ++i) {
+        free(list->all_task.all_task[i].timing);
+        free(list->all_task.all_task[i].commandline);
     }
 
-    free(list->all_task);
-    free(list);
+    free(list->all_task.all_task);
+    list->all_task.all_task = NULL;
+    list->all_task.nbtask = 0;
 }
 
 
@@ -123,10 +125,10 @@ void free_a_list(a_list_t* list) {
 void free_a_timecode_t(a_timecode_t* timecode){
     if(timecode == NULL) return;
 
-    for (size_t i = 0; i < timecode -> nbrun; i++){
+    for (size_t i = 0; i < timecode -> time_arr.nbruns; i++){
 
-        if(timecode -> all_timecode != NULL){
-            free(timecode -> all_timecode);
+        if(timecode -> time_arr.all_timecode != NULL){
+            free(timecode -> time_arr.all_timecode);
         }
     }
     free(timecode);
