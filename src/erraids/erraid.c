@@ -1,41 +1,18 @@
 #include "erraids/erraid.h"
+#include "erraids/erraid-scanner.h"
 #include "erraids/erraid-helper.h"
-#include "erraids/erraid-log.h"
-#include "erraids/erraid-executor.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <signal.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <fcntl.h>
-#include <string.h>
 #include <errno.h>
-#include <time.h>
-#include <limits.h>
-#include <stdint.h>
-
-#include <stdarg.h>
-#include <dirent.h>
-#include <sys/file.h>
-
-#include "types/task.h"
-#include "tree-reading/tree_reader.h"
-#include "test.h"
+#include <sys/types.h>
+#include <sys/stat.h>
 
 
 /* ---------------------------- CONFIG ---------------------------------- */
 
 task_t* curr_task = NULL;
 
-static volatile int running = 1;
-
-/**
- * All the tasks that was scanned
- */
-static all_task_t* scanned_tasks = NULL;
+volatile int running = 1;
 
 
 /**
@@ -103,72 +80,20 @@ int daemon_init(void) {
     return 0;
 }
 
-
-/* ------------------------------ Timing util ---------------------------- */
-/* wait until the next minute boundary (sleep until seconds == 0) */
-static time_t wait_next_minute(void)
-{
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-
-    ts.tv_sec = ts.tv_sec - (ts.tv_sec % 60) + 60;
-    ts.tv_nsec = 0;
-
-    while (clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, NULL) == EINTR);
-
-    return ts.tv_sec;
-}
-
 /* ------------------------------ MAIN LOOP ------------------------------ */
 
-static void scan_all_task(){
-
-    write_log_msg("Scanning tasks directory…");
-
-    scanned_tasks = all_task_listing(tasksdir);
-
-    if(scanned_tasks == NULL){
-        write_log_msg("Error : an error occured while scanning all the tasks of path %s", tasksdir);
-        running = 0;
-        return;
-    }
-    write_log_msg("The scan succeded ! \n");
-}
-
-/**
- * @brief Execute all the task that was scanned
- */
-static void execute_all_task(time_t minute_now){
-
-    if(scanned_tasks == NULL){
-        write_log_msg("Error : scanned_tasks is NULL, can't execute all the tasks");
-        return;
-    }
-
-    for (uint32_t i = 0; i < scanned_tasks -> nbtask; i++)
-    {
-        //task_display(&(scanned_tasks -> all_task)[i]);
-        run_task_if_due(&(scanned_tasks -> all_task)[i], minute_now);
-    }
-
-    write_log_msg("The execution is finish ! Go back to sleep.. zzz..\n");
-    
-}
-
 void daemon_run(void) {
-    write_log_msg("Daemon main loop started.");
-    
-    // Scan of the tasks of the directory
-    scan_all_task();
 
-    // Execution loop of the tasks
-    while (running) {
-
-        time_t minute_now = wait_next_minute();
-
-        execute_all_task(minute_now);
+    // Divide erraid : one scan the the task and the other execute the request
+    switch (fork()){
+        case -1:
+            perror("fork");
+            break;
+        case 0:
+            //TODO appeler le twin ✌️🥀💔
+        default:
+            // Scan of the task
+            erraid_scan_loop();
+            break;
     }
-
-    free(scanned_tasks);
-    write_log_msg("Daemon main loop stopping.");
 }

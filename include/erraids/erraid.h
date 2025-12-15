@@ -34,6 +34,8 @@ extern char g_log_path[PATH_MAX];
 
 extern char g_run_dir[PATH_MAX];
 
+extern volatile int running;
+
 /**
  * Initialize AND daemonize:
  *   - double fork()
