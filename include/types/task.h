@@ -26,7 +26,7 @@ struct command{
     command_type_t type;
 
     union{
-        arguments_t simple;
+        arguments_t* simple;
         struct
         {
             uint32_t count;
@@ -42,12 +42,33 @@ typedef struct task {
     uint64_t id;
     command_t *cmd;
     timing_t* timing;
+    char *commandline;        
+    uint32_t commandline_len;
 } task_t;
+
+typedef struct{
+    uint32_t nbtask;
+    task_t* all_task; //Array of size of nbtask
+} all_task_t;
 
 /**
  * @brief Allocate and initialize a new task.
  */
 task_t *task_create(uint64_t id);
+
+/**
+ * @brief return a pointer of a copy the task gived
+ * @param og_task the task to copy
+ * @return a pointer of a copy the task gived, NULL if failure
+ */
+task_t* task_copy(task_t* og_task);
+
+/**
+ * @brief copy a command
+ * @param src the command to be copied
+ * @return a pointer to the copy, NULL if failure
+ */
+command_t* command_copy(const command_t* src);
 
 /**
  * @brief Display the task information.
@@ -74,7 +95,7 @@ command_t* create_command(command_t* command, command_type_t type);
  * @param simple_args Pointer to the arguments_t structure representing the simple command.
  * @return Pointer to the updated command_t structure if success, NULL otherwise
  */
-command_t* add_simple_command(command_t* command, const arguments_t* simple_args);
+command_t* add_simple_command(command_t* command, arguments_t* simple_args);
 
 /**
  * @brief Adds a complex command to the given command structure

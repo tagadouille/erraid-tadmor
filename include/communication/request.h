@@ -31,7 +31,7 @@ typedef struct{
  *  A complex request is has CR and CB as opcode
  *  Can be send directly into a pipe
  */
-typedef struct{
+typedef struct {
 
     uint16_t opcode;
     timing_t timing;

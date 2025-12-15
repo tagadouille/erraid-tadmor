@@ -7,58 +7,63 @@
 #include <limits.h>
 #include <errno.h>
 
-#include "erraid.h"
+#include "erraids/erraid.h"
+#include "erraids/erraid-helper.h"
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
 
-task_t* curr_task = NULL;
+/**
+ * @brief Create the default run directory for erraid and the pipes: /tmp/$USER/erraid and /tmp/$USER/erraid/pipes
+*/
+static void default_rundir(char *erraid_path, char* pipe_path, size_t err_size, size_t pipe_size) {
 
-/* Default run directory: /tmp/$USER/erraid */
-static void default_rundir(char *out, size_t n) {
     const char *user = getenv("USER");
     if (!user) user = "nobody";
-    snprintf(out, n, "/tmp/%s/erraid", user);
-}
 
-static void usage(const char *prog) {
-    fprintf(stderr,
-        "Usage: %s [-r RUN_DIR] [-f]\n"
-        "  -r RUN_DIR   : root run directory (default /tmp/$USER/erraid)\n",
-        prog);
+    snprintf(erraid_path, err_size, "/tmp/%s/erraid", user);
+    snprintf(pipe_path, pipe_size, "/tmp/%s/pipes", user);
+
+    dprintf(STDOUT_FILENO, "pipe path : %s", pipe_path);
 }
 
 int main(int argc, char **argv) {
     int opt;
     char rundir[PATH_MAX];
+    char pipedir[PATH_MAX];
 
-    default_rundir(rundir, sizeof(rundir));
+    default_rundir(rundir, pipedir, PATH_MAX, PATH_MAX);
 
-    while ((opt = getopt(argc, argv, "r:fh")) != -1) {
+    while ((opt = getopt(argc, argv, "r:f")) != -1) {
        if(opt=='r') {
+
+            // If it's valid -> copy the arguments in the pathes
             if (optarg && strlen(optarg) < sizeof(rundir)) {
+
                 strncpy(rundir, optarg, sizeof(rundir)-1);
+                strncpy(pipedir, optarg, sizeof(rundir)-1);
                 rundir[sizeof(rundir)-1] = '\0';
-            } else {
-                fprintf(stderr, "Invalid run directory\n");
+                pipedir[sizeof(rundir)-1] = '\0';
+            }
+            else {
+                dprintf(STDERR_FILENO, "Error : Invalid run directory\n");
                 return EXIT_FAILURE;
             }
                             
         }else{
-            usage(argv[0]);
-            return (opt == 'h') ? EXIT_SUCCESS : EXIT_FAILURE;
+            return EXIT_FAILURE;
         }
     }
 
-    //et run directory for daemon
-    if (erraid_set_rundir(rundir) != 0) {
-        fprintf(stderr, "Failed to set run directory '%s': %s\n", rundir, strerror(errno));
+    // Run directory for daemon
+    if (erraid_set_rundir(rundir, pipedir) != 0) {
+        dprintf(STDERR_FILENO, "Failed to set run directory '%s': %s\n", rundir, strerror(errno));
         return EXIT_FAILURE;
     }
 
     if (daemon_init() != 0) {
-            fprintf(stderr, "daemon_init failed\n");
+            dprintf(STDERR_FILENO, "daemon_init failed\n");
             return EXIT_FAILURE;
     }
 

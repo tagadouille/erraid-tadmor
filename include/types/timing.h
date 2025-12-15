@@ -44,7 +44,7 @@ char *timing_to_string(const timing_t *t);
  * @param t Pointer to the timing_t structure to check against.
  * @return true if the current time matches, false otherwise.
  */
-bool timing_match_now(const timing_t *t);
+bool timing_match_at(const timing_t *t, time_t when);
 
 /**
  * @brief Read and interpret a binary timing file into a readable string.
@@ -54,14 +54,16 @@ bool timing_match_now(const timing_t *t);
 timing_t* timing_create(const char *path, ssize_t size);
 
 /**
+ * @brief copy a timing struct 
+ * @param a pointer to the struct to copy
+ * @return a pointer to the copy, NULL if failure
+ */
+timing_t* timing_copy(const timing_t* src);
+
+/**
  * @brief Display the timing information.
  * @param t Pointer to the timing_t structure to display.
  */
 void timing_show(const timing_t *t);
-
-/**
- * @brief Return true if the task should run now
- */
-bool timing_should_run(const timing_t *t);
 
 #endif
