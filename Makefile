@@ -63,8 +63,11 @@ test_client: $(TESTDIR)/test_client.c
 	    $(SRCDIR)/communication/communication.c \
 	    $(SRCDIR)/communication/answer.c \
 	    $(SRCDIR)/communication/request.c \
-		$(SRCDIR)/tree-reading/tree-reader.c \
-		$(SRCDIR)/types/my_string.c 
+	    $(SRCDIR)/tree-reading/tree-reader.c \
+	    $(SRCDIR)/tree-reading/cmd_reader.c \
+	    $(SRCDIR)/tree-reading/times-reader.c \
+	    $(SRCDIR)/types/task.c \
+	    $(SRCDIR)/types/my_string.c
 
 
 # --- Règle générique pour compiler .c → .o ---
