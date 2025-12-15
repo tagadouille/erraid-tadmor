@@ -28,7 +28,7 @@ void tadmor_print_answer(answer_t* answer)
     switch (answer->anstype)
     {
     case OK:
-        dprintf(STDOUT_FILENO, "%lu\n", answer->task_id);
+        dprintf(STDOUT_FILENO, "%lu\n", answer->task_id); // Print the task id
         break;
     
     case ERR:
@@ -59,7 +59,7 @@ void tadmor_print_list(a_list_t* list)
         return;
     }
 
-    for (uint32_t i = 0; i < list->all_task.nbtask; i++)
+    for (uint32_t i = 0; i < list->all_task.nbtask; i++) // Iterate through all tasks
     {
         task_t* t = &(list->all_task.all_task[i]);
 
@@ -71,7 +71,6 @@ void tadmor_print_list(a_list_t* list)
         }
 
         task_display(t);
-        // ! Il manque la partie où les timings sont comme ça : * * * dans timing_to_string
     }
 }
 
@@ -91,9 +90,9 @@ void tadmor_print_timecode(a_timecode_t* timecode)
     
     for (uint32_t i = 0; i < timecode->time_arr.nbruns; i++)
     {
-        time_exitcode_t *tc = &(timecode->time_arr.all_timecode[i]);
+        time_exitcode_t *tc = &(timecode->time_arr.all_timecode[i]); // Get each time_exitcode_t
 
-        time_exitcode_show(tc);
+        time_exitcode_show(tc); // Display each time_exitcode_t
     }
 }
 
@@ -131,7 +130,7 @@ void tadmor_print_response(uint16_t opcode, void* res)
     case TX:
         tadmor_print_timecode((a_timecode_t*)res);
         break;
-    case SO: // Même traitement pour STDOUT et STDERR
+    case SO: // same treatment for STDOUT and STDERR
     case SE:
         tadmor_print_output((a_output_t*)res);
         break;
