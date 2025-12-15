@@ -98,32 +98,33 @@ static int client_handle_command(uint16_t code, const char *input){
  * -------------------------------------------------------------- */
 static char *reconstruct_arg(int argc, char **argv, int start)
 {
-    size_t total = 0;
-
-    for (int i = start; i < argc; i++) {
-        total += strlen(argv[i]) + 1;
-    }
-
-    if (total == 0){
+    if (start >= argc)
         return NULL;
+
+    // Calculer la taille nécessaire (sans espaces)
+    size_t total = 0;
+    for (int i = start; i < argc; i++) {
+        for (size_t j = 0; j < strlen(argv[i]); j++) {
+            if (argv[i][j] != ' ')
+                total++;
+        }
     }
 
-    char *out = malloc(total);
+    if (total == 0)
+        return NULL;
 
-    if (!out){
+    char *out = malloc(total + 1);
+    if (!out) {
         perror("malloc");
         return NULL;
     }
 
     size_t pos = 0;
-
     for (int i = start; i < argc; i++) {
-        size_t len = strlen(argv[i]);
-        memcpy(out + pos, argv[i], len);
-        pos += len;
-
-        if (i + 1 < argc)
-            out[pos++] = ' ';
+        for (size_t j = 0; j < strlen(argv[i]); j++) {
+            if (argv[i][j] != ' ')
+                out[pos++] = argv[i][j];
+        }
     }
 
     out[pos] = '\0';
