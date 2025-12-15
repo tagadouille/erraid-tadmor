@@ -110,12 +110,17 @@ void free_answer(answer_t* answer){
 }
 
 void free_a_list(a_list_t* list) {
-    if (list == NULL){
+    if (!list || !list->all_task.all_task)
         return;
+
+    for (uint32_t i = 0; i < list->all_task.nbtask; ++i) {
+        free(list->all_task.all_task[i].timing);
+        free(list->all_task.all_task[i].commandline);
     }
 
     free(list->all_task.all_task);
-    free(list);
+    list->all_task.all_task = NULL;
+    list->all_task.nbtask = 0;
 }
 
 
