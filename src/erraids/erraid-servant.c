@@ -1,6 +1,21 @@
 #include "erraids/erraid-log.h"
+#include "communication/answer.h"
+#include "communication/request.h"
 
 static int is_servant_running = 1;
+
+static void* proceed_request(simple_request_t* req){
+
+    if (decode_simple_request(fd_request, req) < 0) {
+        perror("decode_simple_request");
+        _exit(1);
+    }
+
+    write_log_msg("[daemon] Received opcode = %u", req->opcode);
+
+    //TODO convertir la requête
+    return simple_request_handle(req, tasksdir);
+}
 
 void start_serve(){
 
@@ -18,27 +33,17 @@ void start_serve(){
     while(servant_running){
 
         write_log_msg("[daemon servant] Waiting for simple request...");
-        simple_request_t req;
+        simple_request_t* req = NULL;
+        answer_t* answer = NULL;
 
-        if (decode_simple_request(fd_request, &req) < 0) {
-            perror("decode_simple_request");
-            _exit(1);
-        }
-
-        write_log_msg("[daemon] Received opcode = %u", req.opcode);
+        proceed_request(req, ans);
 
         //TODO exécuter la requête puis y répondre
 
         /* --- open reply pipe --- */
         int fd_rep;
-        if (daemon_open_reply(rundir, &fd_response) < 0) {
+        if (daemon_reply_simple(const answer_t *ans, int has_task) < 0) {
             perror("daemon_open_reply");
-            _exit(1);
-        }
-
-        /* --- send OK (no payload) --- */
-        if (encode_answer_ok_nopayload(fd_response) < 0) {
-            perror("encode_answer_ok_nopayload");
             _exit(1);
         }
 
