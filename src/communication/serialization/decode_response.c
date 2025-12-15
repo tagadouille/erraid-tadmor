@@ -55,7 +55,6 @@ a_timecode_t* decode_a_timecode(int fd)
 {
 
     uint16_t anstype = 0;
-    uint16_t errcode = 0;
     uint32_t nbruns = 0;
     time_exitcode_t* all_timecode = NULL;
 
@@ -69,7 +68,6 @@ a_timecode_t* decode_a_timecode(int fd)
             return NULL;
 
         anstype = (uint16_t)ERR;
-        errcode = ec;
         nbruns = 0;
 
         return create_a_timecode_t(anstype, nbruns, all_timecode);

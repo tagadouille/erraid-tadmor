@@ -1,8 +1,13 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdint.h>
 #include "types/my_string.h"
 #include "communication/answer.h"
 #include "communication/serialization/serialization.h"
 #include "communication/serialization/en_decode_struct.h"
+
+#include <stdio.h>
+#include <stdlib.h>
 
 /* STDOUT / STDERR responses:
    OK: ANSTYPE='OK' + OUTPUT<string>
