@@ -24,6 +24,8 @@ static void default_rundir(char *erraid_path, char* pipe_path, size_t err_size, 
 
     snprintf(erraid_path, err_size, "/tmp/%s/erraid", user);
     snprintf(pipe_path, pipe_size, "/tmp/%s/pipes", user);
+
+    dprintf(STDOUT_FILENO, "pipe path : %s", pipe_path);
 }
 
 int main(int argc, char **argv) {
@@ -56,12 +58,12 @@ int main(int argc, char **argv) {
 
     // Run directory for daemon
     if (erraid_set_rundir(rundir, pipedir) != 0) {
-        fprintf(stderr, "Failed to set run directory '%s': %s\n", rundir, strerror(errno));
+        dprintf(STDERR_FILENO, "Failed to set run directory '%s': %s\n", rundir, strerror(errno));
         return EXIT_FAILURE;
     }
 
     if (daemon_init() != 0) {
-            fprintf(stderr, "daemon_init failed\n");
+            dprintf(STDERR_FILENO, "daemon_init failed\n");
             return EXIT_FAILURE;
     }
 

@@ -37,9 +37,19 @@ int decode_complex_request(int fd, complex_request_t *r)
 /* Simple request: OPCODE(uint16) + optional TASKID(uint64) */
 int decode_simple_request(int fd, simple_request_t *r)
 {
-    if (!r) return -1;
-    if (decode_uint16(fd, &r->opcode) < 0) return -1;
-    if (r->opcode == LS || r->opcode == TM) return 0;
-    if (decode_uint64(fd, &r->task_id) < 0) return -1;
+    if (!r){
+        dprintf(STDERR_FILENO, "Error : the request can't be NULL\n");
+        return -1;
+    }
+    if (decode_uint16(fd, &r->opcode) < 0){
+        return -1;
+    }
+    if (r->opcode == LS || r->opcode == TM){
+        return 0;
+    }
+    if (decode_uint64(fd, &r->task_id) < 0){
+        dprintf(STDERR_FILENO, "Error : there's no uint64 here\n");
+        return -1;
+    }
     return 0;
 }

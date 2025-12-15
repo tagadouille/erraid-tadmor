@@ -48,7 +48,17 @@ int erraid_set_rundir(const char *rundir, const char* pipedir) {
     g_run_dir[sizeof(g_run_dir)-1] = '\0';
 
     strncpy(pipe_path, pipedir, sizeof(pipe_path)-1);
+
+    size_t len = strlen(pipe_path);
+
+    if (len + strlen("/pipes") + 1 > sizeof(pipe_path))
+        return -1;
+
+    memcpy(pipe_path + len, "/pipes", strlen("/pipes") + 1);
+    
     pipe_path[sizeof(pipe_path)-1] = '\0';
+
+    dprintf(STDOUT_FILENO, "Pipe_path %s\n", pipe_path);
 
     return 0;
 }
@@ -74,6 +84,8 @@ static int pipe_path_initialization(){
     }
     strncpy(pipe_path, abs_pipe_path, sizeof(pipe_path)-1);
     pipe_path[sizeof(pipe_path)-1] = '\0';
+
+    dprintf(STDOUT_FILENO, "Pipe_path %s\n", pipe_path);
 
     return 0;
 }

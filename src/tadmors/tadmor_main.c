@@ -26,6 +26,8 @@
  * -------------------------------------------------------------- */
 static int client_handle_command(uint16_t code, const char *input){
 
+    dprintf(STDOUT_FILENO, "the input is %s\n", input);
+
     if(code != CR && code != CB){
 
         uint64_t task_id = 0;
@@ -42,7 +44,7 @@ static int client_handle_command(uint16_t code, const char *input){
                 return -1;
             }
             if (*end != '\0') {
-                dprintf(STDERR_FILENO, "ERROR: invalid argument\n");
+                dprintf(STDERR_FILENO, "ERROR: invalid argument at client_handle_command\n");
                 return -1;
             }
             task_id = (uint64_t) tmp;
@@ -83,79 +85,59 @@ static int client_handle_command(uint16_t code, const char *input){
 /* --------------------------------------------------------------
  * Reconstruct the remaining arguments into one string
  * -------------------------------------------------------------- */
-static char* reconstruct_arg(int argc, char** argv){
-    
-    char* input = malloc(512);
+static char *reconstruct_arg(int argc, char **argv, int start)
+{
+    size_t total = 0;
 
-    if(input == NULL){
+    for (int i = start; i < argc; i++) {
+        total += strlen(argv[i]) + 1;
+    }
+
+    if (total == 0){
         return NULL;
     }
+        
+
+    char *out = malloc(total);
+
+    if (!out){
+        perror("malloc");
+        return NULL;
+    }
+        
+
     size_t pos = 0;
 
-    for (int i = optind; i < argc; i++) {
-
+    for (int i = start; i < argc; i++) {
         size_t len = strlen(argv[i]);
-
-        if (pos + len + 2 >= sizeof(input)){
-            break;
-        }
-
-        memcpy(input + pos, argv[i], len);
+        memcpy(out + pos, argv[i], len);
         pos += len;
-        input[pos++] = ' ';
+
+        if (i + 1 < argc)
+            out[pos++] = ' ';
     }
-    return input;
+
+    out[pos] = '\0';
+    return out;
 }
 
-static int argument_handler(int opt, int argc, char** argv){
-    uint16_t opcode = 0;
-    int pipe_rename = 0;
+/**
+ * @brief handle the argument
+ */
+static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** argv){
 
-    switch (opt){
-        case 'c':
-            //TODO jalon-3
-            break;
-        case 's':
-            //TODO jalon-3
-            break;
-        case 'n':
-            //TODO jalon-3
-            break;
-        case 'r':
-            //TODO jalon-3
-            opcode = RM;
-            break;
-        case 'l':
-            opcode = LS;
-            break;
-        case 'x':
-            opcode = TX;
-            break;
-        case 'o':
-            opcode = SO;
-            break;
-        case 'e':
-            opcode = SE;
-            break;
-        case 'p':
-            pipe_rename = 1;
-            break;
-        case 'q':
-            //TODO jalon-3
-            opcode = TM;
-            break;
-        
-        default:
-            dprintf(STDERR_FILENO, "Invalid argument \n");
-            return -1;
-    }
-
-    char* input = reconstruct_arg(argc, argv);
+    char* input = reconstruct_arg(argc, argv, optind);
     int res = 0;
 
-    if(input == NULL){
-        return -1;
+    if (input == NULL){
+        input = strdup("");
     }
+        
+    if (!input) {
+        perror("strdup");
+        return EXIT_FAILURE;
+    }
+
     if(pipe_rename == 1){
         res = pipe_path_rename(input);
     }
@@ -167,17 +149,45 @@ static int argument_handler(int opt, int argc, char** argv){
     return res;
 }
 
+
 /* --------------------------------------------------------------
  * main
  * -------------------------------------------------------------- */
 int main(int argc, char **argv)
 {
     int opt;
+    int opcode = 0;
+    int pipe_rename = 0;
+
+    if(pipe_file_read() < 0){
+        dprintf(STDERR_FILENO, "LAUNCH ERRAID BEFORE TADMOR !!! \n");
+        return -1;
+    }
 
     // Handle the differents arguments
     while ((opt = getopt(argc, argv, "qe:o:x:lr:c:s:p:e:")) != -1) {
-        argument_handler(opt, argc, argv);
-    }
+        switch (opt) {
+            case 'c': //TODO jalon-3
+                break;
+            case 's': //TODO jalon-3
+                break;
+            case 'n': //TODO jalon-3
+                break;
+            case 'r'://TODO jalon-3
+                opcode = RM; break;
+            case 'q': //TODO jalon-3
+                opcode = TM; break;
 
-    return 0;
+            case 'l': opcode = LS; break;
+            case 'x': opcode = TX; break;
+            case 'o': opcode = SO; break;
+            case 'e': opcode = SE; break;
+            case 'p': pipe_rename = 1; break;
+            
+            default:
+                dprintf(STDERR_FILENO, "Invalid argument \n");
+                return EXIT_FAILURE;
+        }
+    }
+    return argument_handler(opcode, pipe_rename, argc, argv);
 }

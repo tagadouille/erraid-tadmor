@@ -40,35 +40,6 @@ erraid: $(OBJ_ERRAID)
 tadmor: $(OBJ_TADMOR)
 	$(CC) $(LDFLAGS) -o ./tadmor $^ $(LDLIBS)
 
-# --- Tests (compilation indépendante) ---
-
-test_daemon: $(TESTDIR)/test_daemon.c
-	$(CC) $(CFLAGS) -I include -o $@ \
-	    $(TESTDIR)/test_daemon.c \
-	    $(SRCDIR)/pipes.c \
-	    $(SRCDIR)/serialization.c \
-	    $(SRCDIR)/communication/communication.c \
-	    $(SRCDIR)/communication/answer.c \
-	    $(SRCDIR)/communication/request.c \
-		$(SRCDIR)/tree-reading/tree-reader.c \
-		$(SRCDIR)/types/my_string.c 
-
-
-
-test_client: $(TESTDIR)/test_client.c
-	$(CC) $(CFLAGS) -I include -o $@ \
-	    $(TESTDIR)/test_client.c \
-	    $(SRCDIR)/pipes.c \
-	    $(SRCDIR)/serialization.c \
-	    $(SRCDIR)/communication/communication.c \
-	    $(SRCDIR)/communication/answer.c \
-	    $(SRCDIR)/communication/request.c \
-	    $(SRCDIR)/tree-reading/tree-reader.c \
-	    $(SRCDIR)/tree-reading/cmd_reader.c \
-	    $(SRCDIR)/tree-reading/times-reader.c \
-	    $(SRCDIR)/types/task.c \
-	    $(SRCDIR)/types/my_string.c
-
 
 # --- Règle générique pour compiler .c → .o ---
 $(OBJDIR)/%.o: $(SRCDIR)/%.c

@@ -2,6 +2,7 @@
 #include "erraids/erraid-scanner.h"
 #include "erraids/erraid-helper.h"
 #include "erraids/erraid-servant.h"
+#include "communication/pipes.h"
 
 #include <signal.h>
 #include <errno.h>
@@ -48,6 +49,10 @@ int daemon_init(void) {
     }
 
     if (ensure_rundir() != 0) return -1;
+
+    if(pipe_file_write() < 0){
+        dprintf(STDERR_FILENO, "Error : can't write in the pipe_file\n");
+    }
 
     pid_t pid = fork();
     if (pid < 0) return -1;

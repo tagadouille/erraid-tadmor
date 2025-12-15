@@ -1,6 +1,8 @@
 #ifndef PIPES_H
 #define PIPES_H
 
+#define PIPE_FILE "pipe_file.marcMonKoicoubebou"
+
 /**
  * @brief rename the pipe_path
  * @param new_path the new path name
@@ -13,5 +15,9 @@ int daemon_open_reply(int *rep_wr);
 
 int client_open_request(int *req_wr);
 int client_open_reply(int *rep_rd);
+
+int pipe_file_write();
+
+int pipe_file_read();
 
 #endif

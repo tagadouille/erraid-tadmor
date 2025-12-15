@@ -9,8 +9,8 @@
 #include <limits.h>
 #include <stddef.h>
 
-#define REQUEST_PIPE "erraid-request-pipe/"
-#define REPLY_PIPE "erraid-reply-pipe/"
+#define REQUEST_PIPE "erraid-request-pipe"
+#define REPLY_PIPE "erraid-reply-pipe"
 
 extern char pipe_path[PATH_MAX];
 

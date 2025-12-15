@@ -15,9 +15,77 @@
 #include <unistd.h>
 #include <limits.h>
 
-/* ===========================
-   DÉMON : création + ouverture
-   =========================== */
+
+static char* pipe_file_path_creator(){
+    const char *user = getenv("USER");
+    if (!user) user = "nobody";
+
+    char* path = make_path_no_test("/home", user);
+
+    if(path == NULL){
+        dprintf(STDERR_FILENO, "The path is NULL at pipe_file_read\n");
+        return NULL;
+    }
+    char* pipe_file_path = make_path_no_test(path, PIPE_FILE);
+
+    if(pipe_file_path == NULL){
+        dprintf(STDERR_FILENO, "The pipe_file_path is NULL at pipe_file_read\n");
+    }
+
+    free(path);
+
+    if(pipe_file_path != NULL){
+        dprintf(STDOUT_FILENO, "The pipe_file_path is %s\n", pipe_file_path);
+    }
+    return pipe_file_path;
+}
+int pipe_file_write(){
+
+    char* pipe_file_path = pipe_file_path_creator();
+
+    int fd = open(pipe_file_path, O_CREAT | O_TRUNC | O_WRONLY, 0677);
+
+    free(pipe_file_path);
+
+    if(fd < 0){
+        perror("open");
+        return -1;
+    }
+
+    if(write(fd, pipe_path, sizeof(pipe_path)) != sizeof(pipe_path)){
+        perror("write");
+        return -1;
+    }
+    return 0;
+}
+
+int pipe_file_read(){
+
+    char* pipe_file_path = pipe_file_path_creator();
+
+    int fd = open(pipe_file_path, O_RDONLY);
+
+    free(pipe_file_path);
+
+    if(fd < 0){
+        perror("open");
+        return -1;
+    }
+
+    ssize_t nread = read(fd, pipe_path, sizeof(pipe_path));
+
+    if(nread < 0){
+        perror("read");
+        return -1;
+    }
+
+    if(nread == 0){
+        dprintf(STDERR_FILENO, "The pipe_path is empty\n");
+    }
+    return 0;
+}
+
+
 /**
  * @brief rename the pipe_path
  * @param new_path the new path name
@@ -85,11 +153,24 @@ int pipe_path_rename(char* new_path){
     return 0;
 }
 
+/* ===========================
+   DÉMON : création + ouverture
+   =========================== */
 int daemon_setup_pipes(int *req_rd)
 {
-    char *req_path = make_path(pipe_path, REQUEST_PIPE);
+    char *req_path = make_path_no_test(pipe_path, REQUEST_PIPE);
 
-    char *rep_path = make_path(pipe_path, REPLY_PIPE);
+    char *rep_path = make_path_no_test(pipe_path, REPLY_PIPE);
+
+    if(req_path == NULL){
+        dprintf(STDERR_FILENO, "req_path is null at daemon_setup_pipes");
+        return -1;
+    }
+
+    if(rep_path == NULL){
+        dprintf(STDERR_FILENO, "rep_path is null at daemon_setup_pipes");
+        return -1;
+    }
 
     /* mkfifo si n’existent pas */
     if (mkfifo(req_path, 0666) != 0 && errno != EEXIST)
@@ -129,10 +210,16 @@ int daemon_open_reply(int *rep_wr)
    CLIENT : ouverture des pipes
    =========================== */
 
-int client_open_request(int *req_wr)
-{   
-    char *req_path = make_path(pipe_path, REQUEST_PIPE);
-    if( !req_path)return -1;
+int client_open_request(int *req_wr){
+    
+    dprintf(STDOUT_FILENO, "The pipe path is %s\n", pipe_path);
+
+    char *req_path = make_path_no_test(pipe_path, REQUEST_PIPE);
+
+    if(req_path == NULL){
+        dprintf(STDERR_FILENO, "Error : an error occured while creating the path to the request pipe\n");
+        return -1;
+    }
 
     dprintf(STDOUT_FILENO, "The pipe request path is %s\n", req_path);
 
