@@ -33,6 +33,11 @@ static int client_handle_command(uint16_t code, const char *input){
         uint64_t task_id = 0;
 
         if(strlen(input) != 0){
+
+            if(code == TM){
+                dprintf(STDERR_FILENO, "ERROR: -q takes no argument\n");
+                return -1;
+            }
             //Convert the input to uint64_t :
             errno = 0;
             char *end;
@@ -50,33 +55,37 @@ static int client_handle_command(uint16_t code, const char *input){
             task_id = (uint64_t) tmp;
         }
         else{
-            if(code == TM){
-                dprintf(STDERR_FILENO, "ERROR: -q takes no argument\n");
+            if(code != LS && code == TM){
+                dprintf(STDERR_FILENO, "The request must have an arguments !\n");
                 return -1;
             }
         }
 
-        // Création of the request
+        // Création of the request :
         simple_request_t* request = create_simple_request(code, task_id);
 
         if(request == NULL){
             return -1;
         }
 
+        // Sending the request : 
         //!Provisoire :
         dprintf(STDOUT_FILENO, "Une requête de type %u et de id %zu a été faite et va être envoyé\n", request -> opcode, request -> task_id);
 
-        int fd_rep;
-
-        if(client_send_simple(request, &fd_rep) < 0){
+        if(client_send_simple(request) < 0){
             dprintf(STDERR_FILENO, "Error : an error occured while sending an simple request\n");
             return -1;
         }
 
-        if (client_recv_answer(request->opcode, fd_rep) < 0) {
+        // Get the response
+        void* ans = client_recv_answer(code);
+
+        if (ans == NULL) {
             dprintf(STDERR_FILENO, "Error receiving answer\n");
             return -1;
         }
+        // Print the answer
+        tadmor_print_response(code, ans);
         free(request);
     }
     else{
@@ -99,7 +108,6 @@ static char *reconstruct_arg(int argc, char **argv, int start)
     if (total == 0){
         return NULL;
     }
-        
 
     char *out = malloc(total);
 
@@ -107,7 +115,6 @@ static char *reconstruct_arg(int argc, char **argv, int start)
         perror("malloc");
         return NULL;
     }
-        
 
     size_t pos = 0;
 

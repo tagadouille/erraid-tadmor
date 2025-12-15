@@ -85,7 +85,9 @@ void start_serve(){
             break;
         }
         write_log_msg("[daemon servant] Sent OK");
-    }if (fd_response >= 0)
+    }
+    
+    if (fd_response >= 0)
         close(fd_response);
 
     close(fd_request);
