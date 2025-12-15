@@ -30,39 +30,8 @@ int client_send_simple(const simple_request_t *req, answer_t *ans, int has_task)
     if (client_open_reply(&fd_rep) < 0)
         return -1;
 
-    if(ans == NULL){
-        dprintf(STDERR_FILENO, "Error : The answer structure can't be null at client_send_simple\n");
-        close(fd_rep);
-        return -1;
-    }
-
-    if(ans->anstype == OK){
-
-        if(has_task){
-            if (decode_answer_ok_taskid(fd_rep, &(ans->task_id)) < 0) {
-                dprintf(STDERR_FILENO, "Error : occured while decoding ok response with task id\n");
-                close(fd_rep);
-                return -1;
-            }
-        }
-        else{
-            if (decode_answer_ok_nopayload(fd_rep) < 0) {
-                dprintf(STDERR_FILENO, "Error : occured while decoding ok response with no task id\n");
-                close(fd_rep);
-                return -1;
-            }
-        }
-    }
-    else if(ans->anstype == ERR){
-        
-        if (decode_answer_err(fd_rep, &(ans->errcode)) < 0) {
-            dprintf(STDERR_FILENO, "Error : occured while decoding error response\n");
-            close(fd_rep);
-            return -1;
-        }
-    }
-    else{
-        dprintf(STDERR_FILENO, "Error : Unknow anstype at client_send_simple\n");
+    if (decode_answer(fd_rep, ans) < 0) {
+        dprintf(STDERR_FILENO, "Error : occured while decoding answer in client_send_simple\n");
         close(fd_rep);
         return -1;
     }
@@ -89,39 +58,9 @@ int daemon_reply_simple(const answer_t *ans, int has_task)
     if (daemon_open_reply(&fd_rep) < 0)
         return -1;
 
-    if(ans == NULL){
-        dprintf(STDERR_FILENO, "Error : The answer structure can't be null at daemon_reply_simple\n");
+    if (encode_answer(fd_rep, ans) < 0) {
         close(fd_rep);
         return -1;
-    }
-
-    if(ans->anstype == OK){
-
-        if(has_task){
-            if (encode_answer_ok_taskid(fd_rep, ans->task_id) < 0) {
-                dprintf(STDERR_FILENO, "Error : occured while encoding ok response with task id\n");
-                close(fd_rep);
-                return -1;
-            }
-        }
-        else{
-            if (encode_answer_ok_nopayload(fd_rep) < 0) {
-                dprintf(STDERR_FILENO, "Error : occured while encoding ok response with no task id\n");
-                close(fd_rep);
-                return -1;
-            }
-        }
-    }
-    else if(ans->anstype == ERR){
-        
-        if (encode_answer_err(fd_rep, ans->errcode) < 0) {
-                dprintf(STDERR_FILENO, "Error : occured while encoding error response\n");
-                close(fd_rep);
-                return -1;
-            }
-    }
-    else{
-        dprintf(STDERR_FILENO, "Error : Unknow anstype at daemon_reply_simple\n");
     }
 
     close(fd_rep);
