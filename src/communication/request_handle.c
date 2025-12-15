@@ -12,7 +12,7 @@ a_list_t* handle_ls(char *rundir)
 {
     all_task_t *list = all_task_listing(rundir);
     if (list == NULL) {
-        return NULL;
+        return create_a_list(ERR, 0, NULL);
     }
 
     return create_a_list(OK, list->nbtask, list->all_task);
