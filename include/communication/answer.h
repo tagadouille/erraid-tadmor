@@ -46,7 +46,6 @@ typedef struct{
 typedef struct{
 
     uint16_t anstype;
-    uint16_t errcode;
     all_task_t all_task;
 
 }a_list_t;

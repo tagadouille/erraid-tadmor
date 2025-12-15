@@ -53,34 +53,26 @@ void* client_recv_answer(uint16_t opcode)
                 "Error: opening reply pipe in client_recv_answer\n");
         return ret;
     }
+    //! Recupérer la réponse
 
     switch (opcode) {
 
         case LS: {
-            a_list_t* ans = NULL;
-            if (decode_a_list(fd_rep, ans) < 0)
-                dprintf(STDOUT_FILENO,
-                        "Received %u tasks\n", ans->all_task.nbtask);
-            ret = ans;
+            ret = decode_a_list(fd_rep);
+            if(ret == NULL) dprintf(STDERR_FILENO, "Error : an error occured while decoding a_list\n");
             break;
         }
 
         case SO:
         case SE: {
-            a_output_t* out = NULL;
-            if(decode_a_output(fd_rep, out) < 0){
-                dprintf(STDERR_FILENO, "Error : an error occured while decoding a_output\n");
-            }
-            ret = out;
+            ret = decode_a_output(fd_rep);
+            if(ret == NULL) dprintf(STDERR_FILENO, "Error : an error occured while decoding a_output\n");
             break;
         }
 
         case TX: {
-            a_timecode_t* tc = NULL;
-            if(decode_a_timecode(fd_rep, tc) < 0){
-                dprintf(STDERR_FILENO, "Error : an error occured while decoding a_timecode\n");
-            }
-            ret = tc;
+            ret = decode_a_timecode(fd_rep);
+            if(ret == NULL) dprintf(STDERR_FILENO, "Error : an error occured while decoding a_timecode\n");
             break;
         }
 
@@ -88,11 +80,8 @@ void* client_recv_answer(uint16_t opcode)
         case RM:
         case CB:
         case TM: {
-            answer_t* ans = NULL;
-            if(decode_answer(fd_rep, ans) < 0){
-                dprintf(STDERR_FILENO, "Error : an error occured while decoding answer_t\n");
-            }
-            ret = ans;
+            ret = decode_answer(fd_rep);
+            if(ret == NULL) dprintf(STDERR_FILENO, "Error : an error occured while decoding answer_t\n");
             break;
         }
 

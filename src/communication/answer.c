@@ -49,7 +49,6 @@ a_list_t* create_a_list(uint16_t anstype, uint32_t nbtask, task_t* all_task){
     a_list -> all_task.all_task = all_task;
 
     return a_list;
-    
 }
 
 a_timecode_t* create_a_timecode_t(uint16_t anstype, uint32_t nbruns, time_exitcode_t* all_timecode){
@@ -100,8 +99,6 @@ a_output_t* create_a_output_t(uint16_t anstype, string_t output, uint16_t errcod
 
     return a_output;
 }
-
-
 
 void free_answer(answer_t* answer){
     if(answer != NULL){

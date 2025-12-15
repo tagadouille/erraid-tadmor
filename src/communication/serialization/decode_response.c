@@ -7,170 +7,159 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-int decode_a_output(int fd, a_output_t *ans)
+a_output_t* decode_a_output(int fd)
 {
-    if (!ans)
-        return -1;
 
-    uint16_t anstype;
+    uint16_t anstype = 0;
+    uint16_t errcode = 0;
+
+    uint32_t length = 0;
+    char* data = NULL;
+
+    string_t output = {0};
 
     if (decode_uint16(fd, &anstype) < 0)
-        return -1;
+        return NULL;
 
     if (anstype == (uint16_t)ERR) {
         uint16_t ec;
 
         if (decode_uint16(fd, &ec) < 0)
-            return -1;
+            return NULL;
 
-        ans->anstype = (uint16_t)ERR;
-        ans->errcode = ec;
-        ans->output.length = 0;
-        ans->output.data = NULL;
+        anstype = (uint16_t)ERR;
+        errcode = ec;
+        length = 0;
+        data = NULL;
 
-        return 0;
+        output = string_create(data, length);
+
+        return create_a_output_t(anstype, output, errcode);
+
     } else if (anstype == (uint16_t)OK) {
-        ans->anstype = (uint16_t)OK;
+        anstype = (uint16_t)OK;
 
-        if (decode_string(fd, &ans->output) < 0)
-            return -1;
+        if (decode_string(fd, &output) < 0)
+            return NULL;
 
-        ans->errcode = 0;
+        errcode = 0;
+        output = string_create(data, length);
 
-        return 0;
+        return create_a_output_t(anstype, output, errcode);
     }
 
-    return -1;
+    return NULL;
 }
 
-int decode_a_timecode(int fd, a_timecode_t *a)
+a_timecode_t* decode_a_timecode(int fd)
 {
-    if (!a)
-        return -1;
 
-    uint16_t anstype;
+    uint16_t anstype = 0;
+    uint16_t errcode = 0;
+    uint32_t nbruns = 0;
+    time_exitcode_t* all_timecode = NULL;
 
     if (decode_uint16(fd, &anstype) < 0)
-        return -1;
+        return NULL;
 
     if (anstype == (uint16_t)ERR) {
         uint16_t ec;
 
         if (decode_uint16(fd, &ec) < 0)
-            return -1;
+            return NULL;
 
-        a->anstype = (uint16_t)ERR;
-        a->errcode = ec;
-        a->time_arr.nbruns = 0;
+        anstype = (uint16_t)ERR;
+        errcode = ec;
+        nbruns = 0;
 
-        return 0;
+        return create_a_timecode_t(anstype, nbruns, all_timecode);
     }
     else if (anstype == (uint16_t)OK) {
-        a->anstype = (uint16_t)OK;
 
-        if (decode_uint32(fd, &a->time_arr.nbruns) < 0)
-            return -1;
+        if (decode_uint32(fd, &nbruns) < 0)
+            return NULL;
 
-        if (a->time_arr.nbruns > LIMIT_MAX_RUNS)
-            return -1;
+        if (nbruns > LIMIT_MAX_RUNS)
+            return NULL;
 
-        if (a->time_arr.nbruns > 0) {
-            a->time_arr.all_timecode = calloc(a->time_arr.nbruns, sizeof(time_exitcode_t));
+        if (nbruns > 0) {
+            all_timecode = calloc(nbruns, sizeof(time_exitcode_t));
 
-            if (!a->time_arr.all_timecode)
-                return -1;
+            if (!all_timecode)
+                return NULL;
 
-            for (uint32_t i = 0; i < a->time_arr.nbruns; ++i) {
+            for (uint32_t i = 0; i < nbruns; ++i) {
 
                 int64_t tmp;
 
                 if (decode_int64(fd, &tmp) < 0) {
-                    free(a->time_arr.all_timecode);
-                    return -1;
+                    free(all_timecode);
+                    return NULL;
                 }
 
-                a->time_arr.all_timecode[i].time = tmp;
+                all_timecode[i].time = tmp;
 
                 uint16_t ec;
 
                 if (decode_uint16(fd, &ec) < 0) {
-                    free(a->time_arr.all_timecode);
-                    return -1;
+                    free(all_timecode);
+                    return NULL;
                 }
 
-                a->time_arr.all_timecode[i].exitcode =
-                    (int32_t)ec;
+                all_timecode[i].exitcode = (int32_t)ec;
             }
         } else {
-            a->time_arr.all_timecode = NULL;
+            all_timecode = NULL;
         }
 
-        return 0;
+        return create_a_timecode_t(anstype, nbruns, all_timecode);
     }
 
-    return -1;
+    return NULL;
 }
 
-int decode_a_list(int fd, a_list_t *ans)
+a_list_t* decode_a_list(int fd)
 {
-    dprintf(2, "[decode_a_list] enter fd=%d ans=%p\n", fd, ans);
-
-    if (!ans) {
-        dprintf(2, "[decode_a_list] ERROR: ans is NULL\n");
-        return -1;
-    }
-
-    /* Toujours partir d’un état propre */
-    memset(ans, 0, sizeof(*ans));
+    dprintf(2, "[decode_a_list] enter fd=%d\n", fd);
 
     uint16_t anstype = 0;
+    uint32_t nbtask = 0;
+    task_t* all_task = NULL;
 
     if (decode_uint16(fd, &anstype) < 0) {
         dprintf(2, "[decode_a_list] ERROR: decode_uint16 failed\n");
-        return -1;
+        return NULL;
     }
-
-    ans->anstype = anstype;
     dprintf(2, "[decode_a_list] anstype=%u\n", anstype);
-
-    /* Error Case */
-    if (anstype == (uint16_t)ERR) {
-        if (decode_uint16(fd, &ans->errcode) < 0) {
-            dprintf(2, "[decode_a_list] ERROR: decode_uint16(errcode) failed\n");
-            return -1;
-        }
-        dprintf(2, "[decode_a_list] ERROR response, errcode=%u\n", ans->errcode);
-        return 0;
-    }
 
     /* Unknow case */
     if (anstype != (uint16_t)OK) {
         dprintf(2, "[decode_a_list] ERROR: anstype != OK (%u)\n", anstype);
-        return -1;
+        return NULL;
     }
 
     /* Ok case */
-    if (decode_uint32(fd, &ans->all_task.nbtask) < 0) {
+    if (decode_uint32(fd, &nbtask) < 0) {
         dprintf(2, "[decode_a_list] ERROR: decode_uint32(nbtask) failed\n");
-        return -1;
+        return NULL;
     }
 
-    dprintf(2, "[decode_a_list] nbtask=%u\n", ans->all_task.nbtask);
+    dprintf(2, "[decode_a_list] nbtask=%u\n", nbtask);
 
-    if (ans->all_task.nbtask == 0) {
-        ans->all_task.all_task = NULL;
+    if (nbtask == 0) {
+        all_task = NULL;
         dprintf(2, "[decode_a_list] nbtask == 0, nothing to decode\n");
-        return 0;
+        return create_a_list(anstype, nbtask, all_task);
     }
 
-    ans->all_task.all_task = calloc(ans->all_task.nbtask, sizeof(task_t));
-    if (!ans->all_task.all_task) {
+    all_task = calloc(nbtask, sizeof(task_t));
+    if (!all_task) {
         dprintf(2, "[decode_a_list] ERROR: calloc(all_task) failed\n");
-        return -1;
+        return NULL;
     }
 
-    for (uint32_t i = 0; i < ans->all_task.nbtask; ++i) {
-        task_t *t = &ans->all_task.all_task[i];
+    for (uint32_t i = 0; i < nbtask; ++i) {
+        task_t *t = &all_task[i];
 
         dprintf(2, "[decode_a_list] decoding task #%u\n", i);
 
@@ -209,77 +198,32 @@ int decode_a_list(int fd, a_list_t *ans)
     }
 
     dprintf(2, "[decode_a_list] SUCCESS\n");
-    return 0;
+    return create_a_list(anstype, nbtask, all_task);
 
-error:
-    free_a_list(ans);
-    return -1;
+    error:
+    return NULL;
 }
 
-
-int decode_answer_ok_nopayload(int fd)
+answer_t* decode_answer(int fd)
 {
-    uint16_t anstype;
-
-    if (decode_uint16(fd, &anstype) < 0)
-        return -1;
-
-    return (anstype == (uint16_t)OK) ? 0 : -1;
-}
-
-int decode_answer_ok_taskid(int fd, uint64_t *taskid_out)
-{
-    uint16_t anstype;
-
-    if (decode_uint16(fd, &anstype) < 0)
-        return -1;
-
-    if (anstype != (uint16_t)OK)
-        return -1;
-
-    if (decode_uint64(fd, taskid_out) < 0)
-        return -1;
-
-    return 0;
-}
-
-/* Helper: decode ERROR response */
-int decode_answer_err(int fd, uint16_t *errcode_out)
-{
-    uint16_t anstype;
-
-    if (decode_uint16(fd, &anstype) < 0)
-        return -1;
-
-    if (anstype != (uint16_t)ERR)
-        return -1;
-
-    if (decode_uint16(fd, errcode_out) < 0)
-        return -1;
-
-    return 0;
-}
-
-int decode_answer(int fd, answer_t *ans)
-{
-    if (!ans) return -1;
 
     uint16_t anstype;
-    if (decode_uint16(fd, &anstype) < 0) return -1;
+    uint16_t errcode;
+    uint64_t task_id;
 
-    ans->anstype = anstype;
+    if (decode_uint16(fd, &anstype) < 0) return NULL;
 
     if (anstype == OK) {
-        if (decode_uint64(fd, &ans->task_id) < 0) return -1;
-        ans->errcode = 0;
-        return 0;
+        if (decode_uint64(fd, &task_id) < 0) return NULL;
+        errcode = 0;
     }
 
     if (anstype == ERR) {
-        ans->task_id = 0;
-        if (decode_uint16(fd, &ans->errcode) < 0) return -1;
-        return 0;
+        task_id = 0;
+        if (decode_uint16(fd, &errcode) < 0) return NULL;
     }
 
-    return -1;
+    answer_t* ans = create_answer(anstype, task_id, errcode);
+
+    return ans;
 }

@@ -32,13 +32,18 @@ static int client_handle_command(uint16_t code, const char *input){
 
         uint64_t task_id = 0;
 
-        if(strlen(input) != 0){
+        if(code != LS && code == TM){
+            if (input && strlen(input) != 0) {
 
-            if(code == TM){
                 dprintf(STDERR_FILENO, "ERROR: -q takes no argument\n");
                 return -1;
             }
-            //Convert the input to uint64_t :
+        }
+        else{
+            if (!input || strlen(input) == 0) {
+                dprintf(STDERR_FILENO, "ERROR: this request requires an argument\n");
+                return -1;
+            }
             errno = 0;
             char *end;
 
@@ -53,12 +58,6 @@ static int client_handle_command(uint16_t code, const char *input){
                 return -1;
             }
             task_id = (uint64_t) tmp;
-        }
-        else{
-            if(code != LS && code == TM){
-                dprintf(STDERR_FILENO, "The request must have an arguments !\n");
-                return -1;
-            }
         }
 
         // Création of the request :
@@ -175,7 +174,8 @@ int main(int argc, char **argv)
     }
 
     // Handle the differents arguments
-    while ((opt = getopt(argc, argv, "qe:o:x:lr:c:s:p:e:")) != -1) {
+    //TODO rajouté les options qu'il manque
+    while ((opt = getopt(argc, argv, "qlxorep")) != -1) {
         switch (opt) {
             case 'c': //TODO jalon-3
                 break;
