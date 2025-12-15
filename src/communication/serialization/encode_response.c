@@ -69,7 +69,6 @@ int encode_a_timecode(int fd, const a_timecode_t *a)
 */
 int encode_a_list(int fd, const a_list_t *ans)
 {
-    dprintf(2, "[encode_a_list] enter fd=%d ans=%p\n", fd, ans);
 
     if (!ans) {
         dprintf(2, "[encode_a_list] ERROR: ans is NULL\n");
