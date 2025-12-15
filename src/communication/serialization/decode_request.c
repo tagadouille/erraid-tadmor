@@ -10,7 +10,7 @@ int decode_complex_request(int fd, complex_request_t *r)
 
     if (r->opcode == CR) {
         if (r->u.command.type == SI) {
-            if (encode_arguments(fd, &r->u.command.args.simple) < 0) return -1;
+            if (encode_arguments(fd, r->u.command.args.simple) < 0) return -1;
         } else {
             return -1; 
         }

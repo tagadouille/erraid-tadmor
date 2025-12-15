@@ -1,6 +1,7 @@
 #include "erraids/erraid.h"
 #include "erraids/erraid-scanner.h"
 #include "erraids/erraid-helper.h"
+#include "erraids/erraid-servant.h"
 
 #include <signal.h>
 #include <errno.h>
@@ -91,6 +92,8 @@ void daemon_run(void) {
             break;
         case 0:
             //TODO appeler le twin ✌️🥀💔
+            start_serve();
+            break;
         default:
             // Scan of the task
             erraid_scan_loop();

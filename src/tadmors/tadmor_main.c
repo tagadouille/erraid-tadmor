@@ -66,13 +66,8 @@ static int client_handle_command(uint16_t code, const char *input){
 
         // Sending the request
         answer_t ans;
-        int has_task = 1;
 
-        if(code == RM || code == TM){
-            has_task = 0;
-        }
-
-        if(client_send_simple(request, &ans, has_task) < 0){
+        if(client_send_simple(request, &ans) < 0){
             dprintf(STDERR_FILENO, "Error : an error occured while sending an simple request\n");
             return -1;
         }

@@ -113,6 +113,8 @@ int daemon_open_reply(int *rep_wr)
 {
     char *rep_path = make_path(pipe_path, REPLY_PIPE);
     if (!rep_path)return -1;
+
+    dprintf(STDOUT_FILENO, "The pipe reply path is %s\n", rep_path);
     /* ouvrir N’IMPORTE QUAND nécessaire */
     int w = open(rep_path, O_WRONLY);
     if (w < 0)
@@ -131,6 +133,8 @@ int client_open_request(int *req_wr)
 {   
     char *req_path = make_path(pipe_path, REQUEST_PIPE);
     if( !req_path)return -1;
+
+    dprintf(STDOUT_FILENO, "The pipe request path is %s\n", req_path);
 
     /* bloque jusqu’à ce que le démon ait open() en lecture */
     int w = open(req_path, O_WRONLY);

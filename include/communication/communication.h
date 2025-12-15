@@ -15,9 +15,9 @@
 extern char pipe_path[PATH_MAX];
 
 /* CLIENT */
-int client_send_simple(const simple_request_t *req, answer_t *ans, int has_task);
+int client_send_simple(const simple_request_t *req, answer_t *ans);
 /* DEMON */
 int daemon_read_simple(int fd_req, simple_request_t *req);
-int daemon_reply_simple(const answer_t *ans, int has_task);
+int daemon_reply_simple(const answer_t *ans);
 
 #endif

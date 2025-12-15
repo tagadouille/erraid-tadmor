@@ -1,5 +1,6 @@
 #include "communication/request.h"
 #include "communication/serialization/serialization.h"
+#include "communication/serialization/en_decode_struct.h"
 
 /* Complex request:
    - CR: OPCODE + TIMING + COMMAND (arguments)
@@ -13,7 +14,7 @@ int encode_complex_request(int fd, const complex_request_t *r)
 
     if (r->opcode == CR) {
         if (r->u.command.type == SI) {
-            if (encode_arguments(fd, &r->u.command.args.simple) < 0) return -1;
+            if (encode_arguments(fd, r->u.command.args.simple) < 0) return -1;
         } else {
             // gérer les commandes composées si nécessaire
             return -1; // ou autre logique

@@ -15,7 +15,7 @@ char pipe_path[PATH_MAX] = {0};
 /* ============================================================
  * CLIENT : ENVOYER UNE SIMPLE REQUÊTE ET LIRE UNE RÉPONSE
  * ============================================================ */
-int client_send_simple(const simple_request_t *req, answer_t *ans, int has_task){
+int client_send_simple(const simple_request_t *req, answer_t *ans){
     int fd_req, fd_rep;
 
     if (client_open_request(&fd_req) < 0)
@@ -51,7 +51,7 @@ int daemon_read_simple(int fd_req, simple_request_t *req){
 /* ============================================================
  * DEMON : ENVOYER UNE SIMPLE RÉPONSE
  * ============================================================ */
-int daemon_reply_simple(const answer_t *ans, int has_task)
+int daemon_reply_simple(const answer_t *ans)
 {
     int fd_rep;
 
