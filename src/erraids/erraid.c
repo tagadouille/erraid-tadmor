@@ -62,6 +62,7 @@ static void handle_signal(int sig) {
 /* ---------------------------- DAEMON MODE ------------------------------ */
 
 int daemon_init(void) {
+
     if (g_run_dir[0] == '\0') {
         const char *user = getenv("USER");
         if (!user) user = "nobody";

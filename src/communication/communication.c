@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-extern char* pipe_path = NULL;
+extern char* pipe_path = {0};
 
 /* ============================================================
  * CLIENT : ENVOYER UNE SIMPLE REQUÊTE ET LIRE UNE RÉPONSE

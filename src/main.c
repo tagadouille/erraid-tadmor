@@ -23,14 +23,7 @@ static void default_rundir(char *erraid_path, char* pipe_path) {
     if (!user) user = "nobody";
 
     snprintf(out, erraid_path, "/tmp/%s/erraid", user);
-    snprintf(out, pipe_path, "/tmp/%s/erraid", user);
-}
-
-static void usage(const char *prog) {
-    fprintf(stderr,
-        "Usage: %s [-r RUN_DIR] [-f]\n"
-        "  -r RUN_DIR   : root run directory (default /tmp/$USER/erraid)\n",
-        prog);
+    snprintf(out, pipe_path, "/tmp/%s/pipes", user);
 }
 
 int main(int argc, char **argv) {
@@ -40,25 +33,29 @@ int main(int argc, char **argv) {
 
     default_rundir(rundir, pipedir);
 
-    // TODO Continuer ici le parours et la création des pipes
-    while ((opt = getopt(argc, argv, "r:fh")) != -1) {
+    while ((opt = getopt(argc, argv, "r:f")) != -1) {
        if(opt=='r') {
+
+            // If it's valid -> copy the arguments in the pathes
             if (optarg && strlen(optarg) < sizeof(rundir)) {
+
                 strncpy(rundir, optarg, sizeof(rundir)-1);
+                strncpy(pipedir, optarg, sizeof(rundir)-1);
                 rundir[sizeof(rundir)-1] = '\0';
-            } else {
-                fprintf(stderr, "Invalid run directory\n");
+                pipedir[sizeof(rundir)-1] = '\0';
+            }
+            else {
+                dprintf(STDERR_FILENO, "Error : Invalid run directory\n");
                 return EXIT_FAILURE;
             }
                             
         }else{
-            usage(argv[0]);
-            return (opt == 'h') ? EXIT_SUCCESS : EXIT_FAILURE;
+            return EXIT_FAILURE;
         }
     }
 
-    //et run directory for daemon
-    if (erraid_set_rundir(rundir) != 0) {
+    // Run directory for daemon
+    if (erraid_set_rundir(rundir, pipedir) != 0) {
         fprintf(stderr, "Failed to set run directory '%s': %s\n", rundir, strerror(errno));
         return EXIT_FAILURE;
     }

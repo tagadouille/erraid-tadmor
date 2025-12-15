@@ -20,42 +20,67 @@ int erraid_get_rundir(char *out, size_t len) {
     return 0;
 }
 
-/**
- * @brief rename the pipe_path
- * @param new_path the new path name
- * @return 0 if succes, -1 if failure
- */
-static int pipe_path_rename(char* new_path){
-    
-    if(new_path == NULL){
-        dprintf(STDERR_FILENO, "Error : the new_path can't be null\n");
+/* ---------------------------- SET RUNDIR ------------------------------- */
+
+int erraid_set_rundir(const char *rundir, const char* pipedir) {
+
+    // Verification
+    if(pipedir == NULL){
+        dprintf(STDERR_FILENO, "Error : The pipe directory can't be null\n");
         return -1;
     }
-
-    if(pipe_path == NULL){
-        dprintf(STDERR_FILENO, "Error : the pipe_path can't be null\n");
+    if(rundir == NULL){
+        dprintf(STDERR_FILENO, "Error : The rundir directory can't be null\n");
         return -1;
     }
-
-    // delete the pipes if they already exit
-    if(unlink(pipe_path REQUEST_PIPE) < 0 && errno != ENOENT){
-        dprintf(STDERR_FILENO, "Error : can't delete the request pipe, it's not serious\n");
+    if (strlen(rundir) >= sizeof(g_run_dir)) {
+        dprintf(STDERR_FILENO, "Error : The rundir directory is too big\n");
+        errno = EINVAL;
+        return -1;
     }
-    if(unlink(pipe_path REPLY_PIPE) < 0 && errno != ENOENT){
-        dprintf(STDERR_FILENO, "Error : can't delete the request pipe, it's not serious\n");
+    if (strlen(pipedir) >= sizeof(pipe_path)) {
+        dprintf(STDERR_FILENO, "Error : The pipepath directory is too big\n");
+        errno = EINVAL;
+        return -1;
     }
+    // Copie of the pathes
+    strncpy(g_run_dir, rundir, sizeof(g_run_dir)-1);
+    g_run_dir[sizeof(g_run_dir)-1] = '\0';
 
-    pipe_path = new_path;
+    strncpy(pipe_path, pipedir, sizeof(pipe_path)-1);
+    pipe_path[sizeof(pipe_path)-1] = '\0';
+
     return 0;
 }
 
-static int pipe_path_initialisation(){
-    
+static int pipe_path_initialization(){
+
+    if (pipe_path[0] == '\0') {
+        const char *user = getenv("USER");
+        if (!user) user = "nobody";
+        snprintf(pipe_path, sizeof(pipe_path), "/tmp/%s/pipes", user);
+    }
+
+    if (pipe_path[0] == '\0') return -1;
+
+    if (mkdir_p(pipe_path) != 0) return -1;
+
+    //Use absolute path for pipe_path
+    char abs_pipe_path[PATH_MAX];
+
+    if (!my_realpath(pipe_path, abs_pipe_path)) {
+        perror("realpath");
+        return -1;
+    }
+    strncpy(pipe_path, abs_pipe_path, sizeof(pipe_path)-1);
+    pipe_path[sizeof(pipe_path)-1] = '\0';
+
+    return 0;
 }
 
 int ensure_rundir(void) {
     if (g_run_dir[0] == '\0') return -1;
-
+    
     if (mkdir_p(g_run_dir) != 0) return -1;
 
     //Use absolute path for g_run_dir
@@ -74,7 +99,8 @@ int ensure_rundir(void) {
         errno = ENAMETOOLONG;
         return -1;
     }
-    //Add a slash if necessary
+
+    //Add a slash if necessary for g_run_dir
     if (g_run_dir[strlen(g_run_dir)-1] == '/'){
         snprintf(tasksdir, sizeof(tasksdir), "%stasks", g_run_dir);
     }
@@ -83,6 +109,11 @@ int ensure_rundir(void) {
     }
 
     if (mkdir_p(tasksdir) != 0) return -1;
+
+    if(pipe_path_initialization() < 0){
+        dprintf(STDERR_FILENO, "Error : pipe_path initialization failed\n");
+        return -1;
+    }
 
     return 0;
 }
@@ -196,18 +227,6 @@ char *my_realpath(const char *path, char *resolved_path) {
     } else {
         return strdup(result);
     }
-}
-
-/* ---------------------------- SET RUNDIR ------------------------------- */
-
-int erraid_set_rundir(const char *rundir) {
-    if (!rundir || strlen(rundir) >= sizeof(g_run_dir)) {
-        errno = EINVAL;
-        return -1;
-    }
-    strncpy(g_run_dir, rundir, sizeof(g_run_dir)-1);
-    g_run_dir[sizeof(g_run_dir)-1] = '\0';
-    return 0;
 }
 
 /* ------------------------------ CLEANUP -------------------------------- */

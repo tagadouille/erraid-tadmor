@@ -70,6 +70,7 @@ static int client_handle_command(uint16_t code, const char *input){
             return -1;
         }
         tadmor_print_answer(&ans);
+        free(request);
     }
     else{
         //TODO requête complexe jalon-3
@@ -106,6 +107,7 @@ static char* reconstruct_arg(int argc, char** argv){
 
 static int argument_handler(int opt, int argc, char** argv){
     uint16_t opcode = 0;
+    int pipe_rename = 0;
 
     switch (opt){
         case 'c':
@@ -134,7 +136,7 @@ static int argument_handler(int opt, int argc, char** argv){
             opcode = SE;
             break;
         case 'p':
-            //TODO jalon-3
+            pipe_rename = 1;
             break;
         case 'q':
             //TODO jalon-3
@@ -145,13 +147,20 @@ static int argument_handler(int opt, int argc, char** argv){
             dprintf(STDERR_FILENO, "Invalid argument \n");
             return -1;
     }
+
     char* input = reconstruct_arg(argc, argv);
+    int res = 0;
 
     if(input == NULL){
         return -1;
     }
-    int res = client_handle_command(opcode, input);
-
+    if(pipe_rename == 1){
+        res = pipe_path_rename(input);
+    }
+    else{
+        res = client_handle_command(opcode, input);
+    }
+    
     free(input);
     return res;
 }

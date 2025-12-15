@@ -16,19 +16,52 @@
 /* ===========================
    DÉMON : création + ouverture
    =========================== */
+/**
+ * @brief rename the pipe_path
+ * @param new_path the new path name
+ * @return 0 if succes, -1 if failure
+ */
+int pipe_path_rename(char* new_path){
+    
+    if(new_path == NULL){
+        dprintf(STDERR_FILENO, "Error : the new_path can't be null\n");
+        return -1;
+    }
+
+    // delete the pipes if they already exit
+    if(unlink(pipe_path REQUEST_PIPE) < 0 && errno != ENOENT){
+        dprintf(STDERR_FILENO, "Error : can't delete the request pipe, it's not serious\n");
+    }
+    if(unlink(pipe_path REPLY_PIPE) < 0 && errno != ENOENT){
+        dprintf(STDERR_FILENO, "Error : can't delete the request pipe, it's not serious\n");
+    }
+
+    strcpy(pipe_path, new_path);
+
+    if (pipe_path[0] == '\0') return -1;
+
+    if (mkdir_p(pipe_path) != 0) return -1;
+
+    //Use absolute path for pipe_path
+    char abs_pipe_path[PATH_MAX];
+
+    if (!my_realpath(pipe_path, abs_pipe_path)) {
+        perror("realpath");
+        return -1;
+    }
+    strncpy(pipe_path, abs_pipe_path, sizeof(pipe_path)-1);
+
+    snprintf(pipe_path, sizeof(pipe_path), "%s/pipes", pipe_path);
+    pipe_path[sizeof(pipe_path)-1] = '\0';
+
+    return 0;
+}
 
 int daemon_setup_pipes(const char *rundir, int *req_rd)
 {
-    char pipes_dir[PATH_MAX];
-    snprintf(pipes_dir, sizeof(pipes_dir), "%s/pipes", rundir);
+    char *req_path = make_path(pipe_path, REQUEST_PIPE);
 
-    /* créer répertoire pipes */
-    if (mkdir(pipes_dir, 0777) != 0 && errno != EEXIST)
-        return -1;
-
-    char *req_path = make_path(pipes_dir, "erraid-request-pipe");
-
-    char *rep_path = make_path(pipes_dir, "erraid-reply-pipe");
+    char *rep_path = make_path(pipe_path, REPLY_PIPE);
 
     /* mkfifo si n’existent pas */
     if (mkfifo(req_path, 0666) != 0 && errno != EEXIST)
@@ -50,10 +83,7 @@ int daemon_setup_pipes(const char *rundir, int *req_rd)
 
 int daemon_open_reply(const char *rundir, int *rep_wr)
 {
-    char pipes_dir[PATH_MAX];
-    snprintf(pipes_dir, sizeof(pipes_dir), "%s/pipes", rundir);
-
-    char *rep_path = make_path(pipes_dir, "erraid-reply-pipe");
+    char *rep_path = make_path(pipe_path, REPLY_PIPE);
     if (!rep_path)return -1;
     /* ouvrir N’IMPORTE QUAND nécessaire */
     int w = open(rep_path, O_WRONLY);
@@ -71,10 +101,7 @@ int daemon_open_reply(const char *rundir, int *rep_wr)
 
 int client_open_request(const char *rundir, int *req_wr)
 {
-    char pipes_dir[PATH_MAX];
-    snprintf(pipes_dir, sizeof(pipes_dir), "%s/pipes", rundir);
-
-    char *req_path = make_path(pipes_dir, "erraid-request-pipe");
+    char *req_path = make_path(pipe_path, REQUEST_PIPE);
     if( !req_path)return -1;
 
     /* bloque jusqu’à ce que le démon ait open() en lecture */
@@ -89,10 +116,7 @@ int client_open_request(const char *rundir, int *req_wr)
 
 int client_open_reply(const char *rundir, int *rep_rd)
 {
-    char pipes_dir[PATH_MAX];
-    snprintf(pipes_dir, sizeof(pipes_dir), "%s/pipes", rundir);
-
-    char *rep_path = make_path(pipes_dir, "erraid-reply-pipe");
+    char *rep_path = make_path(pipe_path, REPLY_PIPE);
     if( !rep_path)return -1;
 
     /* bloque jusqu’à ce que le démon ait open() en écriture */
