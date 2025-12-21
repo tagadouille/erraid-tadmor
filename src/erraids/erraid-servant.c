@@ -12,9 +12,9 @@ static int is_servant_running = 1;
 
 static int proceed_request(simple_request_t* req, int fd_request, int* fd_response){
 
-    if (daemon_read_simple(fd_request, req) < 0) {
-        perror("decode_simple_request");
-        _exit(1);
+    if (daemon_read_simple(&fd_request, req) < 0) {
+        dprintf(STDERR_FILENO, "An error occured while reading a simple request\n");
+        return -1;
     }
 
     write_log_msg("[daemon servant] Received opcode = %u", req->opcode);
@@ -63,10 +63,9 @@ static int proceed_request(simple_request_t* req, int fd_request, int* fd_respon
 
 void start_serve(){
 
-    write_log_msg("Creation of the twin ✌️🥀💔 is a succes");
+    write_log_msg("Creation of the twin ✌️🥀💔 is a success");
 
-    int fd_request;
-    if (daemon_setup_pipes(&fd_request) < 0) {
+    if (daemon_setup_pipes() < 0) {
         write_log_msg("[daemon servant] Error : failed to setup daemon pipes");
         return;
     }
@@ -75,6 +74,8 @@ void start_serve(){
     write_log_msg("[daemon servant] Running start !");
 
     while(is_servant_running){
+
+        int fd_request = -1;
 
         write_log_msg("[daemon servant] Waiting for simple request...");
         
@@ -85,12 +86,14 @@ void start_serve(){
             break;
         }
         write_log_msg("[daemon servant] Sent OK");
+
+        if(fd_request >= 0){
+            close(fd_request);
+        }
     }
     
     if (fd_response >= 0)
         close(fd_response);
-
-    close(fd_request);
 
     write_log_msg("[servant] stopped");
 }

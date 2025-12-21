@@ -154,9 +154,9 @@ int pipe_path_rename(char* new_path){
 }
 
 /* ===========================
-   DÉMON : création + ouverture
+   DÉMON : création
    =========================== */
-int daemon_setup_pipes(int *req_rd)
+int daemon_setup_pipes()
 {
     char *req_path = make_path_no_test(pipe_path, REQUEST_PIPE);
 
@@ -179,12 +179,6 @@ int daemon_setup_pipes(int *req_rd)
     if (mkfifo(rep_path, 0666) != 0 && errno != EEXIST)
         return -1;
 
-    /* ouvrir pipe de requêtes en lecture BLOQUANT */
-    int r = open(req_path, O_RDONLY);
-    if (r < 0)
-        return -1;
-
-    *req_rd = r;
     free(req_path);
     free(rep_path);
     return 0;
@@ -195,7 +189,7 @@ int daemon_open_reply(int *rep_wr)
     char *rep_path = make_path(pipe_path, REPLY_PIPE);
     if (!rep_path)return -1;
 
-    dprintf(STDOUT_FILENO, "The pipe reply path is %s\n", rep_path);
+    dprintf(STDOUT_FILENO, "[daemon] The pipe reply path is %s\n", rep_path);
     /* ouvrir N’IMPORTE QUAND nécessaire */
     int w = open(rep_path, O_WRONLY);
     if (w < 0)
@@ -211,8 +205,6 @@ int daemon_open_reply(int *rep_wr)
    =========================== */
 
 int client_open_request(int *req_wr){
-    
-    dprintf(STDOUT_FILENO, "The pipe path is %s\n", pipe_path);
 
     char *req_path = make_path_no_test(pipe_path, REQUEST_PIPE);
 
@@ -221,14 +213,13 @@ int client_open_request(int *req_wr){
         return -1;
     }
 
-    dprintf(STDOUT_FILENO, "The pipe request path is %s\n", req_path);
-
     /* bloque jusqu’à ce que le démon ait open() en lecture */
     int w = open(req_path, O_WRONLY);
     if (w < 0)
         return -1;
 
     *req_wr = w;
+
     free(req_path);
     return 0;
 }
@@ -240,6 +231,9 @@ int client_open_reply(int *rep_rd)
 
     /* bloque jusqu’à ce que le démon ait open() en écriture */
     int r = open(rep_path, O_RDONLY);
+
+    dprintf(STDOUT_FILENO, "[client] The pipe reply path is %s\n", rep_path);
+
     if (r < 0)
         return -1;
 

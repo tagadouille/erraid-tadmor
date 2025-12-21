@@ -16,21 +16,28 @@
 
 int encode_a_output(int fd, const a_output_t *ans)
 {
-    if (!ans)
+    if (!ans){
+        dprintf(STDERR_FILENO, "Error : the answer in NULL at encode_a_output\n");
         return -1;
+    }
 
     if (ans->anstype == (uint16_t)ERR) {
-        if (encode_uint16(fd, (uint16_t)ERR) < 0)
+        if (encode_uint16(fd, (uint16_t)ERR) < 0){
+            dprintf(STDERR_FILENO, "Error : an error occured while encoding ERR for encode_a_output\n");
             return -1;
+        }
 
         return encode_uint16(fd, ans->errcode);
     } else {
-        if (encode_uint16(fd, (uint16_t)OK) < 0)
+        if (encode_uint16(fd, (uint16_t)OK) < 0){
+            dprintf(STDERR_FILENO, "Error : an error occured while encoding OK for encode_a_output\n");
             return -1;
+        }
 
-        if (encode_string(fd, &ans->output) < 0)
+        if (encode_string(fd, &ans->output) < 0){
+            dprintf(STDERR_FILENO, "Error : an error occured while encoding string for encode_a_output\n");
             return -1;
-
+        }
         return 0;
     }
 }

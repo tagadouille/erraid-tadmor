@@ -116,7 +116,10 @@ void tadmor_print_output(a_output_t* output)
     // Print the output data
     if (output->output.data != NULL)
     {
-        dprintf(STDOUT_FILENO, "%s", output->output.data);
+        dprintf(STDOUT_FILENO, "%s\n", output->output.data);
+    }
+    else{ //! provisoire debug
+        dprintf(STDOUT_FILENO, "The data is NULL\n");
     }
 }
 

@@ -46,12 +46,15 @@ int decode_simple_request(int fd, simple_request_t *r)
         dprintf(STDERR_FILENO, "Error : the request can't be NULL\n");
         return -1;
     }
+    dprintf(2, "[daemon] decoding opcode\n");
     if (decode_uint16(fd, &r->opcode) < 0){
+        dprintf(STDERR_FILENO, "Error : an error occured while decoding uint16 for the given opcode : %u \n", r->opcode);
         return -1;
     }
     if (r->opcode == LS || r->opcode == TM){
         return 0;
     }
+    dprintf(2, "[daemon] decoding task_id\n");
     if (decode_uint64(fd, &r->task_id) < 0){
         dprintf(STDERR_FILENO, "Error : there's no uint64 here\n");
         return -1;

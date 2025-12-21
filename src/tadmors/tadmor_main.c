@@ -60,7 +60,7 @@ static int client_handle_command(uint16_t code, const char *input){
             task_id = (uint64_t) tmp;
         }
 
-        // Création of the request :
+        // Creation of the request :
         simple_request_t* request = create_simple_request(code, task_id);
 
         if(request == NULL){
@@ -68,9 +68,6 @@ static int client_handle_command(uint16_t code, const char *input){
         }
 
         // Sending the request : 
-        //!Provisoire :
-        dprintf(STDOUT_FILENO, "Une requête de type %u et de id %zu a été faite et va être envoyé\n", request -> opcode, request -> task_id);
-
         if(client_send_simple(request) < 0){
             dprintf(STDERR_FILENO, "Error : an error occured while sending an simple request\n");
             return -1;
@@ -145,7 +142,7 @@ static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** a
         
     if (!input) {
         perror("strdup");
-        return EXIT_FAILURE;
+        return -1;
     }
 
     if(pipe_rename == 1){
@@ -158,7 +155,6 @@ static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** a
     free(input);
     return res;
 }
-
 
 /* --------------------------------------------------------------
  * main
@@ -200,5 +196,6 @@ int main(int argc, char **argv)
                 return EXIT_FAILURE;
         }
     }
+
     return argument_handler(opcode, pipe_rename, argc, argv);
 }
