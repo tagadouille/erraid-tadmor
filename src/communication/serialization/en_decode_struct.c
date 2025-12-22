@@ -236,3 +236,128 @@ int decode_arguments(int fd, arguments_t *args)
 
     return 0;
 }
+
+int encode_command(int fd, const command_t *cmd){
+
+    if (!cmd) {
+        dprintf(2, "[encode_command] ERROR: cmd is NULL\n");
+        return -1;
+    }
+
+    /* --- type --- */
+    if (encode_uint16(fd, (uint16_t)cmd->type) < 0) {
+        dprintf(2, "[encode_command] ERROR: encode type failed\n");
+        return -1;
+    }
+
+    dprintf(2, "[encode_command] type=%u\n", cmd->type);
+
+    if(cmd->type == SI){
+        if (!cmd->args.simple) {
+            dprintf(2, "[encode_command] ERROR: simple args NULL\n");
+            return -1;
+        }
+        return encode_arguments(fd, cmd->args.simple);
+    }
+    else{
+        if (!cmd->args.composed.cmds) {
+            dprintf(2, "[encode_command] ERROR: composed cmds NULL\n");
+            return -1;
+        }
+
+        if (encode_uint32(fd, cmd->args.composed.count) < 0) {
+            dprintf(2, "[encode_command] ERROR: encode count failed\n");
+            return -1;
+        }
+
+        for (uint32_t i = 0; i < cmd->args.composed.count; ++i) {
+            if (encode_command(fd, cmd->args.composed.cmds[i]) < 0) {
+                dprintf(2,
+                        "[encode_command] ERROR: encode sub-command %u\n", i);
+                return -1;
+            }
+        }
+        return 0;
+    }
+}
+
+int decode_command(int fd, command_t **out){
+
+    if (!out) {
+        dprintf(2, "[decode_command] ERROR: out is NULL\n");
+        return -1;
+    }
+
+    *out = NULL;
+
+    command_t *cmd = calloc(1, sizeof(command_t));
+    if (!cmd) {
+        perror("[decode_command] calloc command");
+        return -1;
+    }
+
+    /* --- type --- */
+    uint16_t type;
+    if (decode_uint16(fd, &type) < 0) {
+        dprintf(2, "[decode_command] ERROR: decode_uint16(type) failed\n");
+        goto error;
+    }
+
+    cmd->type = (command_type_t)type;
+
+    dprintf(2, "[decode_command] type=%u\n", cmd->type);
+
+    if (cmd->type == SI) {
+        cmd->args.simple = calloc(1, sizeof(arguments_t));
+        if (!cmd->args.simple) {
+            free(cmd);
+            return -1;
+        }
+
+        if (decode_arguments(fd, cmd->args.simple) < 0) {
+            arguments_free(cmd->args.simple);
+            free(cmd->args.simple);
+            free(cmd);
+            return -1;
+        }
+    }
+    else{
+        uint32_t count = 0;
+
+        if (decode_uint32(fd, &count) < 0) {
+            dprintf(2, "[decode_command] ERROR: decode_uint32(count) failed\n");
+            goto error;
+        }
+
+        dprintf(2, "[decode_command] composed count=%u\n", count);
+
+        if (count == 0) {
+            dprintf(2, "[decode_command] ERROR: invalid composed count=%u\n", count);
+            goto error;
+        }
+
+        cmd->args.composed.count = count;
+        cmd->args.composed.cmds =
+            calloc(count, sizeof(command_t *));
+        if (!cmd->args.composed.cmds) {
+            perror("[decode_command] calloc cmds");
+            goto error;
+        }
+
+        for (uint32_t i = 0; i < count; ++i) {
+            if (decode_command(fd, &cmd->args.composed.cmds[i]) < 0) {
+                dprintf(2, "[decode_command] ERROR: decode sub-command %u\n", i);
+                goto error;
+            }
+        }
+    }
+
+    *out = cmd;
+    return 0;
+
+    error:
+    dprintf(2, "[decode_command] ERROR: cleanup after failure\n");
+    command_free(cmd);
+    *out = NULL;
+    return -1;
+}

@@ -20,3 +20,6 @@ int decode_timing(int fd, timing_t *t);
  * ============================================================ */
 int encode_arguments(int fd, const arguments_t *args);
 int decode_arguments(int fd, arguments_t *args);
+
+int encode_command(int fd, const command_t *cmd);
+int decode_command(int fd, command_t **out);

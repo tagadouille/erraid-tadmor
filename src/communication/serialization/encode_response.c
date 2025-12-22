@@ -110,13 +110,15 @@ int encode_a_list(int fd, const a_list_t *ans)
     }
 
     /* ---------- encode each task ---------- */
-    for (uint32_t i = 0; i < ans->all_task.nbtask; ++i) {
-    const task_t *t = &ans->all_task.all_task[i];
+    for (uint32_t i = 0; i < nbtask; ++i) {
+
+        const task_t *t = &tasks[i];
 
         dprintf(2, "[encode_a_list] encoding task #%u\n", i);
-        dprintf(2, "[encode_a_list] task[%u].id=%lu\n", i, t->id);
 
         /* --- id --- */
+        dprintf(2, "[encode_a_list] task[%u].id=%lu\n", i, t->id);
+
         if (encode_uint64(fd, t->id) < 0) {
             dprintf(2, "[encode_a_list] ERROR: encode_uint64(id) failed (i=%u)\n", i);
             return -1;
@@ -127,34 +129,33 @@ int encode_a_list(int fd, const a_list_t *ans)
             dprintf(2, "[encode_a_list] ERROR: timing is NULL (i=%u)\n", i);
             return -1;
         }
+
         if (encode_timing(fd, t->timing) < 0) {
             dprintf(2, "[encode_a_list] ERROR: encode_timing failed (i=%u)\n", i);
             return -1;
         }
+
         dprintf(2, "[encode_a_list] timing encoded (i=%u)\n", i);
 
-        /* --- encode arguments --- */
-        if (!t->cmd || !t->cmd->args.simple) {
-            dprintf(2, "[encode_a_list] WARNING: no command or simple args (i=%u)\n", i);
-            arguments_t empty_args = { .argc = 0, .argv = NULL };
-
-            if (encode_arguments(fd, &empty_args) < 0) {
-                dprintf(2, "[encode_a_list] ERROR: encode_arguments(empty) failed (i=%u)\n", i);
-                return -1;
-            }
-        } else {
-            if (encode_arguments(fd, t->cmd->args.simple) < 0) {
-                dprintf(2, "[encode_a_list] ERROR: encode_arguments failed (i=%u)\n", i);
-                return -1;
-            }
+        /* --- command --- */
+        if (!t->cmd) {
+            dprintf(2, "[encode_a_list] ERROR: cmd is NULL (i=%u)\n", i);
+            return -1;
         }
+
+        if (encode_command(fd, t->cmd) < 0) {
+            dprintf(2, "[encode_a_list] ERROR: encode_command failed (i=%u)\n", i);
+            return -1;
+        }
+
+        dprintf(2,"[encode_a_list] command encoded (i=%u)\n", i);
 
         dprintf(2, "[encode_a_list] task #%u encoded\n", i);
     }
+
     dprintf(2, "[encode_a_list] SUCCESS\n");
     return 0;
 }
-
 
 int encode_answer(int fd, const answer_t *ans)
 {
