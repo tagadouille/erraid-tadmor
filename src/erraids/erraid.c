@@ -96,7 +96,7 @@ void daemon_run(void) {
             perror("fork");
             break;
         case 0:
-            //TODO appeler le twin ✌️🥀💔
+            // Launching of erraid servant
             start_serve();
             break;
         default:

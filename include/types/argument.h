@@ -7,7 +7,6 @@
 
 typedef struct {
     uint32_t argc;   // Number of arguments
-    string_t *command; // Command name
     string_t **argv;     // Array of argument strings
 } arguments_t;
 
@@ -18,7 +17,7 @@ typedef struct {
  * @param args Pointer to the arguments_t structure to fill.
  * @return true on success, false on failure.
  */
-bool arguments_parse_struct(const string_t *buffer, unsigned int size, arguments_t *args);
+bool arguments_parse_struct(const char *buffer, unsigned int size, arguments_t *args);
 
 /**
  * @brief Parse a binary buffer containing serialized arguments

@@ -32,10 +32,10 @@ static int client_handle_command(uint16_t code, const char *input){
 
         uint64_t task_id = 0;
 
-        if(code != LS && code == TM){
-            if (input && strlen(input) != 0) {
+        if(code == LS || code == TM){
 
-                dprintf(STDERR_FILENO, "ERROR: -q takes no argument\n");
+            if (input && strlen(input) != 0) {
+                dprintf(STDERR_FILENO, "ERROR: -q and -l takes no argument\n");
                 return -1;
             }
         }

@@ -15,8 +15,10 @@
 
 int encode_string(int fd, const string_t *s)
 {
-    if (!s)
+    if (!s){
+        dprintf(2, "[encode_string] Error: The string can't be null\n");
         return -1;
+    }
 
     if (s->length > LIMIT_MAX_STR_LEN){
         dprintf(2, "[encode_string] Error: The length of the string is too big\n");
@@ -152,62 +154,82 @@ int decode_timing(int fd, timing_t *t)
 
 int encode_arguments(int fd, const arguments_t *args)
 {
-    if (!args)
+    if (!args){
+        dprintf(2, "[encode_arguments] Error : the argument can't be NULL\n");
         return -1;
-
-    if (args->argc == 0 || args->argc > LIMIT_MAX_ARGC)
+    }
+        
+    if (args->argc == 0 || args->argc > LIMIT_MAX_ARGC){
+        dprintf(2, "[encode_arguments] Error : the LIMIT_MAX_ARGC has been reached\n");
         return -1;
-
-    if (encode_uint32(fd, args->argc) < 0)
-        return -1;
-
-    for (uint32_t i = 0; i < args->argc; ++i) {
-        if (encode_string(fd, args->argv[i]) < 0)
-            return -1;
     }
 
+    if (encode_uint32(fd, args->argc) < 0){
+        dprintf(2, "[encode_arguments] Error : an error occured while encoding uint32\n");
+        return -1;
+    }
+
+    dprintf(1, "argc : %u\n", args->argc);
+
+    for (uint32_t i = 0; i < args->argc; ++i) {
+
+        if (!args->argv[i]) {
+            dprintf(2, "[encode_arguments] WARNING: argv[%u] is NULL, encoding empty string\n", i);
+            string_t empty = { .length = 1, .data = "\0" };
+
+            if (encode_string(fd, &empty) < 0){
+                dprintf(2, "[encode_arguments] Error : an error occured while encoding empty string\n");
+                return -1;
+            }    
+            continue;
+        }
+        if (encode_string(fd, args->argv[i]) < 0) {
+            dprintf(2, "[encode_arguments] Error: failed to encode string for argv[%u]\n", i);
+            return -1;
+        }
+    }
     return 0;
 }
 
 int decode_arguments(int fd, arguments_t *args)
 {
-    if (!args)
+    if (!args){
+        dprintf(2, "[decode_arguments] Error : the argument can't be NULL\n");
         return -1;
+    }
 
     uint32_t argc;
 
-    if (decode_uint32(fd, &argc) < 0)
+    if (decode_uint32(fd, &argc) < 0){
+        dprintf(2, "[decode_arguments] Error : an error occured while decoding uint32\n");
         return -1;
-
-    if (argc == 0 || argc > LIMIT_MAX_ARGC)
+    }
+        
+    if (argc == 0 || argc > LIMIT_MAX_ARGC){
+        dprintf(2, "[decode_arguments] Error : the LIMIT_MAX_ARGC has been reached\n");
         return -1;
+    }
 
     args->argc = argc;
     args->argv = calloc((size_t)argc, sizeof(string_t *));
 
-    if (!args->argv)
+    if (!args->argv){
+        perror("calloc");
         return -1;
-
+    }
+        
     for (uint32_t i = 0; i < argc; ++i) {
         args->argv[i] = malloc(sizeof(string_t));
 
         if (!args->argv[i]) {
-            for (uint32_t j = 0; j < i; ++j) {
-                free(args->argv[j]->data);
-                free(args->argv[j]);
-            }
-            free(args->argv);
+            perror("malloc");
+            arguments_free(args);
             return -1;
         }
 
         if (decode_string(fd, args->argv[i]) < 0) {
-            for (uint32_t j = 0; j <= i; ++j) {
-                if (args->argv[j]) {
-                    free(args->argv[j]->data);
-                    free(args->argv[j]);
-                }
-            }
-            free(args->argv);
+            dprintf(2, "[decode_arguments] Error : an error occured while decoding argv\n");
+            arguments_free(args);
             return -1;
         }
     }

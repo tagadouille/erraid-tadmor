@@ -156,13 +156,7 @@ a_list_t* decode_a_list(int fd)
 
     /* ---------- decode each task ---------- */
     for (uint32_t i = 0; i < nbtask; ++i) {
-
         task_t *t = &all_task[i];
-
-        /* toujours partir d’un état propre */
-        /*t->timing = NULL;
-        t->commandline = NULL;
-        t->commandline_len = 0;*/
 
         dprintf(2, "[decode_a_list] decoding task #%u\n", i);
 
@@ -179,31 +173,35 @@ a_list_t* decode_a_list(int fd)
             dprintf(2, "[decode_a_list] ERROR: malloc(timing) failed (i=%u)\n", i);
             goto error;
         }
-
         if (decode_timing(fd, t->timing) < 0) {
             dprintf(2, "[decode_a_list] ERROR: decode_timing failed (i=%u)\n", i);
             goto error;
         }
         dprintf(2, "[decode_a_list] timing decoded (i=%u)\n", i);
 
-        /* --- command line --- */
-        string_t tmp = {0};
+        /* --- arguments --- */
+        if (!t->cmd) {
+            t->cmd = malloc(sizeof(command_t));
+            if (!t->cmd) {
+                dprintf(2, "[decode_a_list] ERROR: malloc(command_t) failed (i=%u)\n", i);
+                goto error;
+            }
+            t->cmd->type = SI;  // simple command
+            t->cmd->args.simple = NULL;
+        }
 
-        if (decode_string(fd, &tmp) < 0) {
-            dprintf(2, "[decode_a_list] ERROR: decode_string failed (i=%u)\n", i);
+        t->cmd->args.simple = malloc(sizeof(arguments_t));
+        if (!t->cmd->args.simple) {
+            dprintf(2, "[decode_a_list] ERROR: malloc(arguments_t) failed (i=%u)\n", i);
             goto error;
         }
 
-        dprintf(2,
-                "[decode_a_list] commandline len=%u data='%.*s'\n",
-                tmp.length,
-                tmp.length,
-                tmp.data ? tmp.data : "(null)");
+        if (decode_arguments(fd, t->cmd->args.simple) < 0) {
+            dprintf(2, "[decode_a_list] ERROR: decode_arguments failed (i=%u)\n", i);
+            goto error;
+        }
 
-        /* ownership transféré explicitement */
-        /*t->commandline = tmp.data;
-        t->commandline_len = tmp.length;
-        tmp.data = NULL;*/
+        dprintf(2, "[decode_a_list] arguments decoded (i=%u)\n", i);
     }
 
     dprintf(2, "[decode_a_list] SUCCESS\n");

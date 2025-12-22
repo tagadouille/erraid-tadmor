@@ -110,8 +110,8 @@ int encode_a_list(int fd, const a_list_t *ans)
     }
 
     /* ---------- encode each task ---------- */
-    for (uint32_t i = 0; i < nbtask; ++i) {
-        const task_t *t = &tasks[i];
+    for (uint32_t i = 0; i < ans->all_task.nbtask; ++i) {
+    const task_t *t = &ans->all_task.all_task[i];
 
         dprintf(2, "[encode_a_list] encoding task #%u\n", i);
         dprintf(2, "[encode_a_list] task[%u].id=%lu\n", i, t->id);
@@ -133,30 +133,24 @@ int encode_a_list(int fd, const a_list_t *ans)
         }
         dprintf(2, "[encode_a_list] timing encoded (i=%u)\n", i);
 
-        /* --- commandline via command_to_commandline --- */
-        /*string_t *cline = command_to_commandline(t->cmd);
-        string_t empty = { .length = 0, .data = NULL };
+        /* --- encode arguments --- */
+        if (!t->cmd || !t->cmd->args.simple) {
+            dprintf(2, "[encode_a_list] WARNING: no command or simple args (i=%u)\n", i);
+            arguments_t empty_args = { .argc = 0, .argv = NULL };
 
-        if (!cline) {
-            dprintf(2, "[encode_a_list] WARNING: empty commandline (i=%u)\n", i);
-            if (encode_string(fd, &empty) < 0) {
-                dprintf(2, "[encode_a_list] ERROR: encode_string(empty) failed\n");
+            if (encode_arguments(fd, &empty_args) < 0) {
+                dprintf(2, "[encode_a_list] ERROR: encode_arguments(empty) failed (i=%u)\n", i);
                 return -1;
             }
         } else {
-            if (encode_string(fd, cline) < 0) {
-                dprintf(2, "[encode_a_list] ERROR: encode_string failed (i=%u)\n", i);
-                free(cline->data);
-                free(cline);
+            if (encode_arguments(fd, t->cmd->args.simple) < 0) {
+                dprintf(2, "[encode_a_list] ERROR: encode_arguments failed (i=%u)\n", i);
                 return -1;
             }
-            free(cline->data);
-            free(cline);
         }
 
-        dprintf(2, "[encode_a_list] task #%u encoded\n", i);*/
+        dprintf(2, "[encode_a_list] task #%u encoded\n", i);
     }
-
     dprintf(2, "[encode_a_list] SUCCESS\n");
     return 0;
 }
