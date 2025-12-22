@@ -112,7 +112,6 @@ void free_a_list(a_list_t* list) {
 
     for (uint32_t i = 0; i < list->all_task.nbtask; ++i) {
         free(list->all_task.all_task[i].timing);
-        free(list->all_task.all_task[i].commandline);
     }
 
     free(list->all_task.all_task);

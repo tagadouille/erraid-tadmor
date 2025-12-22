@@ -134,7 +134,7 @@ int encode_a_list(int fd, const a_list_t *ans)
         dprintf(2, "[encode_a_list] timing encoded (i=%u)\n", i);
 
         /* --- commandline via command_to_commandline --- */
-        string_t *cline = command_to_commandline(t->cmd);
+        /*string_t *cline = command_to_commandline(t->cmd);
         string_t empty = { .length = 0, .data = NULL };
 
         if (!cline) {
@@ -154,7 +154,7 @@ int encode_a_list(int fd, const a_list_t *ans)
             free(cline);
         }
 
-        dprintf(2, "[encode_a_list] task #%u encoded\n", i);
+        dprintf(2, "[encode_a_list] task #%u encoded\n", i);*/
     }
 
     dprintf(2, "[encode_a_list] SUCCESS\n");

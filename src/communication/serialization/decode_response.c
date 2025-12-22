@@ -160,9 +160,9 @@ a_list_t* decode_a_list(int fd)
         task_t *t = &all_task[i];
 
         /* toujours partir d’un état propre */
-        t->timing = NULL;
+        /*t->timing = NULL;
         t->commandline = NULL;
-        t->commandline_len = 0;
+        t->commandline_len = 0;*/
 
         dprintf(2, "[decode_a_list] decoding task #%u\n", i);
 
@@ -201,9 +201,9 @@ a_list_t* decode_a_list(int fd)
                 tmp.data ? tmp.data : "(null)");
 
         /* ownership transféré explicitement */
-        t->commandline = tmp.data;
+        /*t->commandline = tmp.data;
         t->commandline_len = tmp.length;
-        tmp.data = NULL;
+        tmp.data = NULL;*/
     }
 
     dprintf(2, "[decode_a_list] SUCCESS\n");
@@ -215,7 +215,7 @@ a_list_t* decode_a_list(int fd)
     if (all_task) {
         for (uint32_t j = 0; j < nbtask; ++j) {
             free(all_task[j].timing);
-            free(all_task[j].commandline);
+            //free(all_task[j].commandline);
         }
         free(all_task);
     }
