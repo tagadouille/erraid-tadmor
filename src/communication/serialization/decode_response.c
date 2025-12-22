@@ -121,51 +121,59 @@ a_list_t* decode_a_list(int fd)
 
     uint16_t anstype = 0;
     uint32_t nbtask = 0;
-    task_t* all_task = NULL;
+    task_t *all_task = NULL;
 
+    /* ---------- decode answer type ---------- */
     if (decode_uint16(fd, &anstype) < 0) {
         dprintf(2, "[decode_a_list] ERROR: decode_uint16 failed\n");
         return NULL;
     }
     dprintf(2, "[decode_a_list] anstype=%u\n", anstype);
 
-    /* Unknow case */
     if (anstype != (uint16_t)OK) {
         dprintf(2, "[decode_a_list] ERROR: anstype != OK (%u)\n", anstype);
         return NULL;
     }
 
-    /* Ok case */
+    /* ---------- decode number of tasks ---------- */
     if (decode_uint32(fd, &nbtask) < 0) {
         dprintf(2, "[decode_a_list] ERROR: decode_uint32(nbtask) failed\n");
         return NULL;
     }
-
     dprintf(2, "[decode_a_list] nbtask=%u\n", nbtask);
 
     if (nbtask == 0) {
-        all_task = NULL;
         dprintf(2, "[decode_a_list] nbtask == 0, nothing to decode\n");
-        return create_a_list(anstype, nbtask, all_task);
+        return create_a_list(anstype, nbtask, NULL);
     }
 
+    /* ---------- allocate tasks ---------- */
     all_task = calloc(nbtask, sizeof(task_t));
     if (!all_task) {
         dprintf(2, "[decode_a_list] ERROR: calloc(all_task) failed\n");
         return NULL;
     }
 
+    /* ---------- decode each task ---------- */
     for (uint32_t i = 0; i < nbtask; ++i) {
+
         task_t *t = &all_task[i];
+
+        /* toujours partir d’un état propre */
+        t->timing = NULL;
+        t->commandline = NULL;
+        t->commandline_len = 0;
 
         dprintf(2, "[decode_a_list] decoding task #%u\n", i);
 
+        /* --- id --- */
         if (decode_uint64(fd, &t->id) < 0) {
             dprintf(2, "[decode_a_list] ERROR: decode_uint64(id) failed (i=%u)\n", i);
             goto error;
         }
         dprintf(2, "[decode_a_list] task[%u].id=%lu\n", i, t->id);
 
+        /* --- timing --- */
         t->timing = malloc(sizeof(timing_t));
         if (!t->timing) {
             dprintf(2, "[decode_a_list] ERROR: malloc(timing) failed (i=%u)\n", i);
@@ -178,26 +186,40 @@ a_list_t* decode_a_list(int fd)
         }
         dprintf(2, "[decode_a_list] timing decoded (i=%u)\n", i);
 
+        /* --- command line --- */
         string_t tmp = {0};
+
         if (decode_string(fd, &tmp) < 0) {
             dprintf(2, "[decode_a_list] ERROR: decode_string failed (i=%u)\n", i);
             goto error;
         }
 
-        dprintf(2, "[decode_a_list] commandline len=%u data='%.*s'\n",
+        dprintf(2,
+                "[decode_a_list] commandline len=%u data='%.*s'\n",
                 tmp.length,
                 tmp.length,
                 tmp.data ? tmp.data : "(null)");
 
-        /* ⚠️ ownership transféré ici */
+        /* ownership transféré explicitement */
         t->commandline = tmp.data;
         t->commandline_len = tmp.length;
+        tmp.data = NULL;
     }
 
     dprintf(2, "[decode_a_list] SUCCESS\n");
     return create_a_list(anstype, nbtask, all_task);
 
     error:
+    dprintf(2, "[decode_a_list] CLEANUP after error\n");
+
+    if (all_task) {
+        for (uint32_t j = 0; j < nbtask; ++j) {
+            free(all_task[j].timing);
+            free(all_task[j].commandline);
+        }
+        free(all_task);
+    }
+
     return NULL;
 }
 

@@ -81,51 +81,61 @@ int encode_a_timecode(int fd, const a_timecode_t *a)
 */
 int encode_a_list(int fd, const a_list_t *ans)
 {
-
     if (!ans) {
         dprintf(2, "[encode_a_list] ERROR: ans is NULL\n");
         return -1;
     }
 
-    dprintf(2, "[encode_a_list] nbtask=%u\n", ans->all_task.nbtask);
+    const uint32_t nbtask = ans->all_task.nbtask;
+    const task_t *tasks = ans->all_task.all_task;
 
+    dprintf(2, "[encode_a_list] nbtask=%u\n", nbtask);
+
+    if (nbtask > 0 && !tasks) {
+        dprintf(2, "[encode_a_list] ERROR: nbtask > 0 but all_task pointer is NULL\n");
+        return -1;
+    }
+
+    /* ---------- answer type ---------- */
     if (encode_uint16(fd, (uint16_t)OK) < 0) {
         dprintf(2, "[encode_a_list] ERROR: encode_uint16(OK) failed\n");
         return -1;
     }
-
     dprintf(2, "[encode_a_list] wrote anstype=OK\n");
 
-    if (encode_uint32(fd, ans->all_task.nbtask) < 0) {
+    /* ---------- number of tasks ---------- */
+    if (encode_uint32(fd, nbtask) < 0) {
         dprintf(2, "[encode_a_list] ERROR: encode_uint32(nbtask) failed\n");
         return -1;
     }
 
-    for (uint32_t i = 0; i < ans->all_task.nbtask; ++i) {
-        const task_t *t = &ans->all_task.all_task[i];
+    /* ---------- encode each task ---------- */
+    for (uint32_t i = 0; i < nbtask; ++i) {
+        const task_t *t = &tasks[i];
 
         dprintf(2, "[encode_a_list] encoding task #%u\n", i);
         dprintf(2, "[encode_a_list] task[%u].id=%lu\n", i, t->id);
 
+        /* --- id --- */
         if (encode_uint64(fd, t->id) < 0) {
             dprintf(2, "[encode_a_list] ERROR: encode_uint64(id) failed (i=%u)\n", i);
             return -1;
         }
 
+        /* --- timing --- */
         if (!t->timing) {
             dprintf(2, "[encode_a_list] ERROR: timing is NULL (i=%u)\n", i);
             return -1;
         }
-
         if (encode_timing(fd, t->timing) < 0) {
             dprintf(2, "[encode_a_list] ERROR: encode_timing failed (i=%u)\n", i);
             return -1;
         }
-
         dprintf(2, "[encode_a_list] timing encoded (i=%u)\n", i);
 
+        /* --- commandline via command_to_commandline --- */
         string_t *cline = command_to_commandline(t->cmd);
-        string_t empty = { .length = 0, .data = "" };
+        string_t empty = { .length = 0, .data = NULL };
 
         if (!cline) {
             dprintf(2, "[encode_a_list] WARNING: empty commandline (i=%u)\n", i);

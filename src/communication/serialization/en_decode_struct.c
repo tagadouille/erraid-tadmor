@@ -18,17 +18,23 @@ int encode_string(int fd, const string_t *s)
     if (!s)
         return -1;
 
-    if (s->length > LIMIT_MAX_STR_LEN)
+    if (s->length > LIMIT_MAX_STR_LEN){
+        dprintf(2, "[encode_string] Error: The length of the string is too big\n");
         return -1;
-
-    if (encode_uint32(fd, s->length) < 0)
+    }
+        
+    if (encode_uint32(fd, s->length) < 0){
+        dprintf(2, "[encode_string] Error : an error occured while encoding uint32\n");
         return -1;
+    }
 
     dprintf(1, "Encoding this string %s of length %u\n", s->data, s->length);
 
     if (s->length > 0) {
-        if (write_full(fd, s->data, s->length) < 0)
-            return -1;
+        if (write_full(fd, s->data, s->length) < 0){
+            dprintf(2, "[encode_string] Error : an error occured while writing the string into the pipe\n");
+        return -1;
+        }
     }
 
     return 0;
@@ -211,75 +217,51 @@ int decode_arguments(int fd, arguments_t *args)
 
 string_t *command_to_commandline(const command_t *cmd)
 {
-    if (!cmd)
-        return NULL;
+    if (!cmd) return NULL;
 
     if (cmd->type == SI) {
         size_t total = 0;
         uint32_t argc = cmd->args.simple->argc;
-
-        if (argc == 0)
-            return NULL;
+        if (argc == 0) return NULL;
 
         for (uint32_t i = 0; i < argc; ++i) {
             string_t *s = cmd->args.simple->argv[i];
-
-            if (!s)
-                return NULL;
-
+            if (!s) return NULL;
             total += s->length;
-
-            if (i + 1 < argc)
-                total += 1;
+            if (i + 1 < argc) total += 1;
         }
 
-        if (total > LIMIT_MAX_STR_LEN)
-            return NULL;
+        if (total > LIMIT_MAX_STR_LEN) return NULL;
 
         string_t *out = malloc(sizeof(string_t));
-
-        if (!out)
-            return NULL;
+        if (!out) return NULL;
 
         out->length = (uint32_t)total;
         out->data = malloc(total + 1);
-
-        if (!out->data) {
-            free(out);
-            return NULL;
-        }
+        if (!out->data) { free(out); return NULL; }
 
         size_t off = 0;
-
         for (uint32_t i = 0; i < argc; ++i) {
             string_t *s = cmd->args.simple->argv[i];
-
             memcpy(out->data + off, s->data, s->length);
             off += s->length;
-
-            if (i + 1 < argc)
-                out->data[off++] = ' ';
+            if (i + 1 < argc) out->data[off++] = ' ';
         }
-
         out->data[off] = '\0';
         return out;
-    } else {
+
+    } else { // composed
         size_t total = 0;
         uint16_t n = cmd->args.composed.count;
-
-        if (n == 0)
-            return NULL;
+        if (n == 0) return NULL;
 
         string_t **subs = calloc(n, sizeof(string_t *));
+        if (!subs) return NULL;
 
-        if (!subs)
-            return NULL;
+        for (uint16_t i = 0; i < n; ++i) subs[i] = NULL; // sécurité
 
         for (uint16_t i = 0; i < n; ++i) {
-            subs[i] = command_to_commandline(
-                cmd->args.composed.cmds[i]
-            );
-
+            subs[i] = command_to_commandline(cmd->args.composed.cmds[i]);
             if (!subs[i]) {
                 for (uint16_t j = 0; j < i; ++j) {
                     free(subs[j]->data);
@@ -288,11 +270,8 @@ string_t *command_to_commandline(const command_t *cmd)
                 free(subs);
                 return NULL;
             }
-
             total += subs[i]->length;
-
-            if (i + 1 < n)
-                total += 3;
+            if (i + 1 < n) total += 3;
         }
 
         if (total > LIMIT_MAX_STR_LEN) {
@@ -305,7 +284,6 @@ string_t *command_to_commandline(const command_t *cmd)
         }
 
         string_t *out = malloc(sizeof(string_t));
-
         if (!out) {
             for (uint16_t i = 0; i < n; ++i) {
                 free(subs[i]->data);
@@ -317,7 +295,6 @@ string_t *command_to_commandline(const command_t *cmd)
 
         out->length = (uint32_t)total;
         out->data = malloc(total + 1);
-
         if (!out->data) {
             free(out);
             for (uint16_t i = 0; i < n; ++i) {
@@ -329,29 +306,19 @@ string_t *command_to_commandline(const command_t *cmd)
         }
 
         size_t off = 0;
-
         for (uint16_t i = 0; i < n; ++i) {
-            memcpy(
-                out->data + off,
-                subs[i]->data,
-                subs[i]->length
-            );
-
+            memcpy(out->data + off, subs[i]->data, subs[i]->length);
             off += subs[i]->length;
-
             if (i + 1 < n) {
                 out->data[off++] = ' ';
                 out->data[off++] = ';';
                 out->data[off++] = ' ';
             }
-
             free(subs[i]->data);
             free(subs[i]);
         }
-
         free(subs);
         out->data[off] = '\0';
-
         return out;
     }
 }

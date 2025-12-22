@@ -84,7 +84,7 @@ void tadmor_print_timecode(a_timecode_t* timecode)
 
     if (timecode->anstype == ERR)
     {
-        dprintf(STDERR_FILENO, "Error: %u\n", timecode->errcode);
+        dprintf(STDERR_FILENO, "Error: times-exitcodes file or task not found\n");
         return;
     }
     
