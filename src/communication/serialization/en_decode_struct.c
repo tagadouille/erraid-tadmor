@@ -24,6 +24,8 @@ int encode_string(int fd, const string_t *s)
     if (encode_uint32(fd, s->length) < 0)
         return -1;
 
+    dprintf(1, "Encoding this string %s of length %u\n", s->data, s->length);
+
     if (s->length > 0) {
         if (write_full(fd, s->data, s->length) < 0)
             return -1;
@@ -34,39 +36,66 @@ int encode_string(int fd, const string_t *s)
 
 int decode_string(int fd, string_t *s)
 {
-    if (!s){
-        dprintf(STDERR_FILENO, "Error : the string can't be NULL\n");
+    if (!s) {
+        dprintf(STDERR_FILENO,
+                "[decode_string] Error: string_t pointer is NULL\n");
         return -1;
     }
 
-    if (decode_uint32(fd, &s->length) < 0){
-        dprintf(STDERR_FILENO, "Error : can't decode the uint32 length of the string\n");
-        return -1;
-    }
-
-    if (s->length > LIMIT_MAX_STR_LEN){
-        dprintf(STDERR_FILENO, "Error : the length of the string is too long\n");
-        return -1;
-    }
-
-    if (s->length > 0) {
-        s->data = malloc((size_t)s->length + 1);
-
-        if (!s->data) {
-            dprintf(STDERR_FILENO, "Error : malloc failed for string data\n");
-            return -1;
-        }
-
-        if (read_full(fd, s->data, s->length) < 0) {
-            string_free(s);
-            dprintf(STDERR_FILENO, "Error : can't read string data from fd\n");
-            return -1;
-        }
-
-        s->data[s->length] = '\0';
-    } else {
+    /* Toujours repartir d’un état propre */
+    if (s->data) {
+        free(s->data);
         s->data = NULL;
     }
+    s->length = 0;
+
+    if (decode_uint32(fd, &s->length) < 0) {
+        dprintf(STDERR_FILENO,
+                "[decode_string] Error: can't decode uint32 length\n");
+        return -1;
+    }
+
+    dprintf(STDERR_FILENO,
+            "[decode_string] Decoded length = %u\n", s->length);
+
+    if (s->length > LIMIT_MAX_STR_LEN) {
+        dprintf(STDERR_FILENO,
+                "[decode_string] Error: string length %u exceeds limit %u\n",
+                s->length, LIMIT_MAX_STR_LEN);
+        return -1;
+    }
+
+    if (s->length == 0) {
+        dprintf(STDERR_FILENO,
+                "[decode_string] Empty string\n");
+        s->data = NULL;
+        return 0;
+    }
+
+    s->data = malloc((size_t)s->length + 1);
+    if (!s->data) {
+        dprintf(STDERR_FILENO,
+                "[decode_string] Error: malloc failed (%u bytes)\n",
+                s->length + 1);
+        s->length = 0;
+        return -1;
+    }
+
+    if (read_full(fd, s->data, s->length) < 0) {
+        dprintf(STDERR_FILENO,
+                "[decode_string] Error: can't read %u bytes from fd\n",
+                s->length);
+        free(s->data);
+        s->data = NULL;
+        s->length = 0;
+        return -1;
+    }
+
+    s->data[s->length] = '\0';
+
+    dprintf(STDERR_FILENO,
+            "[decode_string] String decoded: \"%s\"\n",
+            s->data);
 
     return 0;
 }
