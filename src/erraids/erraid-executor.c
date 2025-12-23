@@ -68,8 +68,8 @@ static int execute_simple(const command_t *cmd, const char *timespath, const cha
         return -1;
     }
 
-    int outfd = open(outpath, O_CREAT | O_WRONLY | O_APPEND, 0644);
-    int errfd = open(errpath, O_CREAT | O_WRONLY | O_APPEND, 0644);
+    int outfd = open(outpath, O_CREAT | O_WRONLY | O_TRUNC, 0644); // ! -------------------------------------------------------------------
+    int errfd = open(errpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
 
     if (outfd < 0 || errfd < 0) {
         write_log_msg("Cannot open stdout/stderr at path %s", tasksdir);
