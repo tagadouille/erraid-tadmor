@@ -16,21 +16,28 @@
 
 int encode_a_output(int fd, const a_output_t *ans)
 {
-    if (!ans)
+    if (!ans){
+        dprintf(STDERR_FILENO, "Error : the answer in NULL at encode_a_output\n");
         return -1;
+    }
 
     if (ans->anstype == (uint16_t)ERR) {
-        if (encode_uint16(fd, (uint16_t)ERR) < 0)
+        if (encode_uint16(fd, (uint16_t)ERR) < 0){
+            dprintf(STDERR_FILENO, "Error : an error occured while encoding ERR for encode_a_output\n");
             return -1;
+        }
 
         return encode_uint16(fd, ans->errcode);
     } else {
-        if (encode_uint16(fd, (uint16_t)OK) < 0)
+        if (encode_uint16(fd, (uint16_t)OK) < 0){
+            dprintf(STDERR_FILENO, "Error : an error occured while encoding OK for encode_a_output\n");
             return -1;
+        }
 
-        if (encode_string(fd, &ans->output) < 0)
+        if (encode_string(fd, &ans->output) < 0){
+            dprintf(STDERR_FILENO, "Error : an error occured while encoding string for encode_a_output\n");
             return -1;
-
+        }
         return 0;
     }
 }
@@ -74,30 +81,42 @@ int encode_a_timecode(int fd, const a_timecode_t *a)
 */
 int encode_a_list(int fd, const a_list_t *ans)
 {
-
     if (!ans) {
         dprintf(2, "[encode_a_list] ERROR: ans is NULL\n");
         return -1;
     }
 
-    dprintf(2, "[encode_a_list] nbtask=%u\n", ans->all_task.nbtask);
+    const uint32_t nbtask = ans->all_task.nbtask;
+    const task_t *tasks = ans->all_task.all_task;
 
+    dprintf(2, "[encode_a_list] nbtask=%u\n", nbtask);
+
+    if (nbtask > 0 && !tasks) {
+        dprintf(2, "[encode_a_list] ERROR: nbtask > 0 but all_task pointer is NULL\n");
+        return -1;
+    }
+
+    /* ---------- answer type ---------- */
     if (encode_uint16(fd, (uint16_t)OK) < 0) {
         dprintf(2, "[encode_a_list] ERROR: encode_uint16(OK) failed\n");
         return -1;
     }
-
     dprintf(2, "[encode_a_list] wrote anstype=OK\n");
 
-    if (encode_uint32(fd, ans->all_task.nbtask) < 0) {
+    /* ---------- number of tasks ---------- */
+    if (encode_uint32(fd, nbtask) < 0) {
         dprintf(2, "[encode_a_list] ERROR: encode_uint32(nbtask) failed\n");
         return -1;
     }
 
-    for (uint32_t i = 0; i < ans->all_task.nbtask; ++i) {
-        const task_t *t = &ans->all_task.all_task[i];
+    /* ---------- encode each task ---------- */
+    for (uint32_t i = 0; i < nbtask; ++i) {
+
+        const task_t *t = &tasks[i];
 
         dprintf(2, "[encode_a_list] encoding task #%u\n", i);
+
+        /* --- id --- */
         dprintf(2, "[encode_a_list] task[%u].id=%lu\n", i, t->id);
 
         if (encode_uint64(fd, t->id) < 0) {
@@ -105,6 +124,7 @@ int encode_a_list(int fd, const a_list_t *ans)
             return -1;
         }
 
+        /* --- timing --- */
         if (!t->timing) {
             dprintf(2, "[encode_a_list] ERROR: timing is NULL (i=%u)\n", i);
             return -1;
@@ -117,25 +137,18 @@ int encode_a_list(int fd, const a_list_t *ans)
 
         dprintf(2, "[encode_a_list] timing encoded (i=%u)\n", i);
 
-        string_t *cline = command_to_commandline(t->cmd);
-        string_t empty = { .length = 0, .data = "" };
-
-        if (!cline) {
-            dprintf(2, "[encode_a_list] WARNING: empty commandline (i=%u)\n", i);
-            if (encode_string(fd, &empty) < 0) {
-                dprintf(2, "[encode_a_list] ERROR: encode_string(empty) failed\n");
-                return -1;
-            }
-        } else {
-            if (encode_string(fd, cline) < 0) {
-                dprintf(2, "[encode_a_list] ERROR: encode_string failed (i=%u)\n", i);
-                free(cline->data);
-                free(cline);
-                return -1;
-            }
-            free(cline->data);
-            free(cline);
+        /* --- command --- */
+        if (!t->cmd) {
+            dprintf(2, "[encode_a_list] ERROR: cmd is NULL (i=%u)\n", i);
+            return -1;
         }
+
+        if (encode_command(fd, t->cmd) < 0) {
+            dprintf(2, "[encode_a_list] ERROR: encode_command failed (i=%u)\n", i);
+            return -1;
+        }
+
+        dprintf(2,"[encode_a_list] command encoded (i=%u)\n", i);
 
         dprintf(2, "[encode_a_list] task #%u encoded\n", i);
     }
@@ -143,7 +156,6 @@ int encode_a_list(int fd, const a_list_t *ans)
     dprintf(2, "[encode_a_list] SUCCESS\n");
     return 0;
 }
-
 
 int encode_answer(int fd, const answer_t *ans)
 {

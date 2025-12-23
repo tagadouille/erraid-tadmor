@@ -35,7 +35,7 @@ a_timecode_t* handle_tx(char *rundir, uint64_t id)
 a_output_t* handle_output(char *rundir, uint64_t id, bool is_stderr)
 {
     // if is_stderr true read stderr else read stdout
-    if (task_reader(rundir, id, is_stderr ? ERR : OUTPUT) < 0) { // if error during reading
+    if (task_reader(rundir, id, is_stderr ? STDERR : OUTPUT) < 0) { // if error during reading
         // return error answer
         return create_a_output_t(ERR, curr_output, NF);
     }
@@ -70,8 +70,9 @@ answer_t* handle_tm(void)
 
 void* simple_request_handle(simple_request_t *req, char *rundir)
 {
-    if (req == NULL || rundir == NULL) { // NULL pointer check
-        return create_answer(ERR, 0, NR); // return error answer 
+    if (req == NULL || rundir == NULL) {
+        dprintf(2, "Error : the request is NULL or the rundir is NULL");
+        return create_answer(ERR, 0, NR);
     }
 
     switch (req->opcode) { // handle request based on opcode
@@ -95,6 +96,6 @@ void* simple_request_handle(simple_request_t *req, char *rundir)
             return handle_tm();
 
         default: // unknown opcode
-            return create_answer(ERR, req->task_id, NR); // return error answer
+            return create_answer(ERR, req->task_id, NR);
     }
 }

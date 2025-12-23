@@ -1,6 +1,11 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "communication/request.h"
 #include "communication/serialization/serialization.h"
 #include "communication/serialization/en_decode_struct.h"
+
+#include <stdlib.h>
+#include <stdio.h>
 
 /* Complex request:
    - CR: OPCODE + TIMING + COMMAND (arguments)
@@ -34,9 +39,23 @@ int encode_complex_request(int fd, const complex_request_t *r)
 
 int encode_simple_request(int fd, const simple_request_t *r)
 {
-    if (!r) return -1;
-    if (encode_uint16(fd, r->opcode) < 0) return -1;
+    if (!r){
+        dprintf(STDERR_FILENO, "Error : The request can't be null\n");
+        return -1;
+    }
+
+    if (encode_uint16(fd, r->opcode) < 0){
+        dprintf(STDERR_FILENO, "Error : an error occured while encoding uint16\n");
+        return -1;
+    }
+
     /* LS and TM have no task id; other opcodes have task id */
     if (r->opcode == LS || r->opcode == TM) return 0;
-    return encode_uint64(fd, r->task_id);
+    int ret = encode_uint64(fd, r->task_id);
+
+    if(ret != 0){
+        dprintf(STDERR_FILENO, "Error : an error occured while encoding uint64\n");
+    }
+
+    return ret;
 }

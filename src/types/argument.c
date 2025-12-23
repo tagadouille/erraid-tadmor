@@ -56,63 +56,47 @@ static string_t *read_one_string(const char *buf, size_t size, size_t *offset)
     return s;
 }
 
-bool arguments_parse_struct(const string_t *buf, unsigned int size, arguments_t *args)
+bool arguments_parse_struct(const char *buf, unsigned int size, arguments_t *args)
 {
-    // Test if the arguments are valid
-    if (!buf || !buf->data || !args || size < (unsigned int)sizeof(uint32_t))
-    {
-        dprintf(STDERR_FILENO, "arguments_parse_struct: invalid input\n");
+    if (!buf || !args || size < sizeof(uint32_t)) {
+        dprintf(STDERR_FILENO, "[arguments_parse_struct] invalid input\n");
         return false;
     }
 
     memset(args, 0, sizeof(*args));
-
     size_t offset = 0;
 
-    // Read argc big-endian
-    uint32_t argc_be;
-    memcpy(&argc_be, buf->data + offset, sizeof(uint32_t));
-    uint32_t argc = be32toh(argc_be);
-    offset += sizeof(uint32_t);
-
-    if (argc == 0)
-    {
-        dprintf(STDERR_FILENO, "Invalid ARGC: 0\n");
+    /* --- read argc --- */
+    if (offset + sizeof(uint32_t) > size) {
+        dprintf(STDERR_FILENO, "[arguments_parse_struct] buffer too small for argc\n");
         return false;
     }
 
-    // Initialize args structure
-    args->argc = argc;
-    args->command = NULL;
-    args->argv = NULL;
+    uint32_t argc_be;
+    memcpy(&argc_be, buf + offset, sizeof(uint32_t));
+    uint32_t argc = be32toh(argc_be);
+    offset += sizeof(uint32_t);
 
-    // Allocate argv array
-    uint32_t n_args = (argc > 0) ? (argc - 1) : 0;
-    if (n_args > 0)
-    {
-        args->argv = calloc(n_args, sizeof(string_t *));
-        if (!args->argv)
-        {
-            perror("calloc");
-            return false;
-        }
+    if (argc == 0) {
+        dprintf(STDERR_FILENO, "[arguments_parse_struct] invalid argc=%u\n", argc);
+        return false;
     }
 
-    /* --- Read command first --- */
-    args->command = read_one_string(buf->data, size, &offset);
-    if (!args->command)
-    {
-        dprintf(STDERR_FILENO, "Failed to read command string\n");
+    args->argc = argc;
+
+    args->argv = calloc(argc, sizeof(string_t *));
+    if (!args->argv) {
+        perror("[arguments_parse_struct] calloc argv");
         goto error;
     }
 
-    /* --- Read argv[i] --- */
-    for (uint32_t i = 0; i < n_args; i++)
-    {
-        args->argv[i] = read_one_string(buf->data, size, &offset);
-        if (!args->argv[i])
-        {
-            dprintf(STDERR_FILENO, "Failed to read argv[%u]\n", i);
+    /* --- read argv[i] --- */
+    for (uint32_t i = 0; i < argc; ++i) {
+
+        args->argv[i] = read_one_string(buf, size, &offset);
+
+        if (!args->argv[i]) {
+            dprintf(STDERR_FILENO,"[arguments_parse_struct] failed to read argv[%u]\n", i);
             goto error;
         }
     }
@@ -121,93 +105,68 @@ bool arguments_parse_struct(const string_t *buf, unsigned int size, arguments_t 
 
     error:
     arguments_free(args);
+    memset(args, 0, sizeof(*args));
     return false;
 }
 
-arguments_t *arguments_parse(const char *buffer, unsigned int size)
+arguments_t *arguments_parse(const char *buffer,
+                             unsigned int size)
 {
-    if (!buffer || size <= 0)
-    {
-        dprintf(STDERR_FILENO, "arguments_parse: invalid input\n");
+    if (!buffer || size < sizeof(uint32_t)) {
+        dprintf(STDERR_FILENO,
+                "[arguments_parse] invalid input\n");
         return NULL;
     }
 
-    // Creation of arguments_t structure
-    string_t buf = string_create(buffer, size);
-    if (!buf.data)
-    {
+    arguments_t *args = calloc(1, sizeof(arguments_t));
+    if (!args) {
+        perror("[arguments_parse] calloc arguments");
         return NULL;
     }
 
-    arguments_t *args = malloc(sizeof(arguments_t));
-    if (!args)
-    {
-        perror("malloc");
-        string_free(&buf);
+    if (!arguments_parse_struct(buffer, size, args)) {
+        dprintf(STDERR_FILENO,
+                "[arguments_parse] parse failed\n");
+        free(args);
         return NULL;
     }
 
-    if (!arguments_parse_struct(&buf, size, args))
-    {
-        return NULL;
-    }
     return args;
 }
 
+
 arguments_t *copy_arguments(const arguments_t *src) {
-    
-    if (src == NULL) {
+
+    if (!src) {
         dprintf(STDERR_FILENO, "copy_arguments: src == NULL\n");
         return NULL;
     }
 
     arguments_t *dst = calloc(1, sizeof(arguments_t));
+
     if (!dst) {
         perror("calloc copy_arguments");
         return NULL;
     }
     dst->argc = src->argc;
 
-    // copy command
-    if (src->command) {
-        dst->command = string_copy(src->command);
-
-        if (!dst->command) {
-            arguments_free(dst);
-            free(dst);
-            return NULL;
-        }
-    } else {
-        dprintf(STDERR_FILENO, "copy_arguments: warning src->command == NULL\n");
-        dst->command = NULL;
-    }
-
-    // copy argv array (if any)
-    uint32_t n_args = 0;
     if (src->argc > 0) {
-        // determine how many argv entries you really have; here I assume src->argc includes command.
-        n_args = (src->argc > 0) ? (src->argc - 1) : 0;
-    }
-
-    if (n_args > 0) {
-        dst->argv = calloc(n_args, sizeof(string_t *));
+        dst->argv = calloc(src->argc, sizeof(string_t *));
 
         if (!dst->argv) {
             perror("calloc dst->argv");
-            arguments_free(dst);
             free(dst);
             return NULL;
         }
 
-        for (uint32_t i = 0; i < n_args; ++i) {
+        for (uint32_t i = 0; i < src->argc; ++i) {
 
-            if (src->argv && src->argv[i]) {
+            if (src->argv[i]) {
                 dst->argv[i] = string_copy(src->argv[i]);
 
                 if (!dst->argv[i]) {
                     dprintf(STDERR_FILENO, "copy_arguments: string_copy(argv[%u]) failed\n", i);
                     arguments_free(dst);
-                    free(dst);
                     return NULL;
                 }
             } else {
@@ -220,15 +179,8 @@ arguments_t *copy_arguments(const arguments_t *src) {
     return dst;
 }
 
-
 void arguments_free(arguments_t *a) {
     if (!a) return;
-
-    if (a->command) {
-        if (a->command->data) { free(a->command->data); a->command->data = NULL; }
-        free(a->command);
-        a->command = NULL;
-    }
 
     if (a->argv) {
         // argv length may be a->argc (or a->argc-1 depending on your convention)
@@ -248,7 +200,7 @@ void arguments_free(arguments_t *a) {
 
 char **arguments_to_argv(const arguments_t *args)
 {
-    if (!args || !args->command)
+    if (!args)
         return NULL;
 
     // +2 : un pour la commande, un pour le NULL final
@@ -258,12 +210,9 @@ char **arguments_to_argv(const arguments_t *args)
     if (!argv)
         return NULL;
 
-    // argv[0] = commande
-    argv[0] = strdup(string_get(args->command));
-
-    // arguments supplémentaires
-    for (uint32_t i = 0; i < args->argc - 1; i++) {
-        argv[i + 1] = strdup(string_get(args->argv[i]));
+    // arguments
+    for (uint32_t i = 0; i < args->argc; i++) {
+        argv[i] = strdup(string_get(args->argv[i]));
     }
 
     // execvp() exige un NULL final

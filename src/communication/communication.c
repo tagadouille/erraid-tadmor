@@ -7,6 +7,7 @@
 #include "communication/serialization/decode_response.h"
 #include "communication/serialization/encode_response.h"
 #include "communication/pipes.h"
+#include "tree-reading/tree_reader.h"
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -49,11 +50,10 @@ void* client_recv_answer(uint16_t opcode)
     void* ret = NULL;
 
     if (client_open_reply(&fd_rep) < 0) {
-        dprintf(STDERR_FILENO,
-                "Error: opening reply pipe in client_recv_answer\n");
+        dprintf(STDERR_FILENO, "Error: opening reply pipe in client_recv_answer\n");
         return ret;
     }
-    //! Recupérer la réponse
+    //! NULL output ici voir ce qu'il se passe dans les fonc
 
     switch (opcode) {
 
@@ -97,10 +97,26 @@ void* client_recv_answer(uint16_t opcode)
 /* ==============================
  * DAEMON : READ A SIMPLE REQUEST
  * ============================== */
-int daemon_read_simple(int fd_req, simple_request_t *req)
-{
+int daemon_read_simple(int* fd_req, simple_request_t *req){
+
+    char *req_path = make_path_no_test(pipe_path, REQUEST_PIPE);
+
+    if(req_path == NULL){
+        dprintf(STDERR_FILENO, "Error : an error occured while creating the path to the request pipe\n");
+        return -1;
+    }
+
+    int r = open(req_path, O_RDONLY);
+    free(req_path);
+
+    if (r < 0){
+        perror("open");
+        return -1;
+    }
+        
+    *fd_req = r;
     /* daemon read until EOF (client close the pipe) */
-    return decode_simple_request(fd_req, req);
+    return decode_simple_request(*fd_req, req);
 }
 
 /* ================================
