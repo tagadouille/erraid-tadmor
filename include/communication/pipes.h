@@ -1,7 +1,7 @@
 #ifndef PIPES_H
 #define PIPES_H
 
-#define PIPE_FILE "pipe_file.marcMonKoicoubebou"
+#define PIPE_FILE "pipe_file.te"
 
 /**
  * @brief rename the pipe_path
