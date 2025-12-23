@@ -68,8 +68,8 @@ static int execute_simple(const command_t *cmd, const char *timespath, const cha
         return -1;
     }
 
-    int outfd = open(outpath, O_CREAT | O_WRONLY | O_TRUNC, 0644); // ! -------------------------------------------------------------------
-    int errfd = open(errpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    int outfd = open(outpath, O_CREAT | O_WRONLY | O_APPEND, 0644);
+    int errfd = open(errpath, O_CREAT | O_WRONLY | O_APPEND, 0644);
 
     if (outfd < 0 || errfd < 0) {
         write_log_msg("Cannot open stdout/stderr at path %s", tasksdir);
@@ -126,6 +126,7 @@ static int execute_complexe(const command_t *cmd, const char *timespath, const c
     int final_exitcode = 0;
 
     uint32_t count = cmd->args.composed.count;
+    // ! Soit faire la condition O_TRUNC ici (pas sûr de mon coup)
     for (uint32_t i = 0; i < count; i++) {
 
         int ret = execute_simple(cmd->args.composed.cmds[i], timespath, outpath, errpath, 1, minute_now);
@@ -156,7 +157,7 @@ static int execute_command(const command_t *cmd, const char *timespath, const ch
     if (cmd->type == SI)
         return execute_simple(cmd, timespath, outpath, errpath, 0, minute_now);
 
-    if (cmd->type == SQ)
+    if (cmd->type == SQ) // ! Soit faire la condition O_TRUNC ici (pas sûr de mon coup)
         return execute_complexe(cmd, timespath, outpath, errpath, minute_now);
 
     return -1;
