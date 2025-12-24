@@ -1,0 +1,7 @@
+*.dSYM
+*.a
+erraid
+tadmor
+run/
+build/
+**/__pycache__

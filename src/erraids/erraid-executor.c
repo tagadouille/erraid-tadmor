@@ -12,8 +12,6 @@
 
 #define MAX_TASKS 1000000
 
-static time_t last_run_minute[MAX_TASKS];
-
 static inline uint64_t to_be64(uint64_t x)
 {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -85,6 +83,7 @@ static int execute_simple(const command_t *cmd, const char *timespath, const cha
         return -1;
     }
 
+    //TODO si ça rate ecrire dans stderr
     if (pid == 0) {
         
         if (dup2(outfd, STDOUT_FILENO) < 0) _exit(127);
@@ -191,7 +190,6 @@ static int execute_task(task_t* task, time_t minute_now){
     }
 
     // Delete the file if they already exist : 
-
     if (unlink(outpath) < 0 && errno != ENOENT) {
         perror("unlink");
         write_log_msg("Error: can't delete file at path %s", outpath);
@@ -215,16 +213,8 @@ int run_task_if_due(task_t *task, time_t minute_now){
      if (!task || !task->cmd || !task->timing)
         return -1;
 
-    // If the task was already launched
-    if (last_run_minute[task->id] == minute_now)
-        return 0;
-
     if (!timing_match_at(task->timing, minute_now))
         return 0;
 
-    int ret = execute_task(task, minute_now);
-    if (ret >= 0)
-        last_run_minute[task->id] = minute_now;
-
-    return ret;
+    return execute_task(task, minute_now);
 }
