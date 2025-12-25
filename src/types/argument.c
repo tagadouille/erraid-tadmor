@@ -200,23 +200,39 @@ void arguments_free(arguments_t *a) {
 
 char **arguments_to_argv(const arguments_t *args)
 {
-    if (!args)
+    if(!args){
+        dprintf(2, "The argument can't be null");
         return NULL;
-
-    // +2 : un pour la commande, un pour le NULL final
-    size_t n = args->argc + 2;
-
-    char **argv = calloc(n, sizeof(char *));
-    if (!argv)
+    }
+    if(args->argc == 0){
+        dprintf(2, "The argc can't be null");
         return NULL;
-
-    // arguments
-    for (uint32_t i = 0; i < args->argc; i++) {
-        argv[i] = strdup(string_get(args->argv[i]));
+    }
+    if (!args->argv){
+        dprintf(2, "The argv can't be null");
+        return NULL;
     }
 
-    // execvp() exige un NULL final
-    argv[n - 1] = NULL;
+    // +1 for the final NULL
+    char **argv = calloc(args->argc + 1, sizeof(char *));
+    if (!argv){
+        perror("calloc");
+        return NULL;
+    }
 
+    for (uint32_t i = 0; i < args->argc; i++) {
+
+        argv[i] = strndup(args->argv[i]->data, args->argv[i]->length);
+
+        if (!argv[i]) {
+            for (uint32_t j = 0; j < i; j++)
+                free(argv[j]);
+            free(argv);
+            dprintf(2, "strndup failed");
+            return NULL;
+        }
+    }
+
+    argv[args->argc] = NULL;
     return argv;
 }
