@@ -54,19 +54,57 @@ static int append_times_exitcodes(const char *path, uint16_t exitcode, time_t ti
 }
 
 static int needs_shell(const char *cmd) {
-    if (!cmd) return 0;
+    if (!cmd || !cmd[0]) return 0;
     
     // Métacaractères shell incontournables
     const char *shell_chars = ";|&<>()$`";
     
-    // Vérification simple et directe
-    if (strpbrk(cmd, shell_chars)) {
-        return 1;
-    }
+    // Vérification en tenant compte des guillemets
+    int in_single_quote = 0;
+    int in_double_quote = 0;
+    int escaped = 0;
     
-    // Les opérateurs logiques en deux caractères
-    if (strstr(cmd, "&&") || strstr(cmd, "||")) {
-        return 1;
+    for (const char *p = cmd; *p; p++) {
+        if (escaped) {
+            escaped = 0;
+            continue;
+        }
+        
+        if (*p == '\\') {
+            escaped = 1;
+            continue;
+        }
+        
+        if (!in_double_quote && *p == '\'') {
+            in_single_quote = !in_single_quote;
+            continue;
+        }
+        
+        if (!in_single_quote && *p == '"') {
+            in_double_quote = !in_double_quote;
+            continue;
+        }
+        
+        // Si on est dans des guillemets, ignorer la plupart des métacaractères
+        if (in_single_quote) continue;
+        
+        // En double quote, $ et ` sont toujours spéciaux
+        if (in_double_quote && (*p == '$' || *p == '`')) {
+            return 1;
+        }
+        
+        // Hors des guillemets
+        if (!in_single_quote && !in_double_quote) {
+            if (strchr(shell_chars, *p)) {
+                return 1;
+            }
+            
+            // Vérifier les combinaisons de 2 caractères
+            if ((*p == '&' && *(p+1) == '&') ||
+                (*p == '|' && *(p+1) == '|')) {
+                return 1;
+            }
+        }
     }
     
     return 0;
@@ -127,8 +165,17 @@ static int execute_shell_line(const char *line, int outfd, int errfd) {
  * --------------------------------------------------------------- */
 static int execute_simple_fd_only(const command_t *cmd, int outfd, int errfd) {
 
-     if (!cmd || cmd->type != SI || !cmd->args.simple) {
+    if(!cmd){
+        write_log_msg("The command can't be null");
+        return -1;
+    }
+    if (cmd->type != SI) {
         write_log_msg("Invalid command type for simple execution");
+        return -1;
+    }
+
+    if(!cmd->args.simple){
+        write_log_msg("args.simple is null");
         return -1;
     }
     
@@ -163,62 +210,47 @@ static int execute_simple_fd_only(const command_t *cmd, int outfd, int errfd) {
 }
 
 /* ---------------------------------------------------------------
- * Execute a composed command (SQ)
- * stdout/stderr shared across subcommands
- * exit code written only once at the end
+ * Execute any command with given file descriptors
  * --------------------------------------------------------------- */
-static int execute_complexe(const command_t *cmd, const char *timespath,
-                            const char *outpath, const char *errpath,
-                            time_t minute_now) {
-    if (!cmd || cmd->type != SQ) return -1;
-
-    int outfd = open(outpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-    int errfd = open(errpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-    if (outfd < 0 || errfd < 0) {
-        perror("open");
-        if (outfd >= 0) close(outfd);
-        if (errfd >= 0) close(errfd);
-        return -1;
-    }
-
-    int final_exitcode = 0;
-    
-    for (uint32_t i = 0; i < cmd->args.composed.count; i++) {
-        final_exitcode = execute_simple_fd_only(cmd->args.composed.cmds[i], outfd, errfd);
-    }
-
-    close(outfd);
-    close(errfd);
-    
-    append_times_exitcodes(timespath, final_exitcode, minute_now);
-    
-    return final_exitcode;
-}
-
-static int execute_simple(const command_t *cmd, const char *timespath,
-                          const char *outpath, const char *errpath,
-                          time_t minute_now) {
+static int execute_any_command_fd(const command_t *cmd, int outfd, int errfd,
+                                  const char *timespath, time_t minute_now,
+                                  int is_top_level) {
     if (!cmd) return -1;
-
-    int outfd = open(outpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-    int errfd = open(errpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-    if (outfd < 0 || errfd < 0) {
-        perror("open");
-        if (outfd >= 0) close(outfd);
-        if (errfd >= 0) close(errfd);
-        return -1;
-    }
-
-    int exitcode = execute_simple_fd_only(cmd, outfd, errfd);
     
-    close(outfd);
-    close(errfd);
-
-    if (timespath) {
-        append_times_exitcodes(timespath, exitcode, minute_now);
+    switch (cmd->type) {
+        case SI: {
+            int exitcode = execute_simple_fd_only(cmd, outfd, errfd);
+            
+            if (is_top_level && timespath) {
+                append_times_exitcodes(timespath, exitcode, minute_now);
+            }
+            return exitcode;
+        }
+            
+        case SQ: {
+            int final_exitcode = 0;
+            
+            for (uint32_t i = 0; i < cmd->args.composed.count; i++) {
+                int exitcode = execute_any_command_fd(
+                    cmd->args.composed.cmds[i], 
+                    outfd, errfd, 
+                    NULL, minute_now,
+                    0  // Pas top-level pour les sous-commandes
+                );
+                
+                final_exitcode = exitcode;
+            }
+            
+            if (is_top_level && timespath) {
+                append_times_exitcodes(timespath, final_exitcode, minute_now);
+            }
+            return final_exitcode;
+        }
+            
+        default:
+            write_log_msg("Unknown command type: %d", cmd->type);
+            return -1;
     }
-    
-    return exitcode;
 }
 
 /* ---------------------------------------------------------------
@@ -232,14 +264,23 @@ static int execute_command(const command_t *cmd, const char *timespath,
         return -1;
     }
 
-    if (cmd->type == SI)
-        return execute_simple(cmd, timespath, outpath, errpath, minute_now);
+    // Ouvrir fichiers
+    int outfd = open(outpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    int errfd = open(errpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    if (outfd < 0 || errfd < 0) {
+        perror("open");
+        if (outfd >= 0) close(outfd);
+        if (errfd >= 0) close(errfd);
+        return -1;
+    }
 
-    if (cmd->type == SQ)
-        return execute_complexe(cmd, timespath, outpath, errpath, minute_now);
-
-    write_log_msg("Unknown command type: %d", cmd->type);
-    return -1;
+    // Exécuter
+    int exitcode = execute_any_command_fd(cmd, outfd, errfd, 
+                                          timespath, minute_now, 1);
+    
+    close(outfd);
+    close(errfd);
+    return exitcode;
 }
 
 /* ---------------------------------------------------------------
