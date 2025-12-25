@@ -172,7 +172,7 @@ int main(int argc, char **argv)
 
     // Handle the differents arguments
     //TODO rajouté les options qu'il manque
-    while ((opt = getopt(argc, argv, "qlxorep")) != -1) {
+    while ((opt = getopt(argc, argv, "qlxoreP")) != -1) {
         switch (opt) {
             case 'c': //TODO jalon-3
                 break;
@@ -189,7 +189,7 @@ int main(int argc, char **argv)
             case 'x': opcode = TX; break;
             case 'o': opcode = SO; break;
             case 'e': opcode = SE; break;
-            case 'p': pipe_rename = 1; break;
+            case 'P': pipe_rename = 1; break;
             
             default:
                 dprintf(STDERR_FILENO, "Invalid argument \n");

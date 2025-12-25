@@ -37,7 +37,6 @@ int main(int argc, char **argv) {
 
     while ((opt = getopt(argc, argv, "r:f")) != -1) {
        if(opt=='r') {
-
             // If it's valid -> copy the arguments in the pathes
             if (optarg && strlen(optarg) < sizeof(rundir)) {
 
