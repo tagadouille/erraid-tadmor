@@ -12,6 +12,7 @@ answer_t* create_answer(uint16_t anstype, uint64_t task_id, uint16_t errcode){
         dprintf(STDERR_FILENO, "Invalide anstype \n");
         return NULL;
     }
+    
     answer_t* answer = malloc(sizeof(answer_t));
         
     if(answer == 0){
@@ -19,8 +20,11 @@ answer_t* create_answer(uint16_t anstype, uint64_t task_id, uint16_t errcode){
         return NULL;
     }
     
+    answer->anstype = anstype;
+    
     if(anstype == OK){
-        answer -> task_id = task_id;
+        answer->task_id = task_id;
+        answer->errcode = 0;
     }
     else if(anstype == ERR){
         if(errcode != NF && errcode != NR){
@@ -28,8 +32,13 @@ answer_t* create_answer(uint16_t anstype, uint64_t task_id, uint16_t errcode){
             free(answer);
             return NULL;
         }
-        answer -> errcode = errcode;
+        answer->errcode = errcode;
+        answer->task_id = 0;
     }
+    
+    dprintf(STDERR_FILENO, "DEBUG: Created answer: anstype=%u, task_id=%lu, errcode=%u\n",
+            answer->anstype, (unsigned long)answer->task_id, answer->errcode);
+    
     return answer;
 }
 

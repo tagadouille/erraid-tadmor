@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +9,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 
 /**
  * @brief Delete reccursively all the files and directories
@@ -23,7 +26,6 @@ static int remove_directory_contents(const char *path) {
 
     char full_path[PATH_MAX];
 
-    int log_fd = LOG_FD;
     int result = 0;
     
     if (!path) {
@@ -71,7 +73,7 @@ static int remove_directory_contents(const char *path) {
             // Delete the directory :
             dprintf(1, "Delete the empty directory : %s\n", full_path);
             if (rmdir(full_path) == -1) {
-                dprintf(log_fd, "Error: failed to delete the directory '%s': %s\n", full_path, strerror(errno));
+                dprintf(2, "Error: failed to delete the directory '%s': %s\n", full_path, strerror(errno));
                 result = -1;
                 break;
             }
@@ -132,9 +134,8 @@ int delete_directory(const char *path) {
     int result = remove_directory_contents(path);
 
     if (rmdir(path) == -1) {
-        dprintf(log_fd, "Error: failed to delete the directory '%s': %s\n", full_path, strerror(errno));
+        dprintf(2, "Error: failed to delete the directory '%s': %s\n", path, strerror(errno));
         result = -1;
-        break;
     }
 
     dprintf(1, "=== End: Annihilation of '%s' - %s ===\n", path, result == 0 ? "Success" : "Failure");

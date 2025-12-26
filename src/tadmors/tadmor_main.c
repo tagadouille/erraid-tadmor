@@ -180,8 +180,7 @@ int main(int argc, char **argv)
                 break;
             case 'n': //TODO jalon-3
                 break;
-            case 'r':
-                opcode = RM; break;
+            case 'r': opcode = RM; break;
             case 'q': //TODO jalon-3
                 opcode = TM; break;
 

@@ -78,7 +78,7 @@ void* client_recv_answer(uint16_t opcode)
         case CR:
         case RM:
             ret = decode_answer(fd_rep);
-            if(ret == NULL) dprintf(STDERR_FILENO, "Error : an error occured while decoding a_timecode\n");
+            if(ret == NULL) dprintf(STDERR_FILENO, "Error : an error occured while decoding a_answer\n");
             break;
         case CB:
         case TM: {

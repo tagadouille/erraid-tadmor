@@ -159,23 +159,35 @@ int encode_a_list(int fd, const a_list_t *ans)
 
 int encode_answer(int fd, const answer_t *ans)
 {
-    if (!ans) return -1;
-
-    // Écrire le type
-    if (encode_uint16(fd, ans->anstype) < 0) return -1;
-
-    if (ans->anstype == OK) {
-        // OK = task_id
-        return encode_uint64(fd, ans->task_id);
+    if (!ans){
+        dprintf(2, "Error : The answer can't be null\n");
+        return -1;
     }
 
-    if (ans->anstype == ERR) {
-        // ER = errcode
-        return encode_uint16(fd, ans->errcode);
+    if (encode_uint16(fd, (uint16_t) ans->anstype) < 0){
+        dprintf(2, "Error : an error occured while encoding anstype\n");
+        return -1;
     }
 
-    // Type inconnu
-    return -1;
+    int ret = -1;
+
+    if (ans->anstype == (uint16_t) OK) {
+        ret = encode_uint64(fd, ans->task_id);
+
+        if(ret < 0){
+            dprintf(2, "Error : an error occured while encoding uint64\n");
+        }
+    }
+
+    if (ans->anstype == (uint16_t) ERR) {
+        ret = encode_uint16(fd, (uint16_t) ans->errcode);
+
+        if(ret < 0){
+            dprintf(2, "Error : an error occured while encoding uint16\n");
+        }
+    }
+
+    return ret;
 }
 
 
