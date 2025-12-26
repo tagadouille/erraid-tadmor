@@ -192,7 +192,7 @@ int main(int argc, char **argv)
             case 'P': pipe_rename = 1; break;
             
             default:
-                dprintf(STDERR_FILENO, "Invalid argument \n");
+                dprintf(STDERR_FILENO, "Invalid option \n");
                 return EXIT_FAILURE;
         }
     }

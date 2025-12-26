@@ -35,23 +35,41 @@ int main(int argc, char **argv) {
 
     default_rundir(rundir, pipedir, PATH_MAX, PATH_MAX);
 
-    while ((opt = getopt(argc, argv, "r:f")) != -1) {
-       if(opt=='r') {
-            // If it's valid -> copy the arguments in the pathes
-            if (optarg && strlen(optarg) < sizeof(rundir)) {
+    while ((opt = getopt(argc, argv, "R:FP:")) != -1) {
 
-                strncpy(rundir, optarg, sizeof(rundir)-1);
-                strncpy(pipedir, optarg, sizeof(rundir)-1);
-                rundir[sizeof(rundir)-1] = '\0';
-                pipedir[sizeof(rundir)-1] = '\0';
-            }
-            else {
-                dprintf(STDERR_FILENO, "Error : Invalid run directory\n");
+        switch (opt) {
+            case 'R':
+                // If it's valid -> copy the arguments in the pathes
+                if (optarg && strlen(optarg) < sizeof(rundir)) {
+
+                    strncpy(rundir, optarg, sizeof(rundir)-1);
+                    strncpy(pipedir, optarg, sizeof(pipedir)-1);
+                    rundir[sizeof(rundir)-1] = '\0';
+                    pipedir[sizeof(rundir)-1] = '\0';
+                }
+                else {
+                    dprintf(STDERR_FILENO, "Error : Invalid run directory\n");
+                    return EXIT_FAILURE;
+                }
+                break;
+
+            case 'F':
+                //TODO foreground
+                break;
+            case 'P':
+                if (optarg && strlen(optarg) < sizeof(pipedir)) {
+
+                    strncpy(pipedir, optarg, sizeof(pipedir)-1);
+                    pipedir[sizeof(pipedir)-1] = '\0';
+                }
+                else {
+                    dprintf(STDERR_FILENO, "Error : Invalid pipe directory\n");
+                    return EXIT_FAILURE;
+                }
+                break;
+            default:
+                dprintf(STDERR_FILENO, "Error : Invalid option gived\n");
                 return EXIT_FAILURE;
-            }
-                            
-        }else{
-            return EXIT_FAILURE;
         }
     }
 
