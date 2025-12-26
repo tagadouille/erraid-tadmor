@@ -6,11 +6,17 @@
 #include <errno.h>
 #include <stdint.h>
 #include <time.h>
+#include <signal.h>
 
 /**
  * All the tasks that was scanned
  */
 static all_task_t* scanned_tasks = NULL;
+
+/**
+ * If rescan is needed or not
+ */
+static volatile sig_atomic_t need_rescan = 0;
 
 /* ------------------------------ Timing util ---------------------------- */
 /* wait until the next minute boundary (sleep until seconds == 0) */
@@ -57,27 +63,75 @@ static void execute_all_task(time_t minute_now){
 
     for (uint32_t i = 0; i < scanned_tasks -> nbtask; i++)
     {
-        //task_display(&(scanned_tasks -> all_task)[i]);
         run_task_if_due(&(scanned_tasks -> all_task)[i], minute_now);
     }
 
     write_log_msg("The execution is finish ! Go back to sleep.. zzz..\n");
 }
 
-void erraid_scan_loop(){
+/**
+ * @brief Use for sigaction for rescan the tree-structure when
+ * erraid servant changed it
+ */
+static void rescan(int sig) {
+    (void)sig;
+    need_rescan = 1;
+}
 
-    write_log_msg("Daemon main loop started.");
-    // Scan of the tasks of the directory
-    scan_all_task();
-
-    // Execution loop of the tasks
-    while (running) {
-
-        time_t minute_now = wait_next_minute();
-
-        execute_all_task(minute_now);
+/**
+ * @brief Define the behavior when SIGUSR1 is sent by
+ * erraid servant
+ */
+static void setup_signal_handler(void) {
+    struct sigaction sa;
+    
+    sa.sa_handler = rescan;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART; //! Important: restart interrupted syscall
+    
+    if (sigaction(SIGUSR1, &sa, NULL) == -1) {
+        perror("sigaction");
+        exit(EXIT_FAILURE);
     }
+    
+    // Put at default after sigaction
+    signal(SIGUSR1, SIG_DFL); 
+}
 
+void erraid_scan_loop(void) {
+    write_log_msg("Daemon main loop started.");
+    
+    setup_signal_handler();
+    write_log_msg("Daemon PID: %d", getpid());
+    
+    scan_all_task();
+    
+    while (running) {
+        // Wait next minute
+        time_t scheduled_time = wait_next_minute();
+        
+        // 2. Check if after the end of the sleep a rescan have been requested
+        if (need_rescan) {
+            write_log_msg("Rescan requested, scanning tasks");
+            scan_all_task();
+            need_rescan = 0;
+            
+            // After a rescan, verify if the tasks must be executed
+            time_t now = time(NULL);
+            if (now >= scheduled_time) {
+                // On a dépassé le temps prévu, exécuter maintenant
+                time_t current_minute = now - (now % 60);
+                write_log_msg("Executing missed minute: %ld", current_minute);
+                execute_all_task(current_minute);
+            }
+            // Continue the loop for the next minute
+            continue;
+        }
+        
+        //Execute task at the exact minute
+        execute_all_task(scheduled_time);
+    }
+    
     free(scanned_tasks);
     write_log_msg("Daemon main loop stopping.");
 }

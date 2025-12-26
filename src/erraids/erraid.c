@@ -97,7 +97,7 @@ void daemon_run(void) {
             break;
         case 0:
             // Launching of erraid servant
-            start_serve();
+            start_serve(getpid());
             break;
         default:
             // Scan of the task
