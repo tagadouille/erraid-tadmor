@@ -68,11 +68,13 @@ static int proceed_request(simple_request_t* req, int fd_request, int* fd_respon
                 write_log_msg("[servant] Error encoding answer");
             }
             else{
+                dprintf(1, "before\n");
                 if(((answer_t *) ans) -> anstype == OK){
                     // Notify the father that the tree-structure changed
-                    dprintf(1,"kkdkd\n");
+                    dprintf(1, "after\n");
                     kill(father, SIGUSR1);
                 }
+                dprintf(1, "yo\n");
             }
             break;
         default:

@@ -18,55 +18,116 @@ static all_task_t* scanned_tasks = NULL;
  */
 static volatile sig_atomic_t need_rescan = 0;
 
-/* ------------------------------ Timing util ---------------------------- */
-/* wait until the next minute boundary (sleep until seconds == 0) */
+/**
+ * Last minute executed (to avoid double execution)
+ */
+static time_t last_executed_minute = 0;
+
+
+/**
+ * @brief Wait until the next minute starting with :00
+ * @return The exact minute timestamp ending with :00
+ * 
+ * If interrupted by SIGUSR1 with need_rescan set, returns current time immediately.
+ */
 static time_t wait_next_minute(void)
 {
     struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-
-    ts.tv_sec = ts.tv_sec - (ts.tv_sec % 60) + 60;
-    ts.tv_nsec = 0;
-
-    while (clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, NULL) == EINTR);
-
-    return ts.tv_sec;
+    
+    // Get current time
+    if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
+        perror("clock_gettime");
+        return time(NULL);
+    }
+    
+    // Calculate next minute :00
+    time_t next_minute = ts.tv_sec - (ts.tv_sec % 60) + 60;
+    
+    // Prepare absolute time for sleep
+    struct timespec target = {
+        .tv_sec = next_minute,
+        .tv_nsec = 0
+    };
+    
+    // Sleep until next minute :00
+    while (1) {
+        int result = clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &target, NULL);
+        
+        // Full sleep completed
+        if (result == 0) {
+            return next_minute;
+        }
+        // Interrupted by signal
+        else if (result == EINTR) {
+            
+            if (need_rescan) {
+                time_t now = time(NULL);
+                return now;
+            }
+            continue;
+        } 
+        else {
+            perror("clock_nanosleep");
+            return time(NULL);
+        }
+    }
 }
 
 /**
  * @brief Scan all the task available in the tasksdir
  */
-static void scan_all_task(){
+static void scan_all_task(void) {
 
     write_log_msg("Scanning tasks directory…");
 
-    scanned_tasks = all_task_listing(tasksdir);
-
-    if(scanned_tasks == NULL){
-        write_log_msg("Error : an error occured while scanning all the tasks of path %s", tasksdir);
+    all_task_t* new_tasks = all_task_listing(tasksdir);
+    
+    if (new_tasks == NULL) {
+        write_log_msg("Error: an error occurred while scanning all the tasks of path %s", tasksdir);
         running = 0;
         return;
     }
-    write_log_msg("The scan succeded ! \n");
+    
+    if (scanned_tasks != NULL) {
+        free(scanned_tasks);
+    }
+    
+    scanned_tasks = new_tasks;
+    write_log_msg("Scan succeeded! Found %u tasks\n", scanned_tasks->nbtask);
 }
 
 /**
  * @brief Execute all the task that was scanned
- * @param minute_now the actual minute 
+ * @param minute_now the actual minute (must end with :00)
  */
-static void execute_all_task(time_t minute_now){
+static void execute_all_task(time_t minute_now) {
 
-    if(scanned_tasks == NULL){
-        write_log_msg("Error : scanned_tasks is NULL, can't execute all the tasks");
+    if (scanned_tasks == NULL) {
+        write_log_msg("Error: scanned_tasks is NULL, can't execute tasks");
         return;
     }
-
-    for (uint32_t i = 0; i < scanned_tasks -> nbtask; i++)
-    {
-        run_task_if_due(&(scanned_tasks -> all_task)[i], minute_now);
+    
+    // Ensure minute_now is at :00 boundary
+    if (minute_now % 60 != 0) {
+        minute_now = minute_now - (minute_now % 60);
     }
+    
+    // Avoid executing the same minute twice
+    if (minute_now == last_executed_minute) {
+        write_log_msg("Skipping already executed minute");
+        return;
+    }
+    
 
-    write_log_msg("The execution is finish ! Go back to sleep.. zzz..\n");
+    // Execution :
+    write_log_msg("Executing tasks");
+    
+    for (uint32_t i = 0; i < scanned_tasks->nbtask; i++) {
+        run_task_if_due(&(scanned_tasks->all_task)[i], minute_now);
+    }
+    
+    last_executed_minute = minute_now;
+    write_log_msg("Execution finished for minute\n");
 }
 
 /**
@@ -87,7 +148,7 @@ static void setup_signal_handler(void) {
     
     sa.sa_handler = rescan;
     sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART; //! Important: restart interrupted syscall
+    sa.sa_flags = 0;
     
     if (sigaction(SIGUSR1, &sa, NULL) == -1) {
         perror("sigaction");
@@ -98,40 +159,57 @@ static void setup_signal_handler(void) {
     signal(SIGUSR1, SIG_DFL); 
 }
 
+/**
+ * @brief Daemon main loop
+ */
 void erraid_scan_loop(void) {
+    
     write_log_msg("Daemon main loop started.");
     
     setup_signal_handler();
     write_log_msg("Daemon PID: %d", getpid());
     
+    // Initial scan
     scan_all_task();
     
+    // Main loop
     while (running) {
-        // Wait next minute
-        time_t scheduled_time = wait_next_minute();
+        time_t current_time = time(NULL);
+        write_log_msg("Current time: %ld (%ld seconds until next minute)", current_time, 60 - (current_time % 60));
         
-        // 2. Check if after the end of the sleep a rescan have been requested
+        // Wait for next minute :00
+        time_t wake_time = wait_next_minute();
+        
+        write_log_msg("Woke up");
+        
+        // Handle rescan if requested
         if (need_rescan) {
-            write_log_msg("Rescan requested, scanning tasks");
+            write_log_msg("Rescan requested by signal");
             scan_all_task();
             need_rescan = 0;
             
-            // After a rescan, verify if the tasks must be executed
+            // Check if we missed an execution during rescan
             time_t now = time(NULL);
-            if (now >= scheduled_time) {
-                // On a dépassé le temps prévu, exécuter maintenant
-                time_t current_minute = now - (now % 60);
-                write_log_msg("Executing missed minute: %ld", current_minute);
+            time_t current_minute = now - (now % 60);
+            
+            // If we're at exact minute :00 and haven't executed it yet
+            if (now % 60 == 0 && current_minute != last_executed_minute) {
+                write_log_msg("Executing missed minute after rescan: %ld", current_minute);
                 execute_all_task(current_minute);
             }
-            // Continue the loop for the next minute
+            
+            // Continue to wait for next minute
             continue;
         }
-        
-        //Execute task at the exact minute
-        execute_all_task(scheduled_time);
+
+        // Execute tasks for this minute
+        execute_all_task(wake_time);
+    }
+
+    if (scanned_tasks != NULL) {
+        free(scanned_tasks);
+        scanned_tasks = NULL;
     }
     
-    free(scanned_tasks);
     write_log_msg("Daemon main loop stopping.");
 }

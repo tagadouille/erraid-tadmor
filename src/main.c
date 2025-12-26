@@ -29,6 +29,7 @@ static void default_rundir(char *erraid_path, char* pipe_path, size_t err_size, 
 }
 
 int main(int argc, char **argv) {
+    
     int opt;
     char rundir[PATH_MAX];
     char pipedir[PATH_MAX];

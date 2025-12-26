@@ -14,7 +14,7 @@
 /**
  * @brief Delete reccursively all the files and directories
  * 
- * @param path path to the directory to annihilate
+ * @param path path to the directory to delete
  * @return 0 if success, -1 if error
  */
 static int remove_directory_contents(const char *path) {
@@ -32,8 +32,6 @@ static int remove_directory_contents(const char *path) {
         dprintf(2, "Error : the path can't be null\n");
         return -1;
     }
-    
-    dprintf(1, "Annihilation of the directory start : %s\n", path);
     
     dir = opendir(path);
     if (!dir) {
@@ -60,18 +58,15 @@ static int remove_directory_contents(const char *path) {
 
         // Directory
         if (S_ISDIR(statbuf.st_mode)) {
-
-            dprintf(1, "Proccess the sub-directory : %s\n", full_path);
             
             // Delete the content :
             if (remove_directory_contents(full_path) == -1) {
-                dprintf(2, "Error : annihilation of the sub-directory failed '%s'\n", full_path);
+                dprintf(2, "Error : deletion of the sub-directory failed '%s'\n", full_path);
                 result = -1;
                 break;
             }
             
             // Delete the directory :
-            dprintf(1, "Delete the empty directory : %s\n", full_path);
             if (rmdir(full_path) == -1) {
                 dprintf(2, "Error: failed to delete the directory '%s': %s\n", full_path, strerror(errno));
                 result = -1;
@@ -80,11 +75,9 @@ static int remove_directory_contents(const char *path) {
             
         } else {
             // If it's a file or a symbolic link :
-            dprintf(1, "Suppression du fichier: %s\n", full_path);
-            
             if (unlink(full_path) == -1) {
                 result = -1;
-                dprintf(2, "Error : failed to annihilate the file '%s' : %s\n", full_path, strerror(errno));
+                dprintf(2, "Error : failed to delete the file '%s' : %s\n", full_path, strerror(errno));
                 break;
             }
         }
@@ -95,9 +88,9 @@ static int remove_directory_contents(const char *path) {
     }
     
     if (result == 0) {
-        dprintf(1, "Success: Content of '%s' completely annihilate\n", path);
+        dprintf(1, "Success: Content of '%s' completely delete\n", path);
     } else {
-        dprintf(2, "Failure : Error while annihilate the content of '%s'\n", path);
+        dprintf(2, "Failure : Error while delete the content of '%s'\n", path);
     }
     
     return result;
@@ -112,7 +105,7 @@ int delete_directory(const char *path) {
         return -1;
     }
     
-    dprintf(1, "=== Start : Annihilation of '%s' ===\n", path);
+    dprintf(1, "=== Start : Deletion of '%s' ===\n", path);
     
     // Some verifications :
     if (access(path, F_OK) == -1) {
@@ -130,7 +123,7 @@ int delete_directory(const char *path) {
         return -1;
     }
     
-    // Annihilate
+    // delete
     int result = remove_directory_contents(path);
 
     if (rmdir(path) == -1) {
@@ -138,7 +131,7 @@ int delete_directory(const char *path) {
         result = -1;
     }
 
-    dprintf(1, "=== End: Annihilation of '%s' - %s ===\n", path, result == 0 ? "Success" : "Failure");
+    dprintf(1, "=== End: Deletion of '%s' - %s ===\n", path, result == 0 ? "Success" : "Failure");
     
     return result;
 }
