@@ -52,9 +52,6 @@ int pipe_file_write() {
         return -1;
     }
     
-    dprintf(STDOUT_FILENO, "DEBUG: Writing pipe_path='%s' to file '%s'\n", 
-            pipe_path, pipe_file_path);
-    
     int fd = open(pipe_file_path, O_CREAT | O_TRUNC | O_WRONLY, 0644);
     free(pipe_file_path);
     
@@ -63,8 +60,7 @@ int pipe_file_write() {
         return -1;
     }
     
-    // Écrit la chaîne, pas le pointeur !
-    size_t len = strlen(pipe_path) + 1; // +1 pour le '\0'
+    size_t len = strlen(pipe_path) + 1;
     ssize_t written = write(fd, pipe_path, len);
     
     close(fd);
@@ -74,15 +70,17 @@ int pipe_file_write() {
         return -1;
     }
     
-    dprintf(STDOUT_FILENO, "DEBUG: Successfully wrote pipe_path to file\n");
     return 0;
 }
 
 int pipe_file_read() {
+
     char* pipe_file_path = pipe_file_path_creator();
-    if (!pipe_file_path) return -1;
-    
-    dprintf(STDOUT_FILENO, "DEBUG: Reading pipe path from '%s'\n", pipe_file_path);
+
+    if (!pipe_file_path) {
+        dprintf(2,"Error : pipe_file_path_creator failed\n");
+        return -1;
+    }
     
     int fd = open(pipe_file_path, O_RDONLY);
     free(pipe_file_path);
@@ -107,20 +105,19 @@ int pipe_file_read() {
         return -1;
     }
     
-    // Assure la terminaison nulle
     pipe_path[nread] = '\0';
-    
-    dprintf(STDOUT_FILENO, "DEBUG: Read pipe_path='%s' (%zd bytes)\n", pipe_path, nread);
+
     return 0;
 }
 
 int pipe_path_rename(char* new_path) {
+
     if(new_path == NULL || new_path[0] == '\0'){
         dprintf(STDERR_FILENO, "Error: new_path cannot be null or empty\n");
         return -1;
     }
     
-    // Convertir "." en chemin absolu
+    // Convert "." in absolute path
     char base_path[PATH_MAX];
     if (strcmp(new_path, ".") == 0) {
         if (getcwd(base_path, sizeof(base_path)) == NULL) {
@@ -132,34 +129,28 @@ int pipe_path_rename(char* new_path) {
         base_path[sizeof(base_path) - 1] = '\0';
     }
     
-    // Construire le chemin complet avec /pipes
+    //Build the path with /pipes
     char new_pipe_path[PATH_MAX];
     snprintf(new_pipe_path, sizeof(new_pipe_path), "%s/pipes", base_path);
     
-    // S'assurer que ce n'est pas trop long
     if (strlen(new_pipe_path) >= PATH_MAX) {
         dprintf(STDERR_FILENO, "Error: path too long\n");
         return -1;
     }
     
-    dprintf(STDOUT_FILENO, "DEBUG: Setting pipe_path to '%s'\n", new_pipe_path);
-    
-    // Mettre à jour la variable globale
+    // Update pipe_path
     strcpy(pipe_path, new_pipe_path);
     
-    // Créer le répertoire
+    // Create the directory
     if (mkdir_p(pipe_path) != 0) {
         dprintf(STDERR_FILENO, "Error: failed to create directory\n");
         return -1;
     }
-    
-    // Sauvegarder dans le fichier
+
     return pipe_file_write();
 }
 
-/* ===========================
-   DÉMON : création
-   =========================== */
+
 int daemon_setup_pipes()
 {
     char *req_path = make_path_no_test(pipe_path, REQUEST_PIPE);
@@ -217,10 +208,6 @@ int daemon_open_reply(int *rep_wr)
     return 0;
 }
 
-/* ===========================
-   CLIENT : ouverture des pipes
-   =========================== */
-
 int client_open_request(int *req_wr){
 
     char *req_path = make_path_no_test(pipe_path, REQUEST_PIPE);
@@ -230,8 +217,8 @@ int client_open_request(int *req_wr){
         return -1;
     }
 
-    /* bloque jusqu’à ce que le démon ait open() en lecture */
     int w = open(req_path, O_WRONLY);
+
     if (w < 0){
         perror("open");
         return -1;
@@ -246,15 +233,19 @@ int client_open_request(int *req_wr){
 int client_open_reply(int *rep_rd)
 {
     char *rep_path = make_path(pipe_path, REPLY_PIPE);
-    if( !rep_path)return -1;
 
-    /* bloque jusqu’à ce que le démon ait open() en écriture */
+    if( !rep_path){
+        return -1;
+    }
+
     int r = open(rep_path, O_RDONLY);
 
     dprintf(STDOUT_FILENO, "[client] The pipe reply path is %s\n", rep_path);
 
-    if (r < 0)
+    if (r < 0){
+        perror("open");
         return -1;
+    } 
 
     *rep_rd = r;
     free(rep_path);
