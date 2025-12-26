@@ -37,17 +37,33 @@ static int proceed_request(simple_request_t* req, int fd_request, int* fd_respon
         case SE:
         case SO:
             ret = encode_a_output(*fd_response, (a_output_t *)ans);
+
+            if(ret < 0){
+                write_log_msg("[servant] Error encoding a_output answer");
+            }
             break;
 
         case TX:
             ret = encode_a_timecode(*fd_response, (a_timecode_t *) ans);
+
+            if(ret < 0){
+                write_log_msg("[servant] Error encoding a_timecode answer");
+            }
             break ;
 
         case LS:
             ret = encode_a_list(*fd_response, (a_list_t *) ans);
-            dprintf(STDOUT_FILENO, "Sent %u tasks\n", ((a_list_t *)ans)->all_task.nbtask);
+
             if(ret < 0){
                 write_log_msg("[servant] Error encoding a_list answer");
+            }
+            break;
+        
+        case RM:
+            ret = encode_answer(*fd_response, (answer_t *) ans);
+
+            if(ret < 0){
+                write_log_msg("[servant] Error encoding answer");
             }
             break;
         default:

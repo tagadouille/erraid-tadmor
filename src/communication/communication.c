@@ -77,6 +77,9 @@ void* client_recv_answer(uint16_t opcode)
 
         case CR:
         case RM:
+            ret = decode_answer(fd_rep);
+            if(ret == NULL) dprintf(STDERR_FILENO, "Error : an error occured while decoding a_timecode\n");
+            break;
         case CB:
         case TM: {
             ret = decode_answer(fd_rep);
@@ -85,8 +88,7 @@ void* client_recv_answer(uint16_t opcode)
         }
 
         default:
-            dprintf(STDERR_FILENO,
-                    "Unknown opcode %u\n", opcode);
+            dprintf(STDERR_FILENO,"Unknown opcode %u\n", opcode);
     }
 
     close(fd_rep);
