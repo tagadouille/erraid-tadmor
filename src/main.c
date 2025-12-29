@@ -36,10 +36,10 @@ int main(int argc, char **argv) {
 
     default_rundir(rundir, pipedir, PATH_MAX, PATH_MAX);
 
-    while ((opt = getopt(argc, argv, "R:FP:")) != -1) {
+    while ((opt = getopt(argc, argv, "r:Fp:")) != -1) {
 
         switch (opt) {
-            case 'R':
+            case 'r':
                 // If it's valid -> copy the arguments in the pathes
                 if (optarg && strlen(optarg) < sizeof(rundir)) {
 
@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
             case 'F':
                 //TODO foreground
                 break;
-            case 'P':
+            case 'p':
                 if (optarg && strlen(optarg) < sizeof(pipedir)) {
 
                     strncpy(pipedir, optarg, sizeof(pipedir)-1);

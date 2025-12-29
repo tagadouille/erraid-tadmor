@@ -1,3 +1,5 @@
+extern pid_t father;
+
 /**
  * @brief Start the reading, processing and answering of client
  * requests

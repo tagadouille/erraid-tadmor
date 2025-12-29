@@ -8,9 +8,12 @@
 #include "erraids/erraid.h"
 #include "types/time_exitcode.h"
 #include "tree-writer/task_annihilator.h"
+#include "erraids/erraid-servant.h"
 
-a_list_t* handle_ls(char *rundir)
-{
+#include <signal.h>
+
+a_list_t* handle_ls(char *rundir){
+
     all_task_t *list = all_task_listing(rundir); // get list of all tasks
     
     if (list == NULL) {
@@ -20,8 +23,8 @@ a_list_t* handle_ls(char *rundir)
     return create_a_list(OK, list->nbtask, list->all_task); // return list of tasks
 }
 
-a_timecode_t* handle_tx(char *rundir, uint64_t id)
-{
+a_timecode_t* handle_tx(char *rundir, uint64_t id){
+
     if (task_reader(rundir, id, TIME_EXIT) < 0) {
         return create_a_timecode_t(ERR, 0, NULL);
     }
@@ -34,8 +37,8 @@ a_timecode_t* handle_tx(char *rundir, uint64_t id)
     );
 }
 
-a_output_t* handle_output(char *rundir, uint64_t id, bool is_stderr)
-{
+a_output_t* handle_output(char *rundir, uint64_t id, bool is_stderr){
+
     // if is_stderr true read stderr else read stdout
     if (task_reader(rundir, id, is_stderr ? STDERR : OUTPUT) < 0) {
         return create_a_output_t(ERR, curr_output, NF);
@@ -44,8 +47,8 @@ a_output_t* handle_output(char *rundir, uint64_t id, bool is_stderr)
     return create_a_output_t(OK, curr_output, 0); // return output/error output
 }
 
-answer_t* handle_rm(char *rundir, uint64_t id)
-{
+answer_t* handle_rm(char *rundir, uint64_t id){
+
     char path[PATH_MAX];
     snprintf(path, sizeof(path), "%s/%lu", rundir, id); 
 
@@ -58,11 +61,9 @@ answer_t* handle_rm(char *rundir, uint64_t id)
     return create_answer(OK, id, 0);
 }
 
-answer_t* handle_tm(void)
-{
-    //return create_answer(ERR, 0, NR); Si le daemon n'est pas lancé je mettrai cette ligne en plus.
-    
-    //terminate_daemon();
+answer_t* handle_tm(void){
+
+    kill(father, SIGKILL); // kill the erraid daemon
     return create_answer(OK, 0, 0); // return success answer
 }
 

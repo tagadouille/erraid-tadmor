@@ -1,5 +1,6 @@
 #include "erraids/erraid-log.h"
 #include "erraids/erraid.h"
+#include "erraids/erraid-servant.h"
 #include "communication/answer.h"
 #include "communication/request.h"
 #include "communication/pipes.h"
@@ -12,7 +13,9 @@
 
 static int is_servant_running = 1;
 
-static int proceed_request(simple_request_t* req, int fd_request, int* fd_response, pid_t father){
+pid_t father = -1 ;
+
+static int proceed_request(simple_request_t* req, int fd_request, int* fd_response){
 
     if (daemon_read_simple(&fd_request, req) < 0) {
         dprintf(STDERR_FILENO, "An error occured while reading a simple request\n");
@@ -61,6 +64,9 @@ static int proceed_request(simple_request_t* req, int fd_request, int* fd_respon
             }
             break;
         
+        case TM:
+            ret = encode_answer(*fd_response, (answer_t *) ans);
+            break;
         case RM:
             ret = encode_answer(*fd_response, (answer_t *) ans);
 
@@ -68,13 +74,10 @@ static int proceed_request(simple_request_t* req, int fd_request, int* fd_respon
                 write_log_msg("[servant] Error encoding answer");
             }
             else{
-                dprintf(1, "before\n");
                 if(((answer_t *) ans) -> anstype == OK){
                     // Notify the father that the tree-structure changed
-                    dprintf(1, "after\n");
                     kill(father, SIGUSR1);
                 }
-                dprintf(1, "yo\n");
             }
             break;
         default:
@@ -88,7 +91,7 @@ static int proceed_request(simple_request_t* req, int fd_request, int* fd_respon
     return ret;
 }
 
-void start_serve(pid_t father){
+void start_serve(pid_t proc_father){
 
     write_log_msg("Creation of the servant is a success");
 
@@ -97,6 +100,8 @@ void start_serve(pid_t father){
         return;
     }
     int fd_response = -1;
+
+    father = proc_father ;
 
     write_log_msg("[daemon servant] Running start !");
 
@@ -108,7 +113,7 @@ void start_serve(pid_t father){
         
         simple_request_t req ;
 
-        if(proceed_request(&req, fd_request, &fd_response, father) < 0){
+        if(proceed_request(&req, fd_request, &fd_response) < 0){
             write_log_msg("[daemon servant] Error occured while proceeding the request");
             break;
         }
