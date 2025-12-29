@@ -5,71 +5,81 @@
 #include <stdlib.h>
 #include <string.h>
 
-string_t string_create(const char *str, ssize_t length){
+string_t string_create(const void *data, ssize_t length){
 
     string_t s = {NULL, 0};
 
-    if (!str || length <= 0)
+    if (!data || length <= 0)
         return s;
 
     s.data = malloc((size_t)length + 1);
     if (!s.data)
         return s;
 
-    memcpy(s.data, str, (size_t)length);
-    s.data[length] = '\0';
+    memcpy(s.data, data, (size_t)length);
 
     s.length = (uint32_t)length;
 
     return s;
 }
 
-
-string_t string_append(const string_t *str1, const string_t *str2)
+string_t string_create_from_cstr(const char *str, ssize_t length)
 {
+    if(!str || length <= 0)
+        return (string_t){0};
+
+    return string_create((const void *)str, length);
+}
+
+char *string_to_cstr(const string_t *str)
+{
+    if (!str || !str->data){
+        return NULL;
+    }
+
+    char *out = malloc(str->length + 1);
+    if (!out){
+        return NULL;
+    }
+
+    memcpy(out, str->data, (size_t)str->length);
+    out[str->length] = '\0';
+    return out;
+}
+
+string_t string_append(const string_t* str1, const string_t* str2) {
+
     string_t result = {NULL, 0};
 
     if (!str1 || !str2)
-    {
         return result;
-    }
 
-    size_t len1 = (size_t)str1->length;
-    size_t len2 = (size_t)str2->length;
-
-    result.data = malloc(len1 + len2 + 1);
+    result.data = malloc(str1->length + str2->length);
     if (!result.data)
-    {
         return result;
-    }
 
-    memcpy(result.data, str1->data, len1);
-    memcpy(result.data + len1, str2->data, len2);
-    result.data[len1 + len2] = '\0';
-    result.length = (uint32_t)(len1 + len2);
+    memcpy(result.data, str1->data, str1->length);
+    memcpy(result.data + str1->length, str2->data, str2->length);
+
+    result.length = str1->length + str2->length;
     return result;
 }
 
-string_t string_concat(const string_t *str1, const char *str2)
-{
+string_t string_concat(const string_t* str1, const void* data, ssize_t length) {
+
     string_t result = {NULL, 0};
 
-    if (!str1 || !str2)
+    if (!str1 || !data || length <= 0)
         return result;
 
-    size_t len1 = (size_t)str1->length;
-    size_t len2 = strlen(str2);
-
-    result.data = malloc(len1 + len2 + 1);
+    result.data = malloc(str1->length + length);
     if (!result.data)
-    {
         return result;
-    }
 
-    memcpy(result.data, str1->data, len1);
-    memcpy(result.data + len1, str2, len2);
-    result.data[len1 + len2] = '\0';
-    result.length = (uint32_t)(len1 + len2);
+    memcpy(result.data, str1->data, str1->length);
+    memcpy(result.data + str1->length, data, (size_t)length);
+
+    result.length = str1->length + (uint32_t)length;
     return result;
 }
 
@@ -92,7 +102,7 @@ string_t *string_copy(const string_t *src) {
 
     dst->length = src->length;
     if (dst->length == 0) {
-        dst->data = strdup(""); // ever not-NULL
+        dst->data = NULL;
         if (!dst->data) { free(dst); return NULL; }
         return dst;
     }
@@ -105,7 +115,6 @@ string_t *string_copy(const string_t *src) {
     }
 
     memcpy(dst->data, src->data, dst->length);
-    dst->data[dst->length] = '\0';
     return dst;
 }
 
@@ -114,10 +123,12 @@ void string_free(string_t* src){
         return;
     }
     free(src -> data);
+    src -> data = NULL;
+    src -> length = 0;
     free(src);
 }
 
-const char* string_get(const string_t* str) {
-    if (!str || !str->data) return "";
+const uint8_t* string_get(const string_t* str) {
+    if (!str) return NULL;
     return str->data;
 }

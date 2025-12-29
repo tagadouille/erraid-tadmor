@@ -133,7 +133,7 @@ arguments_t *arguments_parse(const char *buffer, unsigned int size)
     }
 
     // Creation of arguments_t structure
-    string_t buf = string_create(buffer, size);
+    string_t buf = string_create_from_cstr(buffer, size);
     if (!buf.data)
     {
         return NULL;

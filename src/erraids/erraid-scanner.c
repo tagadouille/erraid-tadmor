@@ -63,15 +63,8 @@ static void execute_all_task(time_t minute_now)
     for (uint32_t i = 0; i < scanned_tasks->nbtask; i++)
     {
         // task_display(&(scanned_tasks -> all_task)[i]);
-        // run_task_if_due(&(scanned_tasks -> all_task)[i], minute_now);
-        pid_t pid = fork();
-        if (pid == 0)
-        {
-            run_task_if_due(&(scanned_tasks->all_task)[i], minute_now);
-            _exit(0);
-        }
+        run_task_if_due(&(scanned_tasks -> all_task)[i], minute_now);
     }
-    while (waitpid(-1, NULL, WNOHANG) > 0);
 
     write_log_msg("The execution is finish ! Go back to sleep.. zzz..\n");
 }
