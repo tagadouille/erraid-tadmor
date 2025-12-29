@@ -48,7 +48,6 @@ int decode_simple_request(int fd, simple_request_t *r)
     }
     dprintf(2, "[daemon] decoding opcode\n");
     if (decode_uint16(fd, &r->opcode) < 0){
-        dprintf(STDERR_FILENO, "Error : an error occured while decoding uint16 for the given opcode : %u \n", r->opcode);
         return -1;
     }
     if (r->opcode == LS || r->opcode == TM){

@@ -28,6 +28,8 @@ extern time_array_t* curr_time;
 //The file descriptor of the log file
 extern int g_log_fd;
 
+extern int g_foreground_mode;
+
 extern char tasksdir[PATH_MAX];
 
 extern char g_log_path[PATH_MAX];

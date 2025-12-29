@@ -15,6 +15,12 @@ static int is_servant_running = 1;
 
 pid_t father = -1 ;
 
+static void servant_handle_signal(int sig) {
+    (void)sig;
+    is_servant_running = 0;
+}
+
+
 static int proceed_request(simple_request_t* req, int fd_request, int* fd_response){
 
     if (daemon_read_simple(&fd_request, req) < 0) {
@@ -94,13 +100,17 @@ static int proceed_request(simple_request_t* req, int fd_request, int* fd_respon
 void start_serve(pid_t proc_father){
 
     write_log_msg("Creation of the servant is a success");
+    
+    struct sigaction sa = {0};
+    sa.sa_handler = servant_handle_signal;
+    sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGINT,  &sa, NULL);
 
     if (daemon_setup_pipes() < 0) {
         write_log_msg("[daemon servant] Error : failed to setup daemon pipes");
         return;
     }
     int fd_response = -1;
-
     father = proc_father ;
 
     write_log_msg("[daemon servant] Running start !");
@@ -108,11 +118,17 @@ void start_serve(pid_t proc_father){
     while(is_servant_running){
 
         int fd_request = -1;
-
-        write_log_msg("[daemon servant] Waiting for simple request...");
-        
         simple_request_t req ;
 
+        
+        write_log_msg("[daemon servant] Waiting for simple request...");
+
+        if (daemon_read_simple(&fd_request, &req) < 0) {
+            if (!is_servant_running) break;
+            write_log_msg("[daemon servant] Error while reading request");
+            continue;
+        }
+        
         if(proceed_request(&req, fd_request, &fd_response) < 0){
             write_log_msg("[daemon servant] Error occured while proceeding the request");
             break;
@@ -123,7 +139,7 @@ void start_serve(pid_t proc_father){
             close(fd_request);
         }
     }
-    
+
     if (fd_response >= 0)
         close(fd_response);
 

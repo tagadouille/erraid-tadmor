@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
 
     default_rundir(rundir, pipedir, PATH_MAX, PATH_MAX);
 
-    while ((opt = getopt(argc, argv, "r:Fp:")) != -1) {
+    while ((opt = getopt(argc, argv, "r:fp:")) != -1) {
 
         switch (opt) {
             case 'r':
@@ -54,8 +54,8 @@ int main(int argc, char **argv) {
                 }
                 break;
 
-            case 'F':
-                //TODO foreground
+            case 'f':
+                g_foreground_mode = 1;
                 break;
             case 'p':
                 if (optarg && strlen(optarg) < sizeof(pipedir)) {
