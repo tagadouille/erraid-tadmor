@@ -9,11 +9,6 @@
 #include "communication/answer.h"
 
 /**
- * @brief Disconnect the client from the deamon.
- */
-void tadmor_disconnect(void);
-
-/**
  * @brief print an answer.
  */
 void tadmor_print_answer(answer_t* answer);

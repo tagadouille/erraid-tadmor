@@ -15,8 +15,12 @@
 #include <unistd.h>
 #include <limits.h>
 
+/**
+ * @brief create a string that contains the default pipe_path 
+ * @return the string
+ */
+static char* pipe_file_path_creator() {
 
-static char* pipe_file_path_creator(){
     const char *user = getenv("USER");
     if (!user) user = "nobody";
 
@@ -26,136 +30,127 @@ static char* pipe_file_path_creator(){
         dprintf(STDERR_FILENO, "The path is NULL at pipe_file_read\n");
         return NULL;
     }
+    
     char* pipe_file_path = make_path_no_test(path, PIPE_FILE);
-
+    free(path);
+    
     if(pipe_file_path == NULL){
         dprintf(STDERR_FILENO, "The pipe_file_path is NULL at pipe_file_read\n");
+        return NULL;
     }
-
-    free(path);
-
-    if(pipe_file_path != NULL){
-        dprintf(STDOUT_FILENO, "The pipe_file_path is %s\n", pipe_file_path);
-    }
+    
+    dprintf(STDOUT_FILENO, "DEBUG: pipe_file_path_creator() -> %s\n", pipe_file_path);
     return pipe_file_path;
 }
-int pipe_file_write(){
+
+int pipe_file_write() {
 
     char* pipe_file_path = pipe_file_path_creator();
 
-    int fd = open(pipe_file_path, O_CREAT | O_TRUNC | O_WRONLY, 0677);
-
-    free(pipe_file_path);
-
-    if(fd < 0){
-        perror("open");
+    if (!pipe_file_path){
+        dprintf(2, "pipe_file_path_creator failed\n");
         return -1;
     }
-
-    if(write(fd, pipe_path, sizeof(pipe_path)) != sizeof(pipe_path)){
-        perror("write");
-        return -1;
-    }
-    return 0;
-}
-
-int pipe_file_read(){
-
-    char* pipe_file_path = pipe_file_path_creator();
-
-    int fd = open(pipe_file_path, O_RDONLY);
-
-    free(pipe_file_path);
-
-    if(fd < 0){
-        perror("open");
-        return -1;
-    }
-
-    ssize_t nread = read(fd, pipe_path, sizeof(pipe_path));
-
-    if(nread < 0){
-        perror("read");
-        return -1;
-    }
-
-    if(nread == 0){
-        dprintf(STDERR_FILENO, "The pipe_path is empty\n");
-    }
-    return 0;
-}
-
-
-/**
- * @brief rename the pipe_path
- * @param new_path the new path name
- * @return 0 if succes, -1 if failure
- */
-int pipe_path_rename(char* new_path){
     
-    if(new_path == NULL){
-        dprintf(STDERR_FILENO, "Error : the new_path can't be null\n");
+    int fd = open(pipe_file_path, O_CREAT | O_TRUNC | O_WRONLY, 0644);
+    free(pipe_file_path);
+    
+    if(fd < 0){
+        perror("open pipe file for writing");
         return -1;
     }
-
-    // delete the pipes if they already exit
-    char* reply = make_path_no_test(pipe_path, REPLY_PIPE);
-    char* request = make_path_no_test(pipe_path, REQUEST_PIPE);
-
-    if(reply == NULL || request == NULL){
-        dprintf(STDERR_FILENO, "Error : make_path_no_test fail at pipe_path_rename\n");
+    
+    size_t len = strlen(pipe_path) + 1;
+    ssize_t written = write(fd, pipe_path, len);
+    
+    close(fd);
+    
+    if(written != (ssize_t)len){
+        dprintf(STDERR_FILENO, "Error: wrote %zd bytes, expected %zu\n", written, len);
         return -1;
     }
+    
+    return 0;
+}
 
-    if(unlink(request) < 0 && errno != ENOENT){
-        dprintf(STDERR_FILENO, "Error : can't delete the request pipe, it's not serious\n");
-    }
-    if(unlink(reply) < 0 && errno != ENOENT){
-        dprintf(STDERR_FILENO, "Error : can't delete the request pipe, it's not serious\n");
-    }
+int pipe_file_read() {
 
-    free(request);
-    free(reply);
+    char* pipe_file_path = pipe_file_path_creator();
 
-    strcpy(pipe_path, new_path);
-
-    if (pipe_path[0] == '\0') return -1;
-
-    if (mkdir_p(pipe_path) != 0) return -1;
-
-    //Use absolute path for pipe_path
-    char abs_pipe_path[PATH_MAX];
-
-    if (!my_realpath(pipe_path, abs_pipe_path)) {
-        perror("realpath");
+    if (!pipe_file_path) {
+        dprintf(2,"Error : pipe_file_path_creator failed\n");
         return -1;
     }
-
-    size_t len = strlen(abs_pipe_path);
-
-    if (len >= sizeof(pipe_path))
-        return -1;
-
-    memcpy(pipe_path, abs_pipe_path, len + 1);
-
-    len = strlen(pipe_path);
-    const char *suffix = "/pipes";
-    size_t suffix_len = strlen(suffix);
-
-    if (len + suffix_len + 1 > sizeof(pipe_path)) {
+    
+    int fd = open(pipe_file_path, O_RDONLY);
+    free(pipe_file_path);
+    
+    if(fd < 0){
+        perror("open pipe file for reading");
         return -1;
     }
-
-    memcpy(pipe_path + len, suffix, suffix_len + 1);
-
-    pipe_path[sizeof(pipe_path) - 1] = '\0';
+    
+    // Lit la chaîne complète
+    ssize_t nread = read(fd, pipe_path, PATH_MAX - 1);
+    close(fd);
+    
+    if(nread < 0){
+        perror("read pipe file");
+        return -1;
+    }
+    
+    if(nread == 0){
+        dprintf(STDERR_FILENO, "The pipe file is empty\n");
+        pipe_path[0] = '\0';
+        return -1;
+    }
+    
+    pipe_path[nread] = '\0';
 
     return 0;
 }
 
-/* ===========================
-   DÉMON : création
-   =========================== */
+int pipe_path_rename(char* new_path) {
+
+    if(new_path == NULL || new_path[0] == '\0'){
+        dprintf(STDERR_FILENO, "Error: new_path cannot be null or empty\n");
+        return -1;
+    }
+    
+    // Convert "." in absolute path
+    char base_path[PATH_MAX];
+    if (strcmp(new_path, ".") == 0) {
+        if (getcwd(base_path, sizeof(base_path)) == NULL) {
+            perror("getcwd");
+            return -1;
+        }
+    } else {
+        strncpy(base_path, new_path, sizeof(base_path) - 1);
+        base_path[sizeof(base_path) - 1] = '\0';
+    }
+    
+    //Build the path with /pipes
+    char new_pipe_path[PATH_MAX];
+    snprintf(new_pipe_path, sizeof(new_pipe_path), "%s/pipes", base_path);
+    
+    if (strlen(new_pipe_path) >= PATH_MAX) {
+        dprintf(STDERR_FILENO, "Error: path too long\n");
+        return -1;
+    }
+    
+    // Update pipe_path
+    strcpy(pipe_path, new_pipe_path);
+    
+    // Create the directory
+    if (mkdir_p(pipe_path) != 0) {
+        dprintf(STDERR_FILENO, "Error: failed to create directory\n");
+        return -1;
+    }
+
+    return pipe_file_write();
+}
+
+
 int daemon_setup_pipes()
 {
     char *req_path = make_path_no_test(pipe_path, REQUEST_PIPE);
@@ -186,23 +181,32 @@ int daemon_setup_pipes()
 
 int daemon_open_reply(int *rep_wr)
 {
+    if(pipe_file_read() < 0){
+        dprintf(2, "Error : an error occured while reading the pipe_file\n");
+        return -1;
+    }
+    
+    if(daemon_setup_pipes() < 0){
+        dprintf(2, "Error : an error occured while reading the pipe_file\n");
+        return -1;
+    }
+
     char *rep_path = make_path(pipe_path, REPLY_PIPE);
     if (!rep_path)return -1;
 
     dprintf(STDOUT_FILENO, "[daemon] The pipe reply path is %s\n", rep_path);
-    /* ouvrir N’IMPORTE QUAND nécessaire */
+
     int w = open(rep_path, O_WRONLY);
-    if (w < 0)
+
+    if (w < 0){
+        perror("write");
         return -1;
+    }  
 
     *rep_wr = w;
     free(rep_path);
     return 0;
 }
-
-/* ===========================
-   CLIENT : ouverture des pipes
-   =========================== */
 
 int client_open_request(int *req_wr){
 
@@ -213,10 +217,12 @@ int client_open_request(int *req_wr){
         return -1;
     }
 
-    /* bloque jusqu’à ce que le démon ait open() en lecture */
     int w = open(req_path, O_WRONLY);
-    if (w < 0)
+
+    if (w < 0){
+        perror("open");
         return -1;
+    }   
 
     *req_wr = w;
 
@@ -227,15 +233,19 @@ int client_open_request(int *req_wr){
 int client_open_reply(int *rep_rd)
 {
     char *rep_path = make_path(pipe_path, REPLY_PIPE);
-    if( !rep_path)return -1;
 
-    /* bloque jusqu’à ce que le démon ait open() en écriture */
+    if( !rep_path){
+        return -1;
+    }
+
     int r = open(rep_path, O_RDONLY);
 
     dprintf(STDOUT_FILENO, "[client] The pipe reply path is %s\n", rep_path);
 
-    if (r < 0)
+    if (r < 0){
+        perror("open");
         return -1;
+    } 
 
     *rep_rd = r;
     free(rep_path);

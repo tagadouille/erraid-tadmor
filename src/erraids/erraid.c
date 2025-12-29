@@ -91,13 +91,15 @@ int daemon_init(void) {
 void daemon_run(void) {
 
     // Divide erraid : one scan the the task and the other execute the request
+    pid_t pid = getpid();
+
     switch (fork()){
         case -1:
             perror("fork");
             break;
         case 0:
             // Launching of erraid servant
-            start_serve();
+            start_serve(pid);
             break;
         default:
             // Scan of the task

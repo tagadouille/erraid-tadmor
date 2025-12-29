@@ -1,1 +1,6 @@
-void start_serve();
+/**
+ * @brief Start the reading, processing and answering of client
+ * requests
+ * @param father the pid of erraid his father
+ */
+void start_serve(pid_t father);

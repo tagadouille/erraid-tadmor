@@ -53,7 +53,6 @@ void* client_recv_answer(uint16_t opcode)
         dprintf(STDERR_FILENO, "Error: opening reply pipe in client_recv_answer\n");
         return ret;
     }
-    //! NULL output ici voir ce qu'il se passe dans les fonc
 
     switch (opcode) {
 
@@ -78,6 +77,9 @@ void* client_recv_answer(uint16_t opcode)
 
         case CR:
         case RM:
+            ret = decode_answer(fd_rep);
+            if(ret == NULL) dprintf(STDERR_FILENO, "Error : an error occured while decoding a_answer\n");
+            break;
         case CB:
         case TM: {
             ret = decode_answer(fd_rep);
@@ -86,8 +88,7 @@ void* client_recv_answer(uint16_t opcode)
         }
 
         default:
-            dprintf(STDERR_FILENO,
-                    "Unknown opcode %u\n", opcode);
+            dprintf(STDERR_FILENO,"Unknown opcode %u\n", opcode);
     }
 
     close(fd_rep);
@@ -98,6 +99,16 @@ void* client_recv_answer(uint16_t opcode)
  * DAEMON : READ A SIMPLE REQUEST
  * ============================== */
 int daemon_read_simple(int* fd_req, simple_request_t *req){
+
+    if(pipe_file_read() < 0){
+        dprintf(2, "Error : an error occured while reading the pipe_file\n");
+        return -1;
+    }
+    
+    if(daemon_setup_pipes() < 0){
+        dprintf(2, "Error : an error occured while reading the pipe_file\n");
+        return -1;
+    }
 
     char *req_path = make_path_no_test(pipe_path, REQUEST_PIPE);
 

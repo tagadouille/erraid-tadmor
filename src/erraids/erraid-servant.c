@@ -8,9 +8,11 @@
 #include "communication/serialization/en_decode_struct.h"
 #include "communication/serialization/encode_response.h"
 
+#include <signal.h>
+
 static int is_servant_running = 1;
 
-static int proceed_request(simple_request_t* req, int fd_request, int* fd_response){
+static int proceed_request(simple_request_t* req, int fd_request, int* fd_response, pid_t father){
 
     if (daemon_read_simple(&fd_request, req) < 0) {
         dprintf(STDERR_FILENO, "An error occured while reading a simple request\n");
@@ -37,17 +39,42 @@ static int proceed_request(simple_request_t* req, int fd_request, int* fd_respon
         case SE:
         case SO:
             ret = encode_a_output(*fd_response, (a_output_t *)ans);
+
+            if(ret < 0){
+                write_log_msg("[servant] Error encoding a_output answer");
+            }
             break;
 
         case TX:
             ret = encode_a_timecode(*fd_response, (a_timecode_t *) ans);
+
+            if(ret < 0){
+                write_log_msg("[servant] Error encoding a_timecode answer");
+            }
             break ;
 
         case LS:
             ret = encode_a_list(*fd_response, (a_list_t *) ans);
-            dprintf(STDOUT_FILENO, "Sent %u tasks\n", ((a_list_t *)ans)->all_task.nbtask);
+
             if(ret < 0){
                 write_log_msg("[servant] Error encoding a_list answer");
+            }
+            break;
+        
+        case RM:
+            ret = encode_answer(*fd_response, (answer_t *) ans);
+
+            if(ret < 0){
+                write_log_msg("[servant] Error encoding answer");
+            }
+            else{
+                dprintf(1, "before\n");
+                if(((answer_t *) ans) -> anstype == OK){
+                    // Notify the father that the tree-structure changed
+                    dprintf(1, "after\n");
+                    kill(father, SIGUSR1);
+                }
+                dprintf(1, "yo\n");
             }
             break;
         default:
@@ -61,9 +88,9 @@ static int proceed_request(simple_request_t* req, int fd_request, int* fd_respon
     return ret;
 }
 
-void start_serve(){
+void start_serve(pid_t father){
 
-    write_log_msg("Creation of the twin ✌️🥀💔 is a success");
+    write_log_msg("Creation of the servant is a success");
 
     if (daemon_setup_pipes() < 0) {
         write_log_msg("[daemon servant] Error : failed to setup daemon pipes");
@@ -81,7 +108,7 @@ void start_serve(){
         
         simple_request_t req ;
 
-        if(proceed_request(&req, fd_request, &fd_response) < 0){
+        if(proceed_request(&req, fd_request, &fd_response, father) < 0){
             write_log_msg("[daemon servant] Error occured while proceeding the request");
             break;
         }
