@@ -48,7 +48,6 @@ static string_t *read_one_string(const char *buf, size_t size, size_t *offset)
     }
 
     memcpy(s->data, buf + *offset, len);
-    s->data[len] = '\0';
     s->length = len;
 
     *offset += len;
@@ -259,11 +258,11 @@ char **arguments_to_argv(const arguments_t *args)
         return NULL;
 
     // argv[0] = commande
-    argv[0] = strdup(string_get(args->command));
+    argv[0] = string_to_cstr(args->command);
 
     // arguments supplémentaires
     for (uint32_t i = 0; i < args->argc - 1; i++) {
-        argv[i + 1] = strdup(string_get(args->argv[i]));
+        argv[i + 1] = string_to_cstr(args->argv[i]);
     }
 
     // execvp() exige un NULL final

@@ -43,7 +43,7 @@ a_output_t* decode_a_output(int fd)
             return NULL;
 
         errcode = 0;
-        output = string_create(data, length);
+        output = string_create_from_cstr(data, length);
 
         return create_a_output_t(anstype, output, errcode);
     }

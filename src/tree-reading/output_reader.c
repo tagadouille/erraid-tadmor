@@ -35,7 +35,7 @@ int output_reader(const char* path, bool is_stderr){
         }else{
             //Detection of an anomaly
             if(nread != 0){
-                curr_output = string_create(buffer, nread);
+                curr_output = string_create_from_cstr(buffer, nread);
             }else{
                 break;
             }
