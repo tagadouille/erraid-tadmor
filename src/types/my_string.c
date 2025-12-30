@@ -142,7 +142,7 @@ void string_free(string_t* src){
     free(src);
 }
 
-const uint8_t* string_get(const string_t* str) {
+const char* string_get(const string_t* str) {
     if (!str) return NULL;
-    return str->data;
+    return string_to_cstr(str);
 }

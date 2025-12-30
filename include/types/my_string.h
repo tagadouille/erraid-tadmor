@@ -72,6 +72,6 @@ void string_free(string_t* src);
  * @param str Pointer to string_t
  * @return const char* C string representation
  */
-const uint8_t* string_get(const string_t* str);
+const char* string_get(const string_t* str);
 
 #endif

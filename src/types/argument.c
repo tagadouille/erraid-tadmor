@@ -40,7 +40,7 @@ static string_t *read_one_string(const char *buf, size_t size, size_t *offset)
     if (!s)
         return NULL;
 
-    s->data = malloc(len + 1);
+    s->data = malloc(len);
     if (!s->data)
     {
         free(s);
@@ -48,6 +48,7 @@ static string_t *read_one_string(const char *buf, size_t size, size_t *offset)
     }
 
     memcpy(s->data, buf + *offset, len);
+    s->data[len] = 0;
     s->length = len;
 
     *offset += len;
@@ -220,13 +221,13 @@ char **arguments_to_argv(const arguments_t *args)
 
     for (uint32_t i = 0; i < args->argc; i++) {
 
-        argv[i] = strndup(args->argv[i]->data, args->argv[i]->length);
+        argv[i] = string_to_cstr(args->argv[i]);
 
         if (!argv[i]) {
             for (uint32_t j = 0; j < i; j++)
                 free(argv[j]);
             free(argv);
-            dprintf(2, "strndup failed");
+            dprintf(2, "string_to_cstr failed");
             return NULL;
         }
     }

@@ -230,11 +230,23 @@ static int execute_simple_fd_only(const command_t *cmd, int outfd, int errfd) {
     int use_shell = 0;
 
     if (cmd->args.simple->argc == 1) {
-        use_shell = needs_shell(cmd->args.simple->argv[0]->data);
+        const char *cmd_str = string_get(cmd->args.simple->argv[0]);
+
+        if (!cmd_str)
+        {
+            return -1;
+        }
+        
+        use_shell = needs_shell(cmd_str);
     }
 
     if (use_shell) {
-        exitcode = execute_shell_line(cmd->args.simple->argv[0]->data, outfd, errfd);
+        const char *cmd_str = string_get(cmd->args.simple->argv[0]);
+        if (!cmd_str)
+        {
+            return -1;
+        }
+        exitcode = execute_shell_line(cmd_str, outfd, errfd);
     }
     else {
         char **argv = arguments_to_argv(cmd->args.simple);

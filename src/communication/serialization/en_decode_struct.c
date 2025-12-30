@@ -175,7 +175,7 @@ int encode_arguments(int fd, const arguments_t *args)
 
         if (!args->argv[i]) {
             dprintf(2, "[encode_arguments] WARNING: argv[%u] is NULL, encoding empty string\n", i);
-            string_t empty = { .length = 1, .data = "\0" };
+            string_t empty = { .length = 1, .data = (uint8_t *)0 };
 
             if (encode_string(fd, &empty) < 0){
                 dprintf(2, "[encode_arguments] Error : an error occured while encoding empty string\n");
