@@ -224,8 +224,7 @@ void arguments_free(arguments_t *a) {
     if (!a) return;
 
     if (a->command) {
-        if (a->command->data) { free(a->command->data); a->command->data = NULL; }
-        free(a->command);
+        string_free(a->command);
         a->command = NULL;
     }
 
@@ -234,8 +233,7 @@ void arguments_free(arguments_t *a) {
         uint32_t n = a->argc;
         for (uint32_t i = 0; i < n; ++i) {
             if (a->argv[i]) {
-                if (a->argv[i]->data) { free(a->argv[i]->data); a->argv[i]->data = NULL; }
-                free(a->argv[i]);
+                string_free(a->argv[i]);
                 a->argv[i] = NULL;
             }
         }
