@@ -32,10 +32,10 @@ static int client_handle_command(uint16_t code, const char *input){
 
         uint64_t task_id = 0;
 
-        if(code != LS && code == TM){
-            if (input && strlen(input) != 0) {
+        if(code == LS || code == TM){
 
-                dprintf(STDERR_FILENO, "ERROR: -q takes no argument\n");
+            if (input && strlen(input) != 0) {
+                dprintf(STDERR_FILENO, "ERROR: -q and -l takes no argument\n");
                 return -1;
             }
         }
@@ -60,7 +60,7 @@ static int client_handle_command(uint16_t code, const char *input){
             task_id = (uint64_t) tmp;
         }
 
-        // Création of the request :
+        // Creation of the request :
         simple_request_t* request = create_simple_request(code, task_id);
 
         if(request == NULL){
@@ -68,9 +68,6 @@ static int client_handle_command(uint16_t code, const char *input){
         }
 
         // Sending the request : 
-        //!Provisoire :
-        dprintf(STDOUT_FILENO, "Une requête de type %u et de id %zu a été faite et va être envoyé\n", request -> opcode, request -> task_id);
-
         if(client_send_simple(request) < 0){
             dprintf(STDERR_FILENO, "Error : an error occured while sending an simple request\n");
             return -1;
@@ -145,7 +142,7 @@ static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** a
         
     if (!input) {
         perror("strdup");
-        return EXIT_FAILURE;
+        return -1;
     }
 
     if(pipe_rename == 1){
@@ -158,7 +155,6 @@ static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** a
     free(input);
     return res;
 }
-
 
 /* --------------------------------------------------------------
  * main
@@ -176,7 +172,7 @@ int main(int argc, char **argv)
 
     // Handle the differents arguments
     //TODO rajouté les options qu'il manque
-    while ((opt = getopt(argc, argv, "qlxorep")) != -1) {
+    while ((opt = getopt(argc, argv, "qlxoreP")) != -1) {
         switch (opt) {
             case 'c': //TODO jalon-3
                 break;
@@ -184,8 +180,7 @@ int main(int argc, char **argv)
                 break;
             case 'n': //TODO jalon-3
                 break;
-            case 'r'://TODO jalon-3
-                opcode = RM; break;
+            case 'r': opcode = RM; break;
             case 'q': //TODO jalon-3
                 opcode = TM; break;
 
@@ -193,12 +188,13 @@ int main(int argc, char **argv)
             case 'x': opcode = TX; break;
             case 'o': opcode = SO; break;
             case 'e': opcode = SE; break;
-            case 'p': pipe_rename = 1; break;
+            case 'P': pipe_rename = 1; break;
             
             default:
-                dprintf(STDERR_FILENO, "Invalid argument \n");
+                dprintf(STDERR_FILENO, "Invalid option \n");
                 return EXIT_FAILURE;
         }
     }
+
     return argument_handler(opcode, pipe_rename, argc, argv);
 }

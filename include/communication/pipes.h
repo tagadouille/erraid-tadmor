@@ -1,7 +1,7 @@
 #ifndef PIPES_H
 #define PIPES_H
 
-#define PIPE_FILE "pipe_file.marcMonKoicoubebou"
+#define PIPE_FILE "pipe_file.te"
 
 /**
  * @brief rename the pipe_path
@@ -10,7 +10,7 @@
  */
 int pipe_path_rename(char* new_path);
 
-int daemon_setup_pipes(int *req_rd);
+int daemon_setup_pipes();
 int daemon_open_reply(int *rep_wr);
 
 int client_open_request(int *req_wr);

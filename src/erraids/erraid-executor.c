@@ -6,38 +6,45 @@
 #include <errno.h>
 #include <stdint.h>
 #include <sys/wait.h>
-#include <stdint.h>
+#include <unistd.h>
 #include <arpa/inet.h>
 #include <endian.h>
+#include <fcntl.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
 
 #define MAX_TASKS 1000000
 
-static time_t last_run_minute[MAX_TASKS];
+/* Helpers: convert to big endian*/
 
-static inline uint64_t to_be64(uint64_t x)
-{
+static inline uint64_t to_be64(uint64_t x) {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    return ((uint64_t)htonl(x & 0xFFFFFFFFULL) << 32) |
-            htonl(x >> 32);
+    return ((uint64_t)htonl(x & 0xFFFFFFFFULL) << 32) | htonl(x >> 32);
 #else
     return x;
 #endif
 }
 
-static inline uint16_t to_be16(uint16_t x)
-{
+static inline uint16_t to_be16(uint16_t x) {
     return htons(x);
 }
 
 /**
- * @brief Append one record to times-exitcodes 
- * @return 0 if on success, -1 if an error occured
+ * @brief Append one record to times-exitcodes
+ * @param path the path to the times-exitcodes file
+ * @param exitcode the exitcode
+ * @param timestamp the timestamp
  */
-static int append_times_exitcodes(const char *path, uint16_t exitcode, time_t timestamp)
-{
+static int append_times_exitcodes(const char *path, uint16_t exitcode, time_t timestamp) {
+
     int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
-    if (fd < 0)
+
+    if (fd < 0) {
+        perror("open");
         return -1;
+    }
 
     uint8_t buffer[10];
     uint64_t t_be = to_be64((uint64_t)timestamp);
@@ -47,7 +54,9 @@ static int append_times_exitcodes(const char *path, uint16_t exitcode, time_t ti
     memcpy(buffer + 8, &e_be, 2);
 
     ssize_t w = write(fd, buffer, sizeof(buffer));
+
     if (w != sizeof(buffer)) {
+        perror("write");
         close(fd);
         return -1;
     }
@@ -57,125 +66,296 @@ static int append_times_exitcodes(const char *path, uint16_t exitcode, time_t ti
     return 0;
 }
 
+/**
+ * @brief Inform is the command need to use the shell or not
+ * @return 0 if not, 1 if yes
+ */
+static int needs_shell(const char *cmd) {
 
-/* Execute a simple command and write stdout/stderr into task dir (overwrite),
-   append times-exitcodes entry. */
-static int execute_simple(const command_t *cmd, const char *timespath, const char * outpath, const char * errpath,
-                          int is_subcmd, time_t minute_now)
-{
-    if (!cmd){
-        write_log_msg("Error : The given command is NULL for execute_simple");
+    if (!cmd || !cmd[0]){
+        return 0;
+    }
+    
+    // Shell metacharacter :
+    const char *shell_chars = ";|&<>()$`";
+    
+    // Verification :
+    int in_single_quote = 0;
+    int in_double_quote = 0;
+    int escaped = 0;
+    
+    for (const char *p = cmd; *p; p++) {
+        if (escaped) {
+            escaped = 0;
+            continue;
+        }
+        
+        if (*p == '\\') {
+            escaped = 1;
+            continue;
+        }
+        
+        if (!in_double_quote && *p == '\'') {
+            in_single_quote = !in_single_quote;
+            continue;
+        }
+        
+        if (!in_single_quote && *p == '"') {
+            in_double_quote = !in_double_quote;
+            continue;
+        }
+        
+        // If we are in quotes, ignore some metacharacter
+        if (in_single_quote) continue;
+        
+        if (in_double_quote && (*p == '$' || *p == '`')) {
+            return 1;
+        }
+        
+        // Outside the quotes :
+        if (!in_single_quote && !in_double_quote) {
+            if (strchr(shell_chars, *p)) {
+                return 1;
+            }
+            
+            // Verify the combination of 2 characters
+            if ((*p == '&' && *(p+1) == '&') ||
+                (*p == '|' && *(p+1) == '|')) {
+                return 1;
+            }
+        }
+    }
+    
+    return 0;
+}
+
+/**
+ * @brief Execute a command using argv (simple command)
+ * @param outfd the file descriptor of the stdout file
+ * @param errfd the file descriptor of the stderr file
+ * @return the exit code
+ */
+static int execute_simple_fd(char **argv, int outfd, int errfd) {
+
+    if (!argv){
+        write_log_msg("The argv can't be null");
         return -1;
     }
 
-    int outfd = open(outpath, O_CREAT | O_WRONLY | O_APPEND, 0644);
-    int errfd = open(errpath, O_CREAT | O_WRONLY | O_APPEND, 0644);
-
-    if (outfd < 0 || errfd < 0) {
-        write_log_msg("Cannot open stdout/stderr at path %s", tasksdir);
-        if (outfd >= 0) close(outfd);
-        if (errfd >= 0) close(errfd);
+    if(!argv[0]){
+        write_log_msg("The argv[0] can't be null");
         return -1;
     }
 
     pid_t pid = fork();
     if (pid < 0) {
-        write_log_msg("fork failed: %s", strerror(errno));
-        close(outfd); close(errfd);
+        perror("fork");
         return -1;
     }
 
     if (pid == 0) {
-        
-        if (dup2(outfd, STDOUT_FILENO) < 0) _exit(127);
-        if (dup2(errfd, STDERR_FILENO) < 0) _exit(127);
-
-        char **argv = arguments_to_argv(cmd->args.simple);
-        if (!argv) _exit(127);
+        dup2(outfd, STDOUT_FILENO);
+        dup2(errfd, STDERR_FILENO);
 
         execvp(argv[0], argv);
+        perror("execvp");
         _exit(127);
     }
 
-    close(outfd);
-    close(errfd);
+    int status;
+    waitpid(pid, &status, 0);
+    return WIFEXITED(status) ? WEXITSTATUS(status) : 255;
+}
+
+/**
+ * @brief Execute a shell line (supports ;, |, &&, ||, redirections)
+ * @param outfd the file descriptor of the stdout file
+ * @param errfd the file descriptor of the stderr file
+ * @return the exit code
+ */
+static int execute_shell_line(const char *line, int outfd, int errfd) {
+
+    if (!line){
+        write_log_msg("The line can't be null");
+        return -1;
+    }
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("fork");
+        return -1;
+    }
+
+    if (pid == 0) {
+        dup2(outfd, STDOUT_FILENO);
+        dup2(errfd, STDERR_FILENO);
+
+        char *argv[] = { "sh", "-c", (char *)line, NULL };
+        execvp(argv[0], argv);
+        perror("execvp");
+        _exit(127);
+    }
 
     int status;
     waitpid(pid, &status, 0);
-    int exitcode = WIFEXITED(status) ? WEXITSTATUS(status) : 255;
+    return WIFEXITED(status) ? WEXITSTATUS(status) : 255;
+}
 
-    if (is_subcmd == 0) {
-        append_times_exitcodes(timespath, exitcode, minute_now);
+/**
+ * @brief Execute a simple command
+ * Determines if it should run via shell or execvp
+ * @param cmd the command to execute
+ * @param outfd the file descriptor of the stdout file
+ * @param errfd the file descriptor of the stderr file
+ */
+static int execute_simple_fd_only(const command_t *cmd, int outfd, int errfd) {
+
+    // Some verifications
+    if(!cmd){
+        write_log_msg("The command can't be null");
+        return -1;
+    }
+    if (cmd->type != SI) {
+        write_log_msg("Invalid command type for simple execution");
+        return -1;
     }
 
+    if(!cmd->args.simple){
+        write_log_msg("args.simple is null");
+        return -1;
+    }
+    
+    // Execution :
+    int exitcode = 0;
+    int use_shell = 0;
+
+    if (cmd->args.simple->argc == 1) {
+        use_shell = needs_shell(cmd->args.simple->argv[0]->data);
+    }
+
+    if (use_shell) {
+        exitcode = execute_shell_line(cmd->args.simple->argv[0]->data, outfd, errfd);
+    }
+    else {
+        char **argv = arguments_to_argv(cmd->args.simple);
+        if (!argv) {
+            write_log_msg("Failed to convert arguments to argv for command");
+            return -1;
+        }
+        
+        exitcode = execute_simple_fd(argv, outfd, errfd);
+        
+        if (argv) {
+
+            for (uint32_t i = 0; argv[i]; i++) {
+                free(argv[i]);
+            }
+            free(argv);
+        }
+    }
+    
     return exitcode;
 }
 
-
-static int execute_complexe(const command_t *cmd, const char *timespath, const char * outpath, const char * errpath, time_t minute_now){
-    
-    if (!cmd){
-        write_log_msg("Error : The given command is NULL for execute_complex");
-        return -1;
-    }
-    if(cmd->type != SQ){
-        write_log_msg("Error : The type of the given command is not SQ for execute_complex");
-        return -1;
-    }
-
-    int final_exitcode = 0;
-
-    uint32_t count = cmd->args.composed.count;
-    // ! Soit faire la condition O_TRUNC ici (pas sûr de mon coup)
-    for (uint32_t i = 0; i < count; i++) {
-
-        int ret = execute_simple(cmd->args.composed.cmds[i], timespath, outpath, errpath, 1, minute_now);
-
-        final_exitcode = ret;
-    }
-
-    append_times_exitcodes(timespath, final_exitcode, minute_now);
-
-    return final_exitcode;
-}
-
-/**
- * Execute a command in function of the type
+/** @brief Execute any command with given file descriptors
  * @param cmd the command to execute
- * @param timespath the path where the times-exitcodes file is
  * @param outfd the file descriptor of the stdout file
  * @param errfd the file descriptor of the stderr file
- * @param minute_now the minute when the task will be executed
+ * @param timespath the path to the times-exitcodes file
+ * @param minute_now the minute to execute the task
+ * @param is_top_level 1 if we are on the top of the command tree, 0 if not
+ * @return 0 on success, -1 on failure
  */
-static int execute_command(const command_t *cmd, const char *timespath, const char * outpath, const char * errpath, time_t minute_now){
-
+static int execute_any_command_fd(const command_t *cmd, int outfd, int errfd, const char *timespath, time_t minute_now,
+                                  int is_top_level) {
+    
     if (!cmd){
-        write_log_msg("Error : The given command is NULL for execute_command");
+        write_log_msg("The command can't be null");
+        return -1;
+    }
+    
+    switch (cmd->type) {
+        case SI: {
+            int exitcode = execute_simple_fd_only(cmd, outfd, errfd);
+            
+            if (is_top_level && timespath) {
+                append_times_exitcodes(timespath, exitcode, minute_now);
+            }
+            return exitcode;
+        }
+            
+        case SQ: {
+            int final_exitcode = 0;
+            
+            for (uint32_t i = 0; i < cmd->args.composed.count; i++) {
+
+                int exitcode = execute_any_command_fd(
+                    cmd->args.composed.cmds[i], 
+                    outfd, errfd, 
+                    NULL, minute_now,
+                    0  // No top-level for sub-command
+                );
+                final_exitcode = exitcode;
+            }
+            
+            if (is_top_level && timespath) {
+                append_times_exitcodes(timespath, final_exitcode, minute_now);
+            }
+            return final_exitcode;
+        }
+            
+        default:
+            write_log_msg("Unknown command type: %d", cmd->type);
+            return -1;
+    }
+}
+
+/** @brief Dispatch execution depending on command type
+ * @param cmd the command to execute
+ * @param timespath the path to the times-exitcodes file
+ * @param outpath the path to the stdout file
+ * @param errpath the path to the stderr file
+ * @return 0 if success, -1 on failure
+ */
+static int execute_command(const command_t *cmd, const char *timespath, const char *outpath, const char *errpath,
+                           time_t minute_now) {
+    if (!cmd) {
+        write_log_msg("The command can't be null");
         return -1;
     }
 
-    if (cmd->type == SI)
-        return execute_simple(cmd, timespath, outpath, errpath, 0, minute_now);
+    // Open file
+    int outfd = open(outpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    int errfd = open(errpath, O_CREAT | O_WRONLY | O_TRUNC, 0644);
 
-    if (cmd->type == SQ) // ! Soit faire la condition O_TRUNC ici (pas sûr de mon coup)
-        return execute_complexe(cmd, timespath, outpath, errpath, minute_now);
+    if (outfd < 0 || errfd < 0) {
+        perror("open");
+        if (outfd >= 0) close(outfd);
+        if (errfd >= 0) close(errfd);
+        return -1;
+    }
 
-    return -1;
+    // Execute
+    int exitcode = execute_any_command_fd(cmd, outfd, errfd, timespath, minute_now, 1);
+    
+    close(outfd);
+    close(errfd);
+    return exitcode;
 }
 
-/**
- * @brief proceed of the execution of the task
- * @param task the task to be executed
+/** @brief Execute a task
+ * @param task the task to execute
+ * @param minute_now the minute when the task is executed
  */
-static int execute_task(task_t* task, time_t minute_now){
+static int execute_task(task_t* task, time_t minute_now) {
+
     write_log_msg("Executing task %u", task->id);
 
+    // Construction of the path for each output file :
     char id[32];
     snprintf(id, sizeof(id), "%u", (unsigned)task->id);
 
-    // Creation of the pathes to the outputs files
     char outpath[PATH_MAX], errpath[PATH_MAX], timespath[PATH_MAX];
-
     if (snprintf(outpath, sizeof(outpath), "%s/%s/stdout", tasksdir, id) >= (int)sizeof(outpath)) {
         write_log_msg("outpath too long for task %u", task->id);
         return -1;
@@ -191,41 +371,28 @@ static int execute_task(task_t* task, time_t minute_now){
         return -1;
     }
 
-    // Delete the file if they already exist : 
-
-    if (unlink(outpath) < 0 && errno != ENOENT) {
-        perror("unlink");
-        write_log_msg("Error: can't delete file at path %s", outpath);
-        return -1;
-    }
-
-    if (unlink(errpath) < 0 && errno != ENOENT) {
-        perror("unlink");
-        write_log_msg("Error: can't delete file at path %s", errpath);
-        return -1;
-    }
-
-    // Execution
     return execute_command(task->cmd, timespath, outpath, errpath, minute_now);
 }
 
+int run_task_if_due(task_t *task, time_t minute_now) {
 
-int run_task_if_due(task_t *task, time_t minute_now){
-    
-    // Some verification of if the task must be execute
-     if (!task || !task->cmd || !task->timing)
+    if (!task) { 
+        write_log_msg("The task can't be null"); 
+        return -1; 
+    }
+
+    if (!task->cmd) { 
+        write_log_msg("The task command can't be null");
         return -1;
+    }
 
-    // If the task was already launched
-    if (last_run_minute[task->id] == minute_now)
+    if (!task->timing) {
+        write_log_msg("The task timing can't be null");
+        return -1;
+    }
+    
+    if (!timing_match_at(task->timing, minute_now)) 
         return 0;
 
-    if (!timing_match_at(task->timing, minute_now))
-        return 0;
-
-    int ret = execute_task(task, minute_now);
-    if (ret >= 0)
-        last_run_minute[task->id] = minute_now;
-
-    return ret;
+    return execute_task(task, minute_now);
 }

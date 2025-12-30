@@ -12,11 +12,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-void tadmor_disconnect(void)
-{
-    // Todo: implement disconnection logic if needed, but delete if not necessary
-}
-
 void tadmor_print_answer(answer_t* answer)
 {
     if (answer == NULL)
@@ -84,7 +79,7 @@ void tadmor_print_timecode(a_timecode_t* timecode)
 
     if (timecode->anstype == ERR)
     {
-        dprintf(STDERR_FILENO, "Error: %u\n", timecode->errcode);
+        dprintf(STDERR_FILENO, "Error: times-exitcodes file or task not found\n");
         return;
     }
     
@@ -116,26 +111,28 @@ void tadmor_print_output(a_output_t* output)
     // Print the output data
     if (output->output.data != NULL)
     {
-        dprintf(STDOUT_FILENO, "%s", output->output.data);
+        dprintf(STDOUT_FILENO, "%s\n", output->output.data);
+    }
+    else{
+        dprintf(STDOUT_FILENO, "\n");
     }
 }
 
 void tadmor_print_response(uint16_t opcode, void* res)
 {
-    switch (opcode)
-    {
-    case LS:
-        tadmor_print_list((a_list_t*)res);
-        break;
-    case TX:
-        tadmor_print_timecode((a_timecode_t*)res);
-        break;
-    case SO: // same treatment for STDOUT and STDERR
-    case SE:
-        tadmor_print_output((a_output_t*)res);
-        break;
-    default:
-        tadmor_print_answer((answer_t*)res);
-        break;
+    switch (opcode) {
+        case LS:
+            tadmor_print_list((a_list_t*)res);
+            break;
+        case TX:
+            tadmor_print_timecode((a_timecode_t*)res);
+            break;
+        case SO: // same treatment for STDOUT and STDERR
+        case SE:
+            tadmor_print_output((a_output_t*)res);
+            break;
+        default:
+            tadmor_print_answer((answer_t*)res);
+            break;
     }
 }

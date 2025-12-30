@@ -41,7 +41,6 @@ task_t *task_create(uint64_t id){
     return t;
 }
 
-//! Maybe change STDOUT_FILENO to something else
 void task_display(task_t* task){
     dprintf(STDOUT_FILENO, "%lu: ", task->id);
 
@@ -54,6 +53,7 @@ void task_display(task_t* task){
  * @brief Display the arg of a command
  */
 static void display_arg(string_t* string){
+
     if(string == NULL){
         dprintf(STDERR_FILENO, "The string can't be null");
     }
@@ -70,6 +70,7 @@ static void display_arg(string_t* string){
 }
 
 void command_display(command_t *cmd){
+
     if (cmd == NULL){
         dprintf(STDERR_FILENO, "NULL command\n");
         return;
@@ -81,19 +82,11 @@ void command_display(command_t *cmd){
                 dprintf(STDERR_FILENO, "Error : The simple command can't be null\n");
                 return;
             }
-            if(cmd->args.simple->command == NULL){
-                dprintf(STDERR_FILENO, "Error : NULL command string\n");
-                return;
-            }
-            if(cmd->args.simple->command->data == NULL){
-                dprintf(STDERR_FILENO, "Error : NULL command data\n");
-                return;
-            }
-            display_arg(cmd->args.simple->command);
+
             dprintf(STDOUT_FILENO, " ");
 
             if(cmd->args.simple->argv != NULL){
-                for (uint32_t i = 0; i < cmd->args.simple->argc - 1; i++){
+                for (uint32_t i = 0; i < cmd->args.simple->argc; i++){
                     display_arg(cmd->args.simple->argv[i]);
 
                     if(i != cmd->args.simple->argc - 1){
@@ -290,7 +283,7 @@ command_t* command_copy(const command_t* src) {
                 command_free(cmd);
                 return NULL;
             }
-            if (cmd->args.simple->command == NULL || cmd->args.simple->argv == NULL) {
+            if (cmd->args.simple->argv == NULL) {
                 dprintf(STDERR_FILENO, "Error copy arguments\n");
                 command_free(cmd);
                 return NULL;

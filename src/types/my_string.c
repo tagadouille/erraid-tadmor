@@ -17,7 +17,6 @@ string_t string_create(const void *data, ssize_t length){
         return s;
 
     memcpy(s.data, data, (size_t)length);
-
     s.length = (uint32_t)length;
 
     return s;
@@ -25,10 +24,25 @@ string_t string_create(const void *data, ssize_t length){
 
 string_t string_create_from_cstr(const char *str, ssize_t length)
 {
-    if(!str || length <= 0)
-        return (string_t){0};
+    string_t s = {NULL, 0};
 
-    return string_create((const void *)str, length);
+    if(!str) {
+        return s;
+    }
+
+    if(length < 0) {
+        length = (ssize_t)strlen(str);
+    }
+
+    s.data = malloc((size_t)length + 1);
+    if (!s.data)
+        return s;
+    
+    memcpy(s.data, str, (size_t)length);
+    s.data[length] = '\0';
+    s.length = (uint32_t)length;
+
+    return s;
 }
 
 char *string_to_cstr(const string_t *str)

@@ -17,6 +17,7 @@
 #include "erraids/erraid.h"
 
 int task_reader(const char* path, uint64_t task_id, Action_type action){
+
     curr_task = task_create(task_id);
 
     if(curr_task == NULL){
@@ -134,6 +135,7 @@ all_task_t* all_task_listing(const char* path){
 
 
 int task_finder(const char* path, char* task_id, Action_type action){
+
     DIR* dirp = opendir(path);
 
     if(dirp == NULL){
@@ -231,6 +233,7 @@ int aux_extract_cmd(const char* path){
 }
 
 int aux_extract_output(const char* path, char* folder_name, int (*func)(const char*, bool), bool is_stderr){
+
     int result = 0;
     //Construction of the path to the file
     char* new_path = make_path(path, folder_name);
