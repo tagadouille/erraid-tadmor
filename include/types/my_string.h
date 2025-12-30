@@ -19,17 +19,9 @@ typedef struct {
  * @brief Initialize a string_t from a buffer source.
  * @param data buffer source
  * @param length number of bytes
- * @return string_t Initialized string_t instance
+ * @return string_t* Initialized string_t instance
  */
-string_t string_create(const void* data, ssize_t length);
-
-/**
- * @brief Create a string_t from a C string with specified length.
- * @param str C string source
- * @param length number of bytes
- * @return string_t Initialized string_t instance
- */
-string_t string_create_from_cstr(const char* str, ssize_t length);
+string_t* string_create(const void* data, ssize_t length);
 
 /**
  * @brief Get data as C string (NULL terminated copy).
@@ -42,18 +34,18 @@ char *string_to_cstr(const string_t* str);
  * @brief Append two string_t instances.
  * @param str1 First string_t
  * @param str2 Second string_t
- * @return string_t New string_t containing the concatenation of str1 and str2
+ * @return string_t* New string_t containing the concatenation of str1 and str2
  */
-string_t string_append(const string_t* str1, const string_t* str2);
+string_t* string_append(const string_t* str1, const string_t* str2);
 
 /**
  * @brief Concatenate a string_t with a C string.
  * @param str1 string_t instance
  * @param data buffer source
  * @param length number of bytes
- * @return string_t New string_t containing the concatenation of str1 and str2
+ * @return string_t* New string_t containing the concatenation of str1 and str2
  */
-string_t string_concat(const string_t* str1, const void* data, ssize_t length);
+string_t* string_concat(const string_t* str1, const void* data, ssize_t length);
 
 /**
  * @brief deep copy a string_t instance.

@@ -5,42 +5,30 @@
 #include <stdlib.h>
 #include <string.h>
 
-string_t string_create(const void *data, ssize_t length){
+string_t *string_create(const void *data, ssize_t length){
 
-    string_t s = {NULL, 0};
+    string_t *s = calloc(1, sizeof(string_t));
+    if (!s) {
+        perror("calloc string_create");
+        return NULL;
+    }
 
-    if (!data || length <= 0)
-        return s;
-
-    s.data = malloc((size_t)length + 1);
-    if (!s.data)
-        return s;
-
-    memcpy(s.data, data, (size_t)length);
-    s.length = (uint32_t)length;
-
-    return s;
-}
-
-string_t string_create_from_cstr(const char *str, ssize_t length)
-{
-    string_t s = {NULL, 0};
-
-    if(!str) {
+    if(!data) {
         return s;
     }
 
     if(length < 0) {
-        length = (ssize_t)strlen(str);
+        length = (ssize_t)strlen((const char *)data);
     }
 
-    s.data = malloc((size_t)length + 1);
-    if (!s.data)
-        return s;
+    s->data = malloc((size_t)length);
+    if (!s->data) {
+        free(s);
+        return NULL;
+    }
     
-    memcpy(s.data, str, (size_t)length);
-    s.data[length] = '\0';
-    s.length = (uint32_t)length;
+    memcpy(s->data, data, (size_t)length);
+    s->length = (uint32_t)length;
 
     return s;
 }
@@ -51,49 +39,66 @@ char *string_to_cstr(const string_t *str)
         return NULL;
     }
 
-    char *out = malloc(str->length + 1);
+    char *out = malloc(str->length);
     if (!out){
         return NULL;
     }
 
     memcpy(out, str->data, (size_t)str->length);
-    out[str->length] = '\0';
     return out;
 }
 
-string_t string_append(const string_t* str1, const string_t* str2) {
-
-    string_t result = {NULL, 0};
+string_t *string_append(const string_t* str1, const string_t* str2) {
 
     if (!str1 || !str2)
-        return result;
+        return NULL;
 
-    result.data = malloc(str1->length + str2->length);
-    if (!result.data)
-        return result;
+    string_t *result = calloc(1, sizeof(string_t));
+    if (!result) {
+        perror("calloc string_append");
+        return NULL;
+    }
 
-    memcpy(result.data, str1->data, str1->length);
-    memcpy(result.data + str1->length, str2->data, str2->length);
+    result->length = str1->length + str2->length;
+    result->data = malloc(result->length);
 
-    result.length = str1->length + str2->length;
+    if (!result->data) {
+        perror("malloc string_append");
+        free(result);
+        return NULL;
+    }
+
+    memcpy(result->data, str1->data, str1->length);
+    memcpy(result->data + str1->length, str2->data, str2->length);
+
     return result;
 }
 
-string_t string_concat(const string_t* str1, const void* data, ssize_t length) {
+string_t *string_concat(const string_t* str1, const void* data, ssize_t length) {
 
-    string_t result = {NULL, 0};
+    if (!str1 || !data || length < 0){
+        dprintf(STDERR_FILENO, "string_concat: invalid arguments\n");
+        return NULL;
+    }
 
-    if (!str1 || !data || length <= 0)
-        return result;
+    string_t *result = calloc(1, sizeof(string_t));
+    if (!result) {
+        perror("calloc string_concat");
+        return NULL;
+    }
 
-    result.data = malloc(str1->length + length);
-    if (!result.data)
-        return result;
+    result->length = str1->length + (uint32_t)length;
+    result->data = malloc(result->length);
 
-    memcpy(result.data, str1->data, str1->length);
-    memcpy(result.data + str1->length, data, (size_t)length);
+    if (!result->data) {
+        perror("malloc string_concat");
+        free(result);
+        return NULL;
+    }
 
-    result.length = str1->length + (uint32_t)length;
+    memcpy(result->data, str1->data, str1->length);
+    memcpy(result->data + str1->length, data, (size_t)length);
+
     return result;
 }
 
@@ -114,14 +119,14 @@ string_t *string_copy(const string_t *src) {
         return NULL;
     }
 
-    dst->length = src->length;
-    if (dst->length == 0) {
-        dst->data = NULL;
-        if (!dst->data) { free(dst); return NULL; }
-        return dst;
+    dst->data = malloc((size_t)dst->length);
+    if (!dst->data) {
+        perror("malloc string_copy");
+        free(dst);
+        return NULL;
     }
 
-    dst->data = malloc((size_t)dst->length + 1);
+    memcpy(dst->data, src->data, dst->length);
     if (!dst->data) {
         perror("malloc string_copy");
         free(dst);

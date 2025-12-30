@@ -29,7 +29,6 @@ static string_t *read_one_string(const char *buf, size_t size, size_t *offset)
     uint32_t len = be32toh(len_be);
 
     if (len == 0) {
-        // skip, or return NULL : but NULL is correct (means invalid argument)
         return NULL;
     }
 

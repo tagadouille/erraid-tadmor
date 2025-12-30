@@ -73,7 +73,7 @@ int output_reader(const char* path, bool is_stderr) {
         }
         buffer[size] = '\0';
 
-        curr_output = string_create_from_cstr(buffer, size);
+        curr_output = *string_create(buffer, size);
     }
 
     free(buffer);

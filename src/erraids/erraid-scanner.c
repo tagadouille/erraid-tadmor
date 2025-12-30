@@ -8,6 +8,8 @@
 #include <time.h>
 #include <signal.h>
 
+#include "test.h"
+
 /**
  * All the tasks that was scanned
  */
@@ -81,6 +83,8 @@ static void scan_all_task(void) {
     write_log_msg("Scanning tasks directory…");
 
     all_task_t* new_tasks = all_task_listing(tasksdir);
+
+    test_all(tasksdir, 0);
     
     if (new_tasks == NULL) {
         write_log_msg("Error: an error occurred while scanning all the tasks of path %s", tasksdir);
