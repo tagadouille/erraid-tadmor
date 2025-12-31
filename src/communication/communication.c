@@ -117,7 +117,7 @@ int daemon_read_simple(int* fd_req, simple_request_t *req){
         return -1;
     }
 
-    int r = open(req_path, O_RDWR);
+    int r = open(req_path, O_RDONLY);
     free(req_path);
 
     if (r < 0){

@@ -23,11 +23,6 @@ static void servant_handle_signal(int sig) {
 
 static int proceed_request(simple_request_t* req, int fd_request, int* fd_response){
 
-    if (daemon_read_simple(&fd_request, req) < 0) {
-        dprintf(STDERR_FILENO, "An error occured while reading a simple request\n");
-        return -1;
-    }
-
     write_log_msg("[daemon servant] Received opcode = %u", req->opcode);
 
     void* ans = simple_request_handle(req, tasksdir);
@@ -36,7 +31,7 @@ static int proceed_request(simple_request_t* req, int fd_request, int* fd_respon
         write_log_msg("[daemon servant] Error : an error occured while handling a simple request");
         return -1;
     }
-
+    
     if (daemon_open_reply(fd_response) < 0){
         write_log_msg("[daemon servant] Error : an error occured while opening the reply pipe");
         return -1;
@@ -128,7 +123,7 @@ void start_serve(pid_t proc_father){
             write_log_msg("[daemon servant] Error while reading request");
             continue;
         }
-        
+
         if(proceed_request(&req, fd_request, &fd_response) < 0){
             write_log_msg("[daemon servant] Error occured while proceeding the request");
             break;
