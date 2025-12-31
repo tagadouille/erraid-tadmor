@@ -148,7 +148,9 @@ timing_t* timing_copy(const timing_t* src){
 }
 
 timing_t* timing_create_from_strings(const char *minutes_str, const char *hours_str, const char *days_of_week_str){
+
     timing_t* t = malloc(sizeof(timing_t));
+    
     if (!t) {
         perror("malloc");
         return NULL;

@@ -124,9 +124,10 @@ void command_free(command_t *cmd);
 void task_destroy(task_t *task);
 
 /**
- * @brief Executes the given command.
- * @param cmd Pointer to the command_t structure representing the command to execute.
+ * @brief Create a command from a string representation.
+ * @param str The string representation of the command.
+ * @return Pointer to the created command_t structure, or NULL on failure.
  */
-void command_execute(const command_t *cmd);
+command_t* command_create_from_string(const char* str);
 
 #endif

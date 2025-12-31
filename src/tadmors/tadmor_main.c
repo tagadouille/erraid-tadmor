@@ -97,21 +97,30 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
 
         // Initialize timing and command structures
         timing_t* timing = timing_create_from_strings(minutes_str, hours_str, days_of_week_str);
-        
+
+        if(timing == NULL){
+            dprintf(STDERR_FILENO, "[client_handle_command] Error creating timing structure\n");
+            return -1;
+        }
+
         if (is_abstract) {
             timing_set_abstract(timing);
         }
         
         dprintf(STDOUT_FILENO, "Timing structure initialized.\n");
 
-        // The command string is in `input`
-        // We need to create a command_t from it.
-        // This part will be more complex, involving serialization.
-        // For now, let's assume we have a function to do that.
-        dprintf(STDOUT_FILENO, "Command to execute: %s\n", input);
+        timing_show(timing);
+
+        dprintf(STDOUT_FILENO, "Command to execute: %s  Length %zu\n", input, strlen(input));
         
         // Placeholder for command creation
-        command_t command; // This should be created and filled.
+        command_t* command = command_create_from_string(input);
+
+        if(command == NULL){
+            dprintf(STDERR_FILENO, "[client_handle_command] Error creating command from string\n");
+            timing_free(timing);
+            return -1;
+        }
 
         dprintf(STDOUT_FILENO, "timing and command variables initialized.\n");
 
@@ -120,6 +129,54 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
         timing_free(timing);
     }
     return 0;
+}
+
+/**
+ * @brief Reconstruct the remaining arguments into a single string with spaces.
+ * @param argc number of arguments
+ * @param argv array of arguments
+ * @param start index to start from
+ * @return reconstructed string with spaces, or NULL if no arguments
+ */
+static char *reconstruct_command_string(int argc, char **argv, int start)
+{
+    if (start >= argc) {
+        dprintf(2, "[reconstruct_command_string] No arguments to reconstruct\n");
+        return NULL;
+    }
+
+    // Calculate the total length needed, including spaces
+    size_t total_len = 0;
+    for (int i = start; i < argc; i++) {
+        total_len += strlen(argv[i]);
+    }
+
+    // Add space for spaces between arguments and the null terminator
+    if (argc - start > 1) {
+        total_len += (argc - start - 1);
+    }
+
+    char *out = malloc(total_len + 1);
+    if (!out) {
+        perror("malloc");
+        return NULL;
+    }
+
+    // Concatenate arguments with spaces
+    char *current_pos = out;
+    for (int i = start; i < argc; i++) {
+
+        strcpy(current_pos, argv[i]);
+        current_pos += strlen(argv[i]);
+
+        if (i < argc - 1) {
+            *current_pos = ' ';
+            current_pos++;
+        }
+    }
+    *current_pos = '\0';
+
+    return out;
 }
 
 /** @brief Reconstruct the remaining arguments into one string
@@ -181,9 +238,11 @@ static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** a
     char* input = NULL;
 
     if(opcode == CR){
-
+        input = reconstruct_command_string(argc, argv, optind);
     } 
-    else input = reconstruct_arg(argc, argv, optind);
+    else {
+        input = reconstruct_arg(argc, argv, optind);
+    }
     
     int res = 0;
 
@@ -226,7 +285,7 @@ int main(int argc, char **argv)
     }
 
     // Handle the differents arguments
-    while ((opt = getopt(argc, argv, "c:m:H:d:nr:qlxoreP")) != -1) {
+    while ((opt = getopt(argc, argv, "cm:H:d:nr:qlxoreP")) != -1) {
         switch (opt) {
             case 'c': 
                 opcode = CR;

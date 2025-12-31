@@ -10,6 +10,7 @@
 #include "types/time_exitcode.h"
 #include "tree-reading/tree_reader.h"
 #include "erraids/erraid.h"
+#include <ctype.h>
 
 /**
  * @brief Create a new empty task with the given ID.
@@ -391,4 +392,97 @@ void task_destroy(task_t *task){
     }
 
     free(task);
+}
+
+command_t* command_create_from_string(const char* str) {
+
+    if (str == NULL || strlen(str) == 0) {
+        dprintf(STDERR_FILENO, "command_create_from_string: input string is NULL or empty\n");
+        return NULL;
+    }
+
+    // Create a mutable copy for strtok_r
+    char *str_copy = strdup(str);
+    if (str_copy == NULL) {
+        perror("strdup");
+        return NULL;
+    }
+
+    // Count the number of arguments
+    uint32_t argc = 0;
+    char *p = str_copy;
+
+    while (*p) {
+        // Skip leading spaces
+        while (*p && isspace(*p)) p++;
+
+        if (*p) {
+            argc++;
+            // Go to the end of the argument
+            while (*p && !isspace(*p)) p++;
+        }
+    }
+    free(str_copy);
+
+    if (argc == 0) {
+        dprintf(STDERR_FILENO, "command_create_from_string: no arguments found in string\n");
+        return NULL;
+    }
+
+    // Allocate structures
+    command_t *cmd = malloc(sizeof(command_t));
+    if (cmd == NULL) {
+        perror("malloc");
+        return NULL;
+    }
+    cmd->type = SI;
+
+    arguments_t *args = malloc(sizeof(arguments_t));
+    if (args == NULL) {
+        perror("malloc");
+        free(cmd);
+        return NULL;
+    }
+    args->argc = argc;
+    args->argv = malloc(sizeof(string_t*) * argc);
+
+    if (args->argv == NULL) {
+        perror("malloc");
+        free(args);
+        free(cmd);
+        return NULL;
+    }
+
+    cmd->args.simple = args;
+
+    // 3. Tokenize and create string_t for each argument
+    str_copy = strdup(str); // Another copy for the second tokenization
+    if (str_copy == NULL) {
+        perror("strdup");
+        command_free(cmd);
+        return NULL;
+    }
+
+    char *saveptr;
+    char *token = strtok_r(str_copy, " ", &saveptr);
+    uint32_t i = 0;
+
+    while (token != NULL && i < argc) {
+        
+        if (strlen(token) > 0) { // Ignore empty tokens
+            args->argv[i] = string_create(token, strlen(token));
+
+            if (args->argv[i] == NULL) {
+                dprintf(STDERR_FILENO, "string_create failed for argument %u\n", i);
+                command_free(cmd);
+                free(str_copy);
+                return NULL;
+            }
+            i++;
+        }
+        token = strtok_r(NULL, " ", &saveptr);
+    }
+
+    free(str_copy);
+    return cmd;
 }
