@@ -21,10 +21,17 @@
 #define PATH_MAX 4096
 #endif
 
-/* --------------------------------------------------------------
- * Mini-parser: take the full command line and dispatch it
- * -------------------------------------------------------------- */
-static int client_handle_command(uint16_t code, const char *input){
+/** @brief Mini-parser: take the full command line and dispatch it
+ * @param code the operation code
+ * @param input the input string (argument)
+ * @param minutes_str string representing minutes
+ * @param hours_str string representing hours
+ * @param days_of_week_str string representing days of the week
+ * @param is_abstract whether the task is abstract
+ * @return int 0 on success, -1 on failure
+ */
+static int client_handle_command(uint16_t code, const char *input, char *minutes_str,
+     char *hours_str, char *days_of_week_str, int is_abstract){
 
     dprintf(STDOUT_FILENO, "the input is %s\n", input);
 
@@ -85,20 +92,48 @@ static int client_handle_command(uint16_t code, const char *input){
         free(request);
     }
     else{
-        //TODO requête complexe jalon-3
+        // Handle complex request for task creation
+        dprintf(STDOUT_FILENO, "Handling complex request for task creation (CR)\n");
+
+        // Initialize timing and command structures
+        timing_t* timing = timing_create_from_strings(minutes_str, hours_str, days_of_week_str);
+        
+        if (is_abstract) {
+            timing_set_abstract(timing);
+        }
+        
+        dprintf(STDOUT_FILENO, "Timing structure initialized.\n");
+
+        // The command string is in `input`
+        // We need to create a command_t from it.
+        // This part will be more complex, involving serialization.
+        // For now, let's assume we have a function to do that.
+        dprintf(STDOUT_FILENO, "Command to execute: %s\n", input);
+        
+        // Placeholder for command creation
+        command_t command; // This should be created and filled.
+
+        dprintf(STDOUT_FILENO, "timing and command variables initialized.\n");
+
+        // The full implementation will involve creating a complex_request_t,
+        // serializing the timing and command, and sending it to the daemon.
+        timing_free(timing);
     }
     return 0;
 }
 
-/* --------------------------------------------------------------
- * Reconstruct the remaining arguments into one string
- * -------------------------------------------------------------- */
+/** @brief Reconstruct the remaining arguments into one string
+ * @param argc number of arguments
+ * @param argv array of arguments
+ * @param start index to start from
+ * @return reconstructed string without spaces, or NULL if no arguments
+ */
 static char *reconstruct_arg(int argc, char **argv, int start)
 {
     if (start >= argc)
         return NULL;
 
-    // Calculer la taille nécessaire (sans espaces)
+    // Calculate the necessary size without space
     size_t total = 0;
     for (int i = start; i < argc; i++) {
         for (size_t j = 0; j < strlen(argv[i]); j++) {
@@ -130,10 +165,26 @@ static char *reconstruct_arg(int argc, char **argv, int start)
 
 /**
  * @brief handle the argument
+ * @param opcode the operation code
+ * @param pipe_rename whether to rename the pipe
+ * @param argc number of arguments
+ * @param argv array of arguments
+ * @param minutes_str string representing minutes
+ * @param hours_str string representing hours
+ * @param days_of_week_str string representing days of the week
+ * @param is_abstract whether the task is abstract
+ * @return int 0 on success, -1 on failure
  */
-static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** argv){
+static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** argv,
+     char *minutes_str, char *hours_str, char *days_of_week_str, int is_abstract){
 
-    char* input = reconstruct_arg(argc, argv, optind);
+    char* input = NULL;
+
+    if(opcode == CR){
+
+    } 
+    else input = reconstruct_arg(argc, argv, optind);
+    
     int res = 0;
 
     if (input == NULL){
@@ -149,7 +200,7 @@ static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** a
         res = pipe_path_rename(input);
     }
     else{
-        res = client_handle_command(opcode, input);
+        res = client_handle_command(opcode, input, minutes_str, hours_str, days_of_week_str, is_abstract);
     }
     
     free(input);
@@ -164,6 +215,10 @@ int main(int argc, char **argv)
     int opt;
     int opcode = 0;
     int pipe_rename = 0;
+    char *minutes_str = NULL;
+    char *hours_str = NULL;
+    char *days_of_week_str = NULL;
+    int is_abstract = 0;
 
     if(pipe_file_read() < 0){
         dprintf(STDERR_FILENO, "LAUNCH ERRAID BEFORE TADMOR !!! \n");
@@ -171,14 +226,23 @@ int main(int argc, char **argv)
     }
 
     // Handle the differents arguments
-    //TODO rajouté les options qu'il manque
-    while ((opt = getopt(argc, argv, "qlxoreP")) != -1) {
+    while ((opt = getopt(argc, argv, "c:m:H:d:nr:qlxoreP")) != -1) {
         switch (opt) {
-            case 'c': //TODO jalon-3
+            case 'c': 
+                opcode = CR;
+                // The command is the remaining part of the arguments
                 break;
-            case 's': //TODO jalon-3
+            case 'm': 
+                minutes_str = optarg;
                 break;
-            case 'n': //TODO jalon-3
+            case 'H': 
+                hours_str = optarg;
+                break;
+            case 'd': 
+                days_of_week_str = optarg;
+                break;
+            case 'n': 
+                is_abstract = 1;
                 break;
             case 'r': opcode = RM; break;
             case 'q': //TODO jalon-3
@@ -196,5 +260,10 @@ int main(int argc, char **argv)
         }
     }
 
-    return argument_handler(opcode, pipe_rename, argc, argv);
+    if (is_abstract && (minutes_str || hours_str || days_of_week_str)) {
+        dprintf(STDERR_FILENO, "ERROR: -n option cannot be used with -m, -H, or -d\n");
+        return EXIT_FAILURE;
+    }
+
+    return argument_handler(opcode, pipe_rename, argc, argv, minutes_str, hours_str, days_of_week_str, is_abstract);
 }
