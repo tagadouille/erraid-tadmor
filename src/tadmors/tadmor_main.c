@@ -123,6 +123,9 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
         }
 
         dprintf(STDOUT_FILENO, "timing and command variables initialized.\n");
+        dprintf(STDOUT_FILENO, "Ready to send the request ! \n");
+
+        //TODO Complex request creation and sending
 
         // The full implementation will involve creating a complex_request_t,
         // serializing the timing and command, and sending it to the daemon.
