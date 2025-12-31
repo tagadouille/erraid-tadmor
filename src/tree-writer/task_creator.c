@@ -15,14 +15,15 @@
 #include <endian.h>
 #include <dirent.h>
 
-extern char tasksdir[PATH_MAX];
-
-uint64_t find_next_id()
-{
+/**
+ * @brief Find the next id not already used.
+ * @return new uint64_t id or 0 if no tasks.
+ */
+static uint64_t find_next_id() {
     // Use of the global tasksdir variable
     DIR *dir = opendir(tasksdir);
-    if (!dir)
-    {
+    if (!dir) {
+        dprintf(STDERR_FILENO, "[find_next_id] Error: could not open tasks directory '%s'\n", tasksdir);
         return 0;
     }
 
@@ -30,14 +31,18 @@ uint64_t find_next_id()
     int found = 0;
     struct dirent *entry;
 
-    while ((entry = readdir(dir)) != NULL)
-    {
+    while ((entry = readdir(dir)) != NULL) {
+
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
         char *endptr;
         uint64_t id = strtoull(entry->d_name, &endptr, 10);
-        if (*endptr == '\0' && entry->d_name[0] != '\0')
-        { // Ensure the entire name was a number
-            if (id > max_id || !found)
-            {
+        if (*endptr == '\0' && entry->d_name[0] != '\0') {
+            
+            // Ensure the entire name was a number
+            if (id > max_id || !found) {
                 max_id = id;
                 found = 1;
             }
@@ -45,37 +50,46 @@ uint64_t find_next_id()
     }
     closedir(dir);
     
-    if (found)
-    {
+    if (found) {
         return max_id + 1;
     }
-    else
-    {
+    else {
+        dprintf(STDERR_FILENO, "[find_next_id] Warning: no valid task IDs found in '%s', starting from 1\n", tasksdir);
         return 0;
     }
 }
 
-int write_timing_file(const char *path, const timing_t *t)
-{
+/**
+ * @brief Write the timing file.
+ * @param path path for the timing file.
+ * @param t timing to put in the file.
+ * @return 0 on success and -1 on failure.
+ */
+static int write_timing_file(const char *path, const timing_t *t) {
+    
     int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd < 0)
+    if (fd < 0){
+        perror("open");
         return -1;
+    }  
 
     uint64_t min_be = htobe64(t->minutes);
     uint32_t hrs_be = htobe32(t->hours);
 
-    if (write(fd, &min_be, 8) != 8)
-    {
+    if (write(fd, &min_be, 8) != 8) {
+        perror("write minutes");
         close(fd);
         return -1;
     }
-    if (write(fd, &hrs_be, 4) != 4)
-    {
+
+    if (write(fd, &hrs_be, 4) != 4) {
+        perror("write hours");
         close(fd);
         return -1;
     }
-    if (write(fd, &(t->daysofweek), 1) != 1)
-    {
+
+    if (write(fd, &(t->daysofweek), 1) != 1) {
+        perror("write daysofweek");
         close(fd);
         return -1;
     }
@@ -84,15 +98,27 @@ int write_timing_file(const char *path, const timing_t *t)
     return 0;
 }
 
+/**
+ * @brief Write a simple task command (SI) to a file descriptor.
+ * @param cmd_dir_path path for command.
+ * @param args arguments of the command.
+ * @return 0 on success, -1 on failure.
+ */
 int write_command_simple(const char *cmd_dir_path, const arguments_t *args)
 {
     if (mkdir(cmd_dir_path, 0755) < 0)
         return -1;
 
     char sub_path[PATH_MAX];
+    int len;
 
     // 1. Create cmd/type file (uint16, 'SI' = 0x5349)
-    snprintf(sub_path, sizeof(sub_path), "%s/type", cmd_dir_path);
+    len = snprintf(sub_path, sizeof(sub_path), "%s/type", cmd_dir_path);
+    if (len < 0 || (size_t)len >= sizeof(sub_path)) {
+        dprintf(STDERR_FILENO, "Error: path too long for 'type' file.\n");
+        return -1;
+    }
+
     int fd_type = open(sub_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd_type < 0)
         return -1;
@@ -102,7 +128,12 @@ int write_command_simple(const char *cmd_dir_path, const arguments_t *args)
     close(fd_type);
 
     // 2. Create cmd/argv file
-    snprintf(sub_path, sizeof(sub_path), "%s/argv", cmd_dir_path);
+    len = snprintf(sub_path, sizeof(sub_path), "%s/argv", cmd_dir_path);
+    if (len < 0 || (size_t)len >= sizeof(sub_path)) {
+        dprintf(STDERR_FILENO, "Error: path too long for 'argv' file.\n");
+        return -1;
+    }
+
     int fd_argv = open(sub_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd_argv < 0)
         return -1;
@@ -136,7 +167,14 @@ int create_task_dir(const timing_t *timing, const arguments_t *args)
 
     // Create task directory: tasksdir/ID
     char task_path[PATH_MAX];
-    snprintf(task_path, sizeof(task_path), "%s/%lu", tasksdir, task_id);
+    int len;
+
+    len = snprintf(task_path, sizeof(task_path), "%s/%lu", tasksdir, task_id);
+    if (len < 0 || (size_t)len >= sizeof(task_path)) {
+        dprintf(STDERR_FILENO, "Error: path too long for task directory.\n");
+        return -1;
+    }
+
     if (mkdir(task_path, 0755) < 0)
         return -1;
 
@@ -144,15 +182,27 @@ int create_task_dir(const timing_t *timing, const arguments_t *args)
     char sub_path[PATH_MAX];
 
     // timing file
-    snprintf(sub_path, sizeof(sub_path), "%s/timing", task_path);
+    len = snprintf(sub_path, sizeof(sub_path), "%s/timing", task_path);
+    if (len < 0 || (size_t)len >= sizeof(sub_path)) {
+        dprintf(STDERR_FILENO, "Error: path too long for 'timing' file.\n");
+        return -1;
+    }
     write_timing_file(sub_path, timing);
 
     // cmd directory
-    snprintf(sub_path, sizeof(sub_path), "%s/cmd", task_path);
-    write_command_simple_dir(sub_path, args);
+    len = snprintf(sub_path, sizeof(sub_path), "%s/cmd", task_path);
+    if (len < 0 || (size_t)len >= sizeof(sub_path)) {
+        dprintf(STDERR_FILENO, "Error: path too long for 'cmd' directory.\n");
+        return -1;
+    }
+    write_command_simple(sub_path, args); // Corrected function name
 
     // Initial empty files for logs as per specification
-    snprintf(sub_path, sizeof(sub_path), "%s/times-exitcodes", task_path);
+    len = snprintf(sub_path, sizeof(sub_path), "%s/times-exitcodes", task_path);
+    if (len < 0 || (size_t)len >= sizeof(sub_path)) {
+        dprintf(STDERR_FILENO, "Error: path too long for 'times-exitcodes' file.\n");
+        return -1;
+    }
     close(open(sub_path, O_WRONLY | O_CREAT | O_TRUNC, 0644));
 
     return (int)task_id;
