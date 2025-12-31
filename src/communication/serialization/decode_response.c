@@ -28,7 +28,7 @@ a_output_t* decode_a_output(int fd)
             return NULL;
         }
 
-        a_output_t *a_output = create_a_output_t(anstype, *output_ptr, errcode);
+        a_output_t *a_output = create_a_output_t(anstype, output_ptr, errcode);
         string_free(output_ptr);
         return a_output;
 
@@ -40,7 +40,7 @@ a_output_t* decode_a_output(int fd)
             return NULL;
         }
 
-        a_output_t *a_output = create_a_output_t(anstype, *output_ptr, 0);
+        a_output_t *a_output = create_a_output_t(anstype, output_ptr, 0);
         string_free(output_ptr);
         return a_output;
     }

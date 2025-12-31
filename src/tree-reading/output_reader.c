@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -11,17 +13,20 @@
 int output_reader(const char* path, bool is_stderr) {
     
     char* buffer = NULL;
+    size_t capacity = 0;
+    size_t size = 0;
+    int result = 0;
+    int fd = -1;
 
-    if(buffer_init(&buffer) == -1){
+    // Buffer initialization
+    capacity = 4096;
+    buffer = malloc(capacity);
+    if (!buffer) {
+        perror("malloc initial buffer");
         return -1;
     }
 
-    size_t capacity = BUFFER_SIZE;
-    size_t size = 0;
-    int result = 0;
-
-    int fd = open(path, O_RDONLY);
-
+    fd = open(path, O_RDONLY);
     if (fd < 0) {
         if (is_stderr)
             perror("open standard error file");
@@ -44,9 +49,8 @@ int output_reader(const char* path, bool is_stderr) {
 
         size += (size_t)nread;
 
-        // Enlarge the buffer if necessary :
+        // Enlarge the buffer if necessary
         if (size == capacity) {
-
             size_t new_capacity = capacity * 2;
             char* tmp = realloc(buffer, new_capacity);
             if (!tmp) {
@@ -59,27 +63,26 @@ int output_reader(const char* path, bool is_stderr) {
         }
     }
 
+    // Free the old curr_output if it exists
+    if (curr_output != NULL) {
+        string_free(curr_output);
+        curr_output = NULL;
+    }
+
     if (result == 0) {
 
-        if (size == capacity) {
-            char* tmp = realloc(buffer, capacity + 1);
-            if (!tmp) {
-                perror("realloc");
-                free(buffer);
-                close(fd);
-                return -1;
-            }
-            buffer = tmp;
+        curr_output = string_create(buffer, size);
+        if (!curr_output) {
+            dprintf(STDERR_FILENO, "output_reader: string_create failed\n");
+            result = -1;
         }
-        buffer[size] = '\0';
-
-        curr_output = *string_create(buffer, size);
     }
 
     free(buffer);
-    if (close(fd) != 0) {
+    if (fd >= 0 && close(fd) != 0) {
         perror("close");
         result = -1;
     }
+    
     return result;
 }

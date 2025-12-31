@@ -29,7 +29,7 @@ char g_run_dir[PATH_MAX] = {0};
 int g_log_fd = -1;
 char tasksdir[PATH_MAX] = "";
 
-string_t curr_output = {0};
+string_t* curr_output = NULL;
 time_array_t* curr_time = NULL;
 
 /* --------------------------- SIGNAL HANDLER ---------------------------- */

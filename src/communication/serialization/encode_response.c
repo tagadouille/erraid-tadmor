@@ -34,7 +34,7 @@ int encode_a_output(int fd, const a_output_t *ans)
             return -1;
         }
 
-        if (encode_string(fd, &ans->output) < 0){
+        if (encode_string(fd, ans->output) < 0){
             dprintf(STDERR_FILENO, "Error : an error occured while encoding string for encode_a_output\n");
             return -1;
         }

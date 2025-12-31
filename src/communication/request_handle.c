@@ -36,12 +36,15 @@ a_timecode_t* handle_tx(char *rundir, uint64_t id)
 
 a_output_t* handle_output(char *rundir, uint64_t id, bool is_stderr)
 {
-    // if is_stderr true read stderr else read stdout
     if (task_reader(rundir, id, is_stderr ? STDERR : OUTPUT) < 0) {
-        return create_a_output_t(ERR, curr_output, NF);
+
+        string_t* empty_string = string_create(NULL, 0);
+        a_output_t* err_output = create_a_output_t(ERR, empty_string, NF);
+        string_free(empty_string);
+        return err_output;
     }
 
-    return create_a_output_t(OK, curr_output, 0); // return output/error output
+    return create_a_output_t(OK, curr_output, 0);
 }
 
 answer_t* handle_rm(char *rundir, uint64_t id)

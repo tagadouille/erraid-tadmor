@@ -109,9 +109,9 @@ void tadmor_print_output(a_output_t* output)
     }
 
     // Use write() for a safe display
-    if (output->output.length > 0 && output->output.data != NULL)
+    if (output->output->length > 0 && output->output->data != NULL)
     {
-        if (write(STDOUT_FILENO, output->output.data, output->output.length) < 0) {
+        if (write(STDOUT_FILENO, output->output->data, output->output->length) < 0) {
             perror("write tadmor_print_output");
         }
     }
