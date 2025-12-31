@@ -13,27 +13,80 @@
 */
 int encode_complex_request(int fd, const complex_request_t *r)
 {
-    if (!r) return -1;
-    if (encode_uint16(fd, r->opcode) < 0) return -1;
-    if (encode_timing(fd, &r->timing) < 0) return -1;
+    if (!r) {
+        dprintf(STDERR_FILENO, "Error: request pointer is NULL in encode_complex_request.\n");
+        return -1;
+    }
 
+    dprintf(STDOUT_FILENO, "[encode_complex_request] Encoding complex request...\n");
+
+    // Encode the base fields : 
+    if (encode_uint16(fd, r->opcode) < 0) {
+        dprintf(STDERR_FILENO, "[encode_complex_request] Error: Failed to encode opcode.\n");
+        return -1;
+    }
+    dprintf(STDOUT_FILENO, "[encode_complex_request] Opcode: %u\n", r->opcode);
+
+    if (encode_timing(fd, &r->timing) < 0) {
+        dprintf(STDERR_FILENO, "[encode_complex_request] Error: Failed to encode timing.\n");
+        return -1;
+    }
+    dprintf(STDOUT_FILENO, "[encode_complex_request] Timing encoded successfully.\n");
+
+    // Create :
     if (r->opcode == CR) {
-        if (r->u.command.type == SI) {
-            if (encode_arguments(fd, r->u.command.args.simple) < 0) return -1;
-        } else {
-            // gérer les commandes composées si nécessaire
-            return -1; // ou autre logique
+
+        dprintf(STDOUT_FILENO, "[encode_complex_request] Opcode is CR, encoding command...\n");
+        if (!r->u.command) {
+            dprintf(STDERR_FILENO, "[encode_complex_request] Error: command is NULL for CR request.\n");
+            return -1;
         }
+
+        // Encode the command
+        if (encode_command(fd, r->u.command) < 0) {
+            dprintf(STDERR_FILENO, "[encode_complex_request] Error: Failed to encode command.\n");
+            return -1;
+        }
+        dprintf(STDOUT_FILENO, "[encode_complex_request] Command encoded successfully.\n");
         return 0;
-    } else if (r->opcode == CB) {
-        if (encode_uint16(fd, r->u.composed.type) < 0) return -1;
-        if (r->u.composed.nb_task > LIMIT_MAX_TASKS) return -1;
-        if (encode_uint32(fd, r->u.composed.nb_task) < 0) return -1;
-        for (uint32_t i = 0; i < r->u.composed.nb_task; ++i) {
-            if (encode_uint64(fd, r->u.composed.task_ids[i]) < 0) return -1;
+
+    }
+    // Combine :
+    else if (r->opcode == CB) {
+        
+        dprintf(STDOUT_FILENO, "[encode_complex_request] Opcode is CB, encoding composed task...\n");
+        if (!r->u.composed) {
+            dprintf(STDERR_FILENO, "[encode_complex_request] Error: composed is NULL for CB request.\n");
+            return -1;
         }
+
+        if (encode_uint16(fd, r->u.composed->type) < 0){
+            dprintf(STDERR_FILENO, "[encode_complex_request] Error: Failed to encode composed type.\n");
+            return -1;
+        }
+
+        if (r->u.composed->nb_task > LIMIT_MAX_TASKS) {
+            dprintf(STDERR_FILENO, "[encode_complex_request] Error: Task count %u exceeds limit %d.\n", r->u.composed->nb_task, LIMIT_MAX_TASKS);
+            return -1;
+        }
+
+        if (encode_uint32(fd, r->u.composed->nb_task) < 0){
+            dprintf(STDERR_FILENO, "[encode_complex_request] Error: Failed to encode number of tasks.\n");
+            return -1;
+        }
+        dprintf(STDOUT_FILENO, "[encode_complex_request]  Number of tasks: %u\n", r->u.composed->nb_task);
+
+        for (uint32_t i = 0; i < r->u.composed->nb_task; ++i) {
+            if (encode_uint64(fd, r->u.composed->task_ids[i]) < 0){
+                dprintf(STDERR_FILENO, "[encode_complex_request] Error: Failed to encode task ID at index %u.\n", i);
+                return -1;
+            }
+        }
+        dprintf(STDOUT_FILENO, "[encode_complex_request]  All task IDs encoded successfully.\n");
         return 0;
     }
+
+    dprintf(STDERR_FILENO, "[encode_complex_request] Error: Unknown opcode %u in encode_complex_request.\n", r->opcode);
     return -1;
 }
 

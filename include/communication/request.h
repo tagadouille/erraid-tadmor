@@ -37,8 +37,8 @@ typedef struct {
     timing_t timing;
 
     union{
-        command_t command;
-        composed_t composed; 
+        command_t* command;
+        composed_t* composed; 
     }u; //TODO find a better name
 
 }complex_request_t;

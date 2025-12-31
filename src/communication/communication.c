@@ -24,19 +24,38 @@ int client_send_simple(const simple_request_t *req)
     int fd_req;
 
     if (client_open_request(&fd_req) < 0) {
-        dprintf(STDERR_FILENO,
-                "Error: opening request pipe in client_send_simple\n");
+        dprintf(STDERR_FILENO, "Error: opening request pipe in client_send_simple\n");
         return -1;
     }
 
     if (encode_simple_request(fd_req, req) < 0) {
-        dprintf(STDERR_FILENO,
-                "Error: encoding request in client_send_simple\n");
+        dprintf(STDERR_FILENO, "Error: encoding request in client_send_simple\n");
         close(fd_req);
         return -1;
     }
 
-    /* IMPORTANT : fermeture = fin de message */
+    close(fd_req);
+    return 0;
+}
+
+/* ==============================
+ * CLIENT : SEND A COMPLEX REQUEST
+ * ==============================*/
+int client_send_complex(const complex_request_t *req)
+{
+    int fd_req;
+
+    if (client_open_request(&fd_req) < 0) {
+        dprintf(STDERR_FILENO, "Error: opening request pipe in client_send_complex\n");
+        return -1;
+    }
+
+    if (encode_complex_request(fd_req, req) < 0) {
+        dprintf(STDERR_FILENO,"Error: encoding request in client_send_complex\n");
+        close(fd_req);
+        return -1;
+    }
+
     close(fd_req);
     return 0;
 }

@@ -9,33 +9,92 @@
 
 int decode_complex_request(int fd, complex_request_t *r)
 {
-    if (!r) return -1;
-    if (decode_uint16(fd, &r->opcode) < 0) return -1;
-    if (decode_timing(fd, &r->timing) < 0) return -1;
+    if (!r) {
+        dprintf(STDERR_FILENO, "Error: request pointer is NULL in decode_complex_request.\n");
+        return -1;
+    }
 
+    dprintf(STDOUT_FILENO, "[decode_complex_request] Decoding complex request...\n");
+
+    if (decode_uint16(fd, &r->opcode) < 0) {
+        dprintf(STDERR_FILENO, "[decode_complex_request]Error: Failed to decode opcode.\n");
+        return -1;
+    }
+    dprintf(STDOUT_FILENO, "[decode_complex_request] Opcode: %u\n", r->opcode);
+
+    if (decode_timing(fd, &r->timing) < 0) {
+        dprintf(STDERR_FILENO, "[decode_complex_request] Error: Failed to decode timing.\n");
+        return -1;
+    }
+    dprintf(STDOUT_FILENO, "[decode_complex_request]  Timing decoded successfully.\n");
+
+    // Create :
     if (r->opcode == CR) {
-        if (r->u.command.type == SI) {
-            if (encode_arguments(fd, r->u.command.args.simple) < 0) return -1;
-        } else {
-            return -1; 
+        dprintf(STDOUT_FILENO, "[decode_complex_request] Opcode is CR, decoding command...\n");
+        
+        // Let decode_command handle the full decoding process
+        if (decode_command(fd, &r->u.command) < 0) {
+            dprintf(STDERR_FILENO, "[decode_complex_request] Error: Failed to decode command for CR request.\n");
+            return -1;
         }
+        dprintf(STDOUT_FILENO, "[decode_complex_request] Command decoded successfully.\n");
         return 0;
-    } else if (r->opcode == CB) {
-        if (decode_uint16(fd, &r->u.composed.type) < 0) return -1;
+
+    }
+    // Combine : 
+    else if (r->opcode == CB) {
+        dprintf(STDOUT_FILENO, "[decode_complex_request] Opcode is CB, decoding composed task...\n");
+
+        // Allocate memory for the composed structure
+        r->u.composed = calloc(1, sizeof(composed_t));
+        if (!r->u.composed) {
+            perror("calloc for composed failed");
+            return -1;
+        }
+
+        if (decode_uint16(fd, &r->u.composed->type) < 0) {
+            free(r->u.composed);
+            r->u.composed = NULL;
+            return -1;
+        }
+
         uint32_t n;
-        if (decode_uint32(fd, &n) < 0) return -1;
-        if (n > LIMIT_MAX_TASKS) return -1;
-        r->u.composed.nb_task = n;
-        r->u.composed.task_ids = calloc(n, sizeof(uint64_t));
-        if (!r->u.composed.task_ids) return -1;
+        if (decode_uint32(fd, &n) < 0) {
+            free(r->u.composed);
+            r->u.composed = NULL;
+            return -1;
+        }
+
+        if (n > LIMIT_MAX_TASKS) {
+            dprintf(STDERR_FILENO, "[decode_complex_request] Error: Task count %u exceeds limit %d.\n", n, LIMIT_MAX_TASKS);
+            free(r->u.composed);
+            r->u.composed = NULL;
+            return -1;
+        }
+        r->u.composed->nb_task = n;
+        dprintf(STDOUT_FILENO, "[decode_complex_request] Number of tasks: %u\n", n);
+
+        r->u.composed->task_ids = calloc(n, sizeof(uint64_t));
+        if (!r->u.composed->task_ids) {
+            free(r->u.composed);
+            r->u.composed = NULL;
+            return -1;
+        }
+
         for (uint32_t i = 0; i < n; ++i) {
-            if (decode_uint64(fd, &r->u.composed.task_ids[i]) < 0) {
-                free(r->u.composed.task_ids);
+            if (decode_uint64(fd, &r->u.composed->task_ids[i]) < 0) {
+                dprintf(STDERR_FILENO, "Error: Failed to decode task_id at index %u.\n", i);
+                free(r->u.composed->task_ids);
+                free(r->u.composed);
+                r->u.composed = NULL;
                 return -1;
             }
         }
+        dprintf(STDOUT_FILENO, "[decode_complex_request] All task IDs decoded successfully.\n");
         return 0;
     }
+
+    dprintf(STDERR_FILENO, "Error: Unknown opcode %u in decode_complex_request.\n", r->opcode);
     return -1;
 }
 

@@ -125,11 +125,32 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
         dprintf(STDOUT_FILENO, "timing and command variables initialized.\n");
         dprintf(STDOUT_FILENO, "Ready to send the request ! \n");
 
-        //TODO Complex request creation and sending
+        //Complex request creation and sending
+        complex_request_t* request = create_complex_request(code, timing, command, NULL);
 
-        // The full implementation will involve creating a complex_request_t,
-        // serializing the timing and command, and sending it to the daemon.
-        timing_free(timing);
+        if(request == NULL){
+            dprintf(STDERR_FILENO, "[client_handle_command] Error creating complex request\n");
+            command_free(command);
+            timing_free(timing);
+            return -1;
+        }
+
+        // Sending the request : 
+        if(client_send_complex(request) < 0){
+            dprintf(STDERR_FILENO, "Error : an error occured while sending an simple request\n");
+            return -1;
+        }
+
+        // Get the response
+        void* ans = client_recv_answer(code);
+
+        if (ans == NULL) {
+            dprintf(STDERR_FILENO, "Error receiving answer\n");
+            return -1;
+        }
+        // Print the answer
+        tadmor_print_response(code, ans);
+        free(request);
     }
     return 0;
 }
