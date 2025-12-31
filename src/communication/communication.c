@@ -41,8 +41,7 @@ int client_send_simple(const simple_request_t *req)
 /* ==============================
  * CLIENT : SEND A COMPLEX REQUEST
  * ==============================*/
-int client_send_complex(const complex_request_t *req)
-{
+int client_send_complex(const complex_request_t *req) {
     int fd_req;
 
     if (client_open_request(&fd_req) < 0) {
@@ -115,9 +114,9 @@ void* client_recv_answer(uint16_t opcode)
 }
 
 /* ==============================
- * DAEMON : READ A SIMPLE REQUEST
+ * DAEMON : READ A REQUEST
  * ============================== */
-int daemon_read_simple(int* fd_req, simple_request_t *req){
+int daemon_read(int* fd_req, void *req){
 
     if(pipe_file_read() < 0){
         dprintf(2, "Error : an error occured while reading the pipe_file\n");
@@ -146,7 +145,7 @@ int daemon_read_simple(int* fd_req, simple_request_t *req){
         
     *fd_req = r;
     /* daemon read until EOF (client close the pipe) */
-    return decode_simple_request(*fd_req, req);
+    return decode_request(*fd_req, req);
 }
 
 /* ================================

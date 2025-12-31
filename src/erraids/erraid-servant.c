@@ -12,15 +12,9 @@
 
 static int is_servant_running = 1;
 
-static int proceed_request(simple_request_t* req, int fd_request, int* fd_response, pid_t father){
+static int proceed_simple(simple_request_t* req, int* fd_response, pid_t father){
 
-    if (daemon_read_simple(&fd_request, req) < 0) {
-        dprintf(STDERR_FILENO, "An error occured while reading a simple request\n");
-        return -1;
-    }
-
-    write_log_msg("[daemon servant] Received opcode = %u", req->opcode);
-
+    // Handling the request :
     void* ans = simple_request_handle(req, tasksdir);
 
     if(ans == NULL){
@@ -33,8 +27,9 @@ static int proceed_request(simple_request_t* req, int fd_request, int* fd_respon
         return -1;
     }
 
-    int ret = 0 ;
+    int ret = 0;
 
+    // Send the result :
     switch (req->opcode){
         case SE:
         case SO:
@@ -68,13 +63,10 @@ static int proceed_request(simple_request_t* req, int fd_request, int* fd_respon
                 write_log_msg("[servant] Error encoding answer");
             }
             else{
-                dprintf(1, "before\n");
                 if(((answer_t *) ans) -> anstype == OK){
                     // Notify the father that the tree-structure changed
-                    dprintf(1, "after\n");
                     kill(father, SIGUSR1);
                 }
-                dprintf(1, "yo\n");
             }
             break;
         default:
@@ -82,6 +74,81 @@ static int proceed_request(simple_request_t* req, int fd_request, int* fd_respon
             ret = -1;
             break;
     }
+    return ret;
+}
+
+static int proceed_complex(complex_request_t* req, int* fd_response, pid_t father){
+
+    answer_t* ans = complex_request_handle(req, tasksdir);
+
+    if(ans == NULL){
+        write_log_msg("[daemon servant] Error : an error occured while handling a complex request");
+        return -1;
+    }
+
+    if (daemon_open_reply(fd_response) < 0){
+        write_log_msg("[daemon servant] Error : an error occured while opening the reply pipe");
+        return -1;
+    }
+
+    int ret = 0;
+
+    switch (req->opcode){
+        case CR:
+        case CB:
+            ret = encode_answer(*fd_response, ans);
+
+            if(ret < 0){
+                write_log_msg("[servant] Error encoding answer");
+            }
+            else{
+                // Notify the father that the tree-structure changed
+                kill(father, SIGUSR1);
+            }
+            break;
+        default:
+            write_log_msg("[servant] unknown opcode %u", req->opcode);
+            ret = -1;
+            break;
+    }
+    return ret;
+}
+
+static int proceed_request(int fd_request, int* fd_response, pid_t father){
+
+    void* req = NULL;
+
+    int val = daemon_read(&fd_request, req);
+
+    if (val < 0) {
+        dprintf(STDERR_FILENO, "An error occured while reading a simple request\n");
+        return -1;
+    }
+
+    int ret = 0;
+
+    // Proceed based on the type of request
+    // Simple :
+    if(val == 1){
+        simple_request_t* request = (simple_request_t*) req;
+
+        write_log_msg("[daemon servant] Received simple request with opcode = %u", request->opcode);
+
+        ret = proceed_simple(request, fd_response, father);
+
+        free(request);
+    }
+    // Complex :
+    else{
+        complex_request_t* request = (complex_request_t*) req;
+
+        write_log_msg("[daemon servant] Received complex request with opcode = %u", request->opcode);
+
+        ret = proceed_complex(request, fd_response, father);
+
+        free_complex_request(request);
+    }
+    
     close(*fd_response);
 
     *fd_response = -1 ;
@@ -105,10 +172,8 @@ void start_serve(pid_t father){
         int fd_request = -1;
 
         write_log_msg("[daemon servant] Waiting for simple request...");
-        
-        simple_request_t req ;
 
-        if(proceed_request(&req, fd_request, &fd_response, father) < 0){
+        if(proceed_request(fd_request, &fd_response, father) < 0){
             write_log_msg("[daemon servant] Error occured while proceeding the request");
             break;
         }

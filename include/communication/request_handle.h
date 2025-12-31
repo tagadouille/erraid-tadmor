@@ -49,4 +49,11 @@ answer_t *handle_tm(void);
  */
 void *simple_request_handle(simple_request_t *req, char *rundir);
 
+/**
+ * @brief Handle Complex request.
+ * @param req the complex_request_t structure
+ * @param rundir Base directory of task folders
+ */
+answer_t* complex_request_handle(complex_request_t *req, char *rundir);
+
 #endif

@@ -100,3 +100,56 @@ void* simple_request_handle(simple_request_t *req, char *rundir)
             return create_answer(ERR, req->task_id, NR);
     }
 }
+
+/**
+ * @brief Handle the create request (CR).
+ * @param rundir Base directory of task folders
+ * @param timing The timing structure
+ * @param command The command to execute
+ * @return answer_t* The answer structure
+ */
+static answer_t* handle_combine(char* rundir, timing_t timing, composed_t* composed){
+
+    //TODO COMBINE HANDLING LOGIC
+
+    // Placeholder for combine handling logic
+    // This function should implement the logic to handle the CB opcode
+    return create_answer(ERR, 0, NR); // Temporary return value
+}
+
+/**
+ * @brief Handle the create request (CR).
+ * @param rundir Base directory of task folders
+ * @param timing The timing structure
+ * @param command The command to execute
+ * @return answer_t* The answer structure
+ */
+static answer_t* handle_create(char* rundir, timing_t timing, command_t* command){
+
+    //TODO CREATE HANDLING LOGIC
+
+    // Placeholder for create handling logic
+    // This function should implement the logic to handle the CR opcode
+    return create_answer(ERR, 0, NR); // Temporary return value
+}
+
+answer_t* complex_request_handle(complex_request_t *req, char *rundir) {
+
+    if (req == NULL || rundir == NULL) {
+        dprintf(2, "Error : the request is NULL or the rundir is NULL");
+        return create_answer(ERR, 0, NR);
+    }
+
+     // handle request based on opcode :
+    switch (req->opcode) {
+
+        case CR:
+            return handle_create(rundir, req->timing, req->u.command);
+
+        case CB:
+            return handle_combine(rundir, req->timing, req->u.composed);
+
+        default: // unknown opcode
+            return create_answer(ERR, 0, NR);
+    }
+}

@@ -7,7 +7,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-int decode_complex_request(int fd, complex_request_t *r)
+/**
+ * @brief Decode a complex request from a file descriptor.
+ * @param fd The file descriptor to read from.
+ * @param r Pointer to the complex_request_t structure to populate.
+ * @return 0 on success, -1 on failure.
+ */
+static int decode_complex_request(int fd, complex_request_t *r)
 {
     if (!r) {
         dprintf(STDERR_FILENO, "Error: request pointer is NULL in decode_complex_request.\n");
@@ -98,8 +104,13 @@ int decode_complex_request(int fd, complex_request_t *r)
     return -1;
 }
 
-/* Simple request: OPCODE(uint16) + optional TASKID(uint64) */
-int decode_simple_request(int fd, simple_request_t *r)
+/**
+ * @brief Decode a simple request from a file descriptor.
+ * @param fd The file descriptor to read from.
+ * @param r Pointer to the simple_request_t structure to populate.
+ * @return 0 on success, -1 on failure.
+ */
+static int decode_simple_request(int fd, simple_request_t *r)
 {
     if (!r){
         dprintf(STDERR_FILENO, "Error : the request can't be NULL\n");
@@ -119,4 +130,38 @@ int decode_simple_request(int fd, simple_request_t *r)
         return -1;
     }
     return 0;
+}
+
+int decode_request(int fd, void *r) {
+
+    // Determine if the request is simple or complex based on opcode
+    uint16_t opcode;
+    if (decode_uint16(fd, &opcode) < 0) {
+        dprintf(STDERR_FILENO, "[decode_request] Error: Failed to decode opcode.\n");
+        return -1;
+    }
+
+    // Reset file descriptor position to re-read opcode in specific decoder
+    if (lseek(fd, -sizeof(uint16_t), SEEK_CUR) < 0) {
+        perror("lseek");
+        return -1;
+    }
+
+    if (opcode == CR || opcode == CB) {
+
+        if(decode_complex_request(fd, (complex_request_t *)r) < 0){
+            dprintf(STDERR_FILENO, "[decode_request] Error: Failed to decode complex request.\n");
+            return -1;
+        }
+        return 2;
+    }
+    
+    else {
+
+        if(decode_simple_request(fd, (simple_request_t *)r) < 0){
+            dprintf(STDERR_FILENO, "[decode_request] Error: Failed to decode simple request.\n");
+            return -1;
+        }
+        return 1;
+    }
 }
