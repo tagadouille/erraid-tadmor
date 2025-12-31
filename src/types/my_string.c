@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-string_t *string_create(const void *data, ssize_t length){
+string_t *string_create(const void *data, ssize_t length) {
 
     string_t *s = calloc(1, sizeof(string_t));
     if (!s) {
@@ -13,21 +13,27 @@ string_t *string_create(const void *data, ssize_t length){
         return NULL;
     }
 
-    if(!data) {
+    if (!data) {
         return s;
     }
 
-    if(length < 0) {
+    if (length < 0) {
         length = (ssize_t)strlen((const char *)data);
     }
 
-    s->data = malloc((size_t)length);
+    if (length == 0) {
+        return s;
+    }
+
+    s->data = malloc((size_t)length + 1); // Allocate space for null terminator
     if (!s->data) {
+        perror("malloc string_create");
         free(s);
         return NULL;
     }
     
     memcpy(s->data, data, (size_t)length);
+    s->data[length] = '\0'; // Add null terminator
     s->length = (uint32_t)length;
 
     return s;
@@ -35,16 +41,23 @@ string_t *string_create(const void *data, ssize_t length){
 
 char *string_to_cstr(const string_t *str)
 {
-    if (!str || !str->data){
+    if (!str) {
         return NULL;
     }
 
-    char *out = malloc(str->length);
-    if (!out){
+    // Allocate memory for the string data + null terminator
+    char *out = malloc(str->length + 1);
+    if (!out) {
+        perror("malloc string_to_cstr");
         return NULL;
     }
 
-    memcpy(out, str->data, (size_t)str->length);
+    // Copy data if it exists
+    if (str->length > 0 && str->data) {
+        memcpy(out, str->data, str->length);
+    }
+    out[str->length] = '\0';
+
     return out;
 }
 
@@ -60,7 +73,7 @@ string_t *string_append(const string_t* str1, const string_t* str2) {
     }
 
     result->length = str1->length + str2->length;
-    result->data = malloc(result->length);
+    result->data = malloc(result->length + 1); // Allocate space for null terminator
 
     if (!result->data) {
         perror("malloc string_append");
@@ -70,6 +83,7 @@ string_t *string_append(const string_t* str1, const string_t* str2) {
 
     memcpy(result->data, str1->data, str1->length);
     memcpy(result->data + str1->length, str2->data, str2->length);
+    result->data[result->length] = '\0'; // Add null terminator
 
     return result;
 }
@@ -88,7 +102,7 @@ string_t *string_concat(const string_t* str1, const void* data, ssize_t length) 
     }
 
     result->length = str1->length + (uint32_t)length;
-    result->data = malloc(result->length);
+    result->data = malloc(result->length + 1); // Allocate space for null terminator
 
     if (!result->data) {
         perror("malloc string_concat");
@@ -98,6 +112,7 @@ string_t *string_concat(const string_t* str1, const void* data, ssize_t length) 
 
     memcpy(result->data, str1->data, str1->length);
     memcpy(result->data + str1->length, data, (size_t)length);
+    result->data[result->length] = '\0'; // Add null terminator
 
     return result;
 }
@@ -113,28 +128,7 @@ string_t *string_copy(const string_t *src) {
         return NULL;
     }
 
-    string_t *dst = calloc(1, sizeof(string_t));
-    if (!dst) {
-        perror("calloc string_copy");
-        return NULL;
-    }
-
-    dst->data = malloc((size_t)dst->length);
-    if (!dst->data) {
-        perror("malloc string_copy");
-        free(dst);
-        return NULL;
-    }
-
-    memcpy(dst->data, src->data, dst->length);
-    if (!dst->data) {
-        perror("malloc string_copy");
-        free(dst);
-        return NULL;
-    }
-
-    memcpy(dst->data, src->data, dst->length);
-    return dst;
+    return string_create(src->data, src->length);
 }
 
 void string_free(string_t* src){
@@ -145,9 +139,4 @@ void string_free(string_t* src){
     src -> data = NULL;
     src -> length = 0;
     free(src);
-}
-
-const char* string_get(const string_t* str) {
-    if (!str) return NULL;
-    return string_to_cstr(str);
 }

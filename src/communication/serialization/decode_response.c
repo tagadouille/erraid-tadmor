@@ -9,44 +9,41 @@
 
 a_output_t* decode_a_output(int fd)
 {
-
     uint16_t anstype = 0;
-    uint16_t errcode = 0;
-
-    uint32_t length = 0;
-    char* data = NULL;
-
-    string_t output = {0};
-
-    if (decode_uint16(fd, &anstype) < 0)
+    if (decode_uint16(fd, &anstype) < 0) {
+        dprintf(STDERR_FILENO, "[decode_a_output] Error: can't decode uint16 anstype\n");
         return NULL;
-
-    if (anstype == (uint16_t)ERR) {
-        uint16_t ec;
-
-        if (decode_uint16(fd, &ec) < 0)
-            return NULL;
-
-        anstype = (uint16_t)ERR;
-        errcode = ec;
-        length = 0;
-        data = NULL;
-
-        output = *string_create(data, length);
-
-        return create_a_output_t(anstype, output, errcode);
-
-    } else if (anstype == (uint16_t)OK) {
-        anstype = (uint16_t)OK;
-
-        if (decode_string(fd, &output) < 0)
-            return NULL;
-
-        errcode = 0;
-
-        return create_a_output_t(anstype, output, errcode);
     }
 
+    if (anstype == (uint16_t)ERR) {
+        uint16_t errcode = 0;
+        if (decode_uint16(fd, &errcode) < 0) {
+            dprintf(STDERR_FILENO, "[decode_a_output] Error: can't decode uint16 errcode\n");
+            return NULL;
+        }
+
+        // Create an empty string
+        string_t *output_ptr = string_create(NULL, 0);
+        if (!output_ptr) {
+            return NULL;
+        }
+
+        a_output_t *a_output = create_a_output_t(anstype, *output_ptr, errcode);
+        string_free(output_ptr);
+        return a_output;
+
+    } else if (anstype == (uint16_t)OK) {
+
+        string_t *output_ptr = decode_string(fd);
+        if (!output_ptr) {
+            dprintf(2, "[decode_a_output] Error: can't decode output string\n");
+            return NULL;
+        }
+
+        a_output_t *a_output = create_a_output_t(anstype, *output_ptr, 0);
+        string_free(output_ptr);
+        return a_output;
+    }
     return NULL;
 }
 

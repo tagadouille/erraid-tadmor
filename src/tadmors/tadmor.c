@@ -108,14 +108,14 @@ void tadmor_print_output(a_output_t* output)
         return;
     }
 
-    // Print the output data
-    if (output->output.data != NULL)
+    // Use write() for a safe display
+    if (output->output.length > 0 && output->output.data != NULL)
     {
-        dprintf(STDOUT_FILENO, "%s\n", output->output.data);
+        if (write(STDOUT_FILENO, output->output.data, output->output.length) < 0) {
+            perror("write tadmor_print_output");
+        }
     }
-    else{
-        dprintf(STDOUT_FILENO, "\n");
-    }
+    dprintf(STDOUT_FILENO, "\n");
 }
 
 void tadmor_print_response(uint16_t opcode, void* res)
