@@ -9,7 +9,8 @@
  * @param base_path deamon root path.
  * @param timing the timing when the task will be executed (or not).
  * @param args arguments of the task.
+ * @return the id of the created task on success, -1 on failure.
  */
-int create_task_dir(const timing_t *timing, const arguments_t *args);
+int64_t create_task_dir(const timing_t *timing, const arguments_t *args);
 
 #endif

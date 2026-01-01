@@ -8,6 +8,7 @@
 #include "erraids/erraid.h"
 #include "types/time_exitcode.h"
 #include "tree-writer/task_annihilator.h"
+#include "tree-writer/task_creator.h"
 
 a_list_t* handle_ls(char *rundir)
 {
@@ -126,11 +127,9 @@ static answer_t* handle_combine(char* rundir, timing_t timing, composed_t* compo
  */
 static answer_t* handle_create(char* rundir, timing_t timing, command_t* command){
 
-    //TODO CREATE HANDLING LOGIC
-
-    // Placeholder for create handling logic
-    // This function should implement the logic to handle the CR opcode
-    return create_answer(ERR, 0, NR); // Temporary return value
+    int res = create_task_dir(&timing, command ->args.simple);
+    
+    return create_answer(OK, res, 0);
 }
 
 answer_t* complex_request_handle(complex_request_t *req, char *rundir) {
@@ -140,7 +139,7 @@ answer_t* complex_request_handle(complex_request_t *req, char *rundir) {
         return create_answer(ERR, 0, NR);
     }
 
-     // handle request based on opcode :
+    // handle request based on opcode :
     switch (req->opcode) {
 
         case CR:

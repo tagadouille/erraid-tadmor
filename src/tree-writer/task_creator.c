@@ -14,6 +14,8 @@
 #include <sys/types.h>
 #include <endian.h>
 #include <dirent.h>
+#include <stdio.h>
+#include <errno.h>
 
 /**
  * @brief Find the next id not already used.
@@ -104,8 +106,7 @@ static int write_timing_file(const char *path, const timing_t *t) {
  * @param args arguments of the command.
  * @return 0 on success, -1 on failure.
  */
-int write_command_simple(const char *cmd_dir_path, const arguments_t *args)
-{
+int write_command_simple(const char *cmd_dir_path, const arguments_t *args) {
     if (mkdir(cmd_dir_path, 0755) < 0)
         return -1;
 
@@ -120,11 +121,20 @@ int write_command_simple(const char *cmd_dir_path, const arguments_t *args)
     }
 
     int fd_type = open(sub_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd_type < 0)
+
+    if (fd_type < 0){
+        perror("open type file");
         return -1;
+    }
+
+    dprintf(1, "Writing command type 'SI' to %s\n", sub_path);
 
     uint16_t type_be = htobe16(0x5349);
-    write(fd_type, &type_be, 2);
+    if(write(fd_type, &type_be, 2) != 2){
+        perror("write type");
+        close(fd_type);
+        return -1;
+    }
     close(fd_type);
 
     // 2. Create cmd/argv file
@@ -135,11 +145,21 @@ int write_command_simple(const char *cmd_dir_path, const arguments_t *args)
     }
 
     int fd_argv = open(sub_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd_argv < 0)
+    if (fd_argv < 0){
+        perror("open argv file");
         return -1;
+    }
+
+    dprintf(1,"Writing command arguments to %s\n", sub_path);
 
     uint32_t argc_be = htobe32(args->argc);
-    write(fd_argv, &argc_be, 4);
+    if(write(fd_argv, &argc_be, 4) != 4){
+        perror("write argc");
+        close(fd_argv);
+        return -1;
+    }
+
+    dprintf(1, "Number of arguments: %u\n", args->argc);
 
     for (uint32_t i = 0; i < args->argc; i++)
     {
@@ -147,20 +167,37 @@ int write_command_simple(const char *cmd_dir_path, const arguments_t *args)
         if (!s)
             continue;
         uint32_t len_be = htobe32(s->length);
-        write(fd_argv, &len_be, 4);
-        write(fd_argv, s->data, s->length);
+
+        if(write(fd_argv, &len_be, 4) != 4){
+            perror("write argument length");
+            close(fd_argv);
+            return -1;
+        }
+
+        if(write(fd_argv, s->data, s->length) != (ssize_t)s->length){
+            perror("write argument data");
+            close(fd_argv);
+            return -1;
+        }
     }
     close(fd_argv);
     return 0;
 }
 
-int create_task_dir(const timing_t *timing, const arguments_t *args)
-{
-    if (tasksdir[0] == '\0')
-        return -1; // Ensure config is initialized
+int64_t create_task_dir(const timing_t *timing, const arguments_t *args) {
+
+    if (tasksdir[0] == '\0'){
+        dprintf(STDERR_FILENO, "Error: tasksdir is not set.\n");
+        return -1;
+    }
 
     // Ensure tasks directory exists
-    mkdir(tasksdir, 0755);
+    if(mkdir(tasksdir, 0755) < 0){
+        if (errno != EEXIST){
+            dprintf(STDERR_FILENO, "Error: could not create tasks directory '%s'\n", tasksdir);
+            return -1;
+        }
+    }
 
     // Find next ID
     uint64_t task_id = find_next_id();
@@ -175,8 +212,10 @@ int create_task_dir(const timing_t *timing, const arguments_t *args)
         return -1;
     }
 
-    if (mkdir(task_path, 0755) < 0)
+    if (mkdir(task_path, 0755) < 0){
+        perror("mkdir task directory");
         return -1;
+    }
 
     // Create internal files
     char sub_path[PATH_MAX];
@@ -187,7 +226,11 @@ int create_task_dir(const timing_t *timing, const arguments_t *args)
         dprintf(STDERR_FILENO, "Error: path too long for 'timing' file.\n");
         return -1;
     }
-    write_timing_file(sub_path, timing);
+    
+    if(write_timing_file(sub_path, timing) < 0){
+        dprintf(STDERR_FILENO, "Error: could not write timing file.\n");
+        return -1;
+    }
 
     // cmd directory
     len = snprintf(sub_path, sizeof(sub_path), "%s/cmd", task_path);
@@ -195,15 +238,10 @@ int create_task_dir(const timing_t *timing, const arguments_t *args)
         dprintf(STDERR_FILENO, "Error: path too long for 'cmd' directory.\n");
         return -1;
     }
-    write_command_simple(sub_path, args); // Corrected function name
-
-    // Initial empty files for logs as per specification
-    len = snprintf(sub_path, sizeof(sub_path), "%s/times-exitcodes", task_path);
-    if (len < 0 || (size_t)len >= sizeof(sub_path)) {
-        dprintf(STDERR_FILENO, "Error: path too long for 'times-exitcodes' file.\n");
+    if(write_command_simple(sub_path, args) < 0){
+        dprintf(STDERR_FILENO, "Error: could not write command files.\n");
         return -1;
     }
-    close(open(sub_path, O_WRONLY | O_CREAT | O_TRUNC, 0644));
 
-    return (int)task_id;
+    return (int64_t) task_id;
 }
