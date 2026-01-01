@@ -164,15 +164,12 @@ int main(int argc, char **argv)
     int opt;
     int opcode = 0;
     int pipe_rename = 0;
-
-    if(pipe_file_read() < 0){
-        dprintf(STDERR_FILENO, "LAUNCH ERRAID BEFORE TADMOR !!! \n");
-        return -1;
-    }
+    int have_P =0;
+    char pipedir[PATH_MAX] = {0};
 
     // Handle the differents arguments
     //TODO rajouté les options qu'il manque
-    while ((opt = getopt(argc, argv, "qlxorep:")) != -1) {
+    while ((opt = getopt(argc, argv, "qlxorep:P:")) != -1) {
         switch (opt) {
             case 'c': //TODO jalon-3
                 break;
@@ -181,20 +178,35 @@ int main(int argc, char **argv)
             case 'n': //TODO jalon-3
                 break;
             case 'r': opcode = RM; break;
-            case 'q': 
-                opcode = TM; break;
-
+            case 'q': opcode = TM; break;
             case 'l': opcode = LS; break;
             case 'x': opcode = TX; break;
             case 'o': opcode = SO; break;
             case 'e': opcode = SE; break;
             case 'p': pipe_rename = 1; break;
-            
+            case 'P':
+                strncpy(pipedir, optarg, sizeof(pipedir)-1);
+                pipedir[sizeof(pipedir)-1] = '\0';
+                have_P = 1;
+                break;
             default:
                 dprintf(STDERR_FILENO, "Invalid option \n");
                 return EXIT_FAILURE;
         }
     }
-
+    if (have_P) {
+        // override pipe_path directement
+        strncpy(pipe_path, pipedir, sizeof(pipe_path)-1);
+        pipe_path[sizeof(pipe_path)-1] = '\0';
+    } else {
+        if (pipe_file_read() < 0) {
+            dprintf(STDERR_FILENO, "LAUNCH ERRAID BEFORE TADMOR !!!\n");
+            return EXIT_FAILURE;
+        }
+    }
+    if (!pipe_rename && opcode == 0) {
+        dprintf(STDERR_FILENO, "No command specified\n");
+        return EXIT_FAILURE;
+    }
     return argument_handler(opcode, pipe_rename, argc, argv);
 }
