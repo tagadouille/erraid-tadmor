@@ -309,7 +309,7 @@ int main(int argc, char **argv)
     }
 
     // Handle the differents arguments
-    while ((opt = getopt(argc, argv, "cm:H:d:nr:qlxoreP")) != -1) {
+    while ((opt = getopt(argc, argv, "cm:H:d:nqlxoreP")) != -1) {
         switch (opt) {
             case 'c': 
                 opcode = CR;
