@@ -116,7 +116,12 @@ static int proceed_complex(complex_request_t* req, int* fd_response, pid_t fathe
 
 static int proceed_request(int fd_request, int* fd_response, pid_t father){
 
-    void* req = NULL;
+    void* req = malloc(sizeof(complex_request_t));
+
+    if(req == NULL){
+        write_log_msg("[daemon servant] Error : an error occured while allocating memory for the request");
+        return -1;
+    }
 
     int val = daemon_read(&fd_request, req);
 

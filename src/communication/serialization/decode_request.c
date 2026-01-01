@@ -13,7 +13,7 @@
  * @param r Pointer to the complex_request_t structure to populate.
  * @return 0 on success, -1 on failure.
  */
-static int decode_complex_request(int fd, complex_request_t *r)
+static int decode_complex_request(int fd, complex_request_t *r, uint16_t opcode)
 {
     if (!r) {
         dprintf(STDERR_FILENO, "Error: request pointer is NULL in decode_complex_request.\n");
@@ -22,10 +22,8 @@ static int decode_complex_request(int fd, complex_request_t *r)
 
     dprintf(STDOUT_FILENO, "[decode_complex_request] Decoding complex request...\n");
 
-    if (decode_uint16(fd, &r->opcode) < 0) {
-        dprintf(STDERR_FILENO, "[decode_complex_request]Error: Failed to decode opcode.\n");
-        return -1;
-    }
+    r->opcode = opcode; // Use the opcode that was already read
+    
     dprintf(STDOUT_FILENO, "[decode_complex_request] Opcode: %u\n", r->opcode);
 
     if (decode_timing(fd, &r->timing) < 0) {
@@ -110,20 +108,19 @@ static int decode_complex_request(int fd, complex_request_t *r)
  * @param r Pointer to the simple_request_t structure to populate.
  * @return 0 on success, -1 on failure.
  */
-static int decode_simple_request(int fd, simple_request_t *r)
+static int decode_simple_request(int fd, simple_request_t *r, uint16_t opcode)
 {
     if (!r){
         dprintf(STDERR_FILENO, "Error : the request can't be NULL\n");
         return -1;
     }
-    dprintf(2, "[daemon] decoding opcode\n");
-    if (decode_uint16(fd, &r->opcode) < 0){
-        dprintf(STDERR_FILENO, "Error : an error occured while decoding uint16 for the given opcode : %u \n", r->opcode);
-        return -1;
-    }
+    r->opcode = opcode; // Use the opcode that was already read
+    dprintf(2, "[daemon] opcode is %u\n", r->opcode);
+
     if (r->opcode == LS || r->opcode == TM){
         return 0;
     }
+
     dprintf(2, "[daemon] decoding task_id\n");
     if (decode_uint64(fd, &r->task_id) < 0){
         dprintf(STDERR_FILENO, "Error : there's no uint64 here\n");
@@ -134,34 +131,25 @@ static int decode_simple_request(int fd, simple_request_t *r)
 
 int decode_request(int fd, void *r) {
 
-    // Determine if the request is simple or complex based on opcode
+    // Read the opcode to determine the request type
     uint16_t opcode;
     if (decode_uint16(fd, &opcode) < 0) {
         dprintf(STDERR_FILENO, "[decode_request] Error: Failed to decode opcode.\n");
         return -1;
     }
 
-    // Reset file descriptor position to re-read opcode in specific decoder
-    if (lseek(fd, -sizeof(uint16_t), SEEK_CUR) < 0) {
-        perror("lseek");
-        return -1;
-    }
-
     if (opcode == CR || opcode == CB) {
-
-        if(decode_complex_request(fd, (complex_request_t *)r) < 0){
+        if(decode_complex_request(fd, (complex_request_t *)r, opcode) < 0){
             dprintf(STDERR_FILENO, "[decode_request] Error: Failed to decode complex request.\n");
             return -1;
         }
-        return 2;
+        return 2; // Represents a complex request
     }
-    
     else {
-
-        if(decode_simple_request(fd, (simple_request_t *)r) < 0){
+        if(decode_simple_request(fd, (simple_request_t *)r, opcode) < 0){
             dprintf(STDERR_FILENO, "[decode_request] Error: Failed to decode simple request.\n");
             return -1;
         }
-        return 1;
+        return 1; // Represents a simple request
     }
 }

@@ -74,7 +74,7 @@ void* simple_request_handle(simple_request_t *req, char *rundir)
 {
     if (req == NULL || rundir == NULL) {
         dprintf(2, "Error : the request is NULL or the rundir is NULL");
-        return create_answer(ERR, 0, NR);
+        return NULL;
     }
 
     switch (req->opcode) { // handle request based on opcode
@@ -136,7 +136,7 @@ answer_t* complex_request_handle(complex_request_t *req, char *rundir) {
 
     if (req == NULL || rundir == NULL) {
         dprintf(2, "Error : the request is NULL or the rundir is NULL");
-        return create_answer(ERR, 0, NR);
+        return NULL;
     }
 
     // handle request based on opcode :
