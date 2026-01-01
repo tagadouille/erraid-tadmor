@@ -22,44 +22,30 @@ int erraid_get_rundir(char *out, size_t len) {
 
 /* ---------------------------- SET RUNDIR ------------------------------- */
 
-int erraid_set_rundir(const char *rundir, const char* pipedir) {
+int erraid_set_rundir(const char *rundir, const char* pipedir)
+{
+    if (!rundir || !pipedir) {
+        errno = EINVAL;
+        return -1;
+    }
 
-    // Verification
-    if(pipedir == NULL){
-        dprintf(STDERR_FILENO, "Error : The pipe directory can't be null\n");
-        return -1;
-    }
-    if(rundir == NULL){
-        dprintf(STDERR_FILENO, "Error : The rundir directory can't be null\n");
-        return -1;
-    }
     if (strlen(rundir) >= sizeof(g_run_dir)) {
-        dprintf(STDERR_FILENO, "Error : The rundir directory is too big\n");
-        errno = EINVAL;
+        errno = ENAMETOOLONG;
         return -1;
     }
+
     if (strlen(pipedir) >= sizeof(pipe_path)) {
-        dprintf(STDERR_FILENO, "Error : The pipepath directory is too big\n");
-        errno = EINVAL;
+        errno = ENAMETOOLONG;
         return -1;
     }
-    // Copie of the pathes
-    strncpy(g_run_dir, rundir, sizeof(g_run_dir)-1);
-    g_run_dir[sizeof(g_run_dir)-1] = '\0';
 
-    strncpy(pipe_path, pipedir, sizeof(pipe_path)-1);
+    strncpy(g_run_dir, rundir, sizeof(g_run_dir) - 1);
+    g_run_dir[sizeof(g_run_dir) - 1] = '\0';
 
-    size_t len = strlen(pipe_path);
-
-    if (len + strlen("/pipes") + 1 > sizeof(pipe_path))
-        return -1;
-
-    memcpy(pipe_path + len, "/pipes", strlen("/pipes") + 1);
-    
-    pipe_path[sizeof(pipe_path)-1] = '\0';
+    strncpy(pipe_path, pipedir, sizeof(pipe_path) - 1);
+    pipe_path[sizeof(pipe_path) - 1] = '\0';
 
     dprintf(STDOUT_FILENO, "Pipe_path %s\n", pipe_path);
-
     return 0;
 }
 

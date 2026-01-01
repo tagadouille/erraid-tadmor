@@ -59,11 +59,15 @@ int daemon_init(void) {
 
     if (ensure_rundir() != 0) return -1;
 
+    if (mkdir_p(pipe_path) != 0) {
+        perror("mkdir_p(pipe_path)");
+        return -1;
+    }
+
     if(pipe_file_write() < 0){
         dprintf(STDERR_FILENO, "Error : can't write in the pipe_file\n");
+        return -1;
     }
-    
-    if (chdir(g_run_dir) != 0) { fprintf(stderr, "chdir failed: %s\n", strerror(errno)); }
 
     if (!g_foreground_mode) {
         // Daemonize only if not in foreground mode
@@ -78,6 +82,8 @@ int daemon_init(void) {
         if (pid > 0) _exit(EXIT_SUCCESS);
 
         umask(0);
+
+        if (chdir(g_run_dir) != 0) { fprintf(stderr, "chdir failed: %s\n", strerror(errno)); }
 
         g_log_fd = open(g_log_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
         if (g_log_fd < 0) {
