@@ -9,6 +9,7 @@
 #include "types/time_exitcode.h"
 #include "tree-writer/task_annihilator.h"
 #include "tree-writer/task_creator.h"
+#include "tree-writer/task_combinator.h"
 
 a_list_t* handle_ls(char *rundir)
 {
@@ -111,11 +112,12 @@ void* simple_request_handle(simple_request_t *req, char *rundir)
  */
 static answer_t* handle_combine(char* rundir, timing_t timing, composed_t* composed){
 
-    //TODO COMBINE HANDLING LOGIC
+    int64_t id = combine_and_destroy_tasks(&timing, composed);
 
-    // Placeholder for combine handling logic
-    // This function should implement the logic to handle the CB opcode
-    return create_answer(ERR, 0, NR); // Temporary return value
+    if(id == -1){
+        return create_answer(ERR, 0, NF);
+    }
+    return create_answer(OK, id, 0);
 }
 
 /**
