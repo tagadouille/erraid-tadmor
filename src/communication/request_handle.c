@@ -16,7 +16,7 @@ a_list_t* handle_ls(char *rundir)
     all_task_t *list = all_task_listing(rundir); // get list of all tasks
     
     if (list == NULL) {
-        return create_a_list(ERR, 0, NULL);
+        return create_a_list(OK, 0, NULL);
     }
 
     return create_a_list(OK, list->nbtask, list->all_task); // return list of tasks

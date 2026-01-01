@@ -355,11 +355,11 @@ int main(int argc, char **argv) {
     char *days_of_week_str = NULL;
 
     int is_abstract = 0;
-
     command_type_t combination_type = 0;
+    int combination_flag = 0;
 
     if(pipe_file_read() < 0){
-        dprintf(STDERR_FILENO, "LAUNCH ERRAID BEFORE TADMOR !!! \n");
+        dprintf(STDERR_FILENO, "You must launch erraid before tadmor. \n");
         return -1;
     }
 
@@ -371,16 +371,31 @@ int main(int argc, char **argv) {
                 // The command is the remaining part of the arguments
                 break;
             case 's':
+                if (combination_flag) {
+                    dprintf(STDERR_FILENO, "ERROR: Options -s, -i, and -p cannot be combined.\n");
+                    return EXIT_FAILURE;
+                }
                 opcode = CB;
                 combination_type = SQ;
+                combination_flag = 1;
                 break;
             case 'i':
+                if (combination_flag) {
+                    dprintf(STDERR_FILENO, "ERROR: Options -s, -i, and -p cannot be combined.\n");
+                    return EXIT_FAILURE;
+                }
                 opcode = CB;
                 combination_type = IF;
+                combination_flag = 1;
                 break;
             case 'p':
+                if (combination_flag) {
+                    dprintf(STDERR_FILENO, "ERROR: Options -s, -i, and -p cannot be combined.\n");
+                    return EXIT_FAILURE;
+                }
                 opcode = CB;
                 combination_type = PL;
+                combination_flag = 1;
                 break;
             case 'm': 
                 minutes_str = optarg;
@@ -408,6 +423,11 @@ int main(int argc, char **argv) {
                 dprintf(STDERR_FILENO, "Invalid option \n");
                 return EXIT_FAILURE;
         }
+    }
+
+    if (opcode == CR && combination_flag) {
+        dprintf(STDERR_FILENO, "ERROR: Option -c cannot be combined with -s, -i, or -p.\n");
+        return EXIT_FAILURE;
     }
 
     if (is_abstract && (minutes_str || hours_str || days_of_week_str)) {

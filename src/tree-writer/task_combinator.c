@@ -72,12 +72,36 @@ int64_t combine_and_destroy_tasks(const timing_t *timing, const composed_t *comp
         perror("snprintf sub_path for type");
         return -1;
     }
+
     int fd = open(sub_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+
     if (fd < 0) {
         perror("open type file");
         return -1;
     }
-    if (dprintf(fd, "%s\n", composed->type == SQ ? "SQ" : "PL") < 0) {
+
+    char type_str[2];
+    switch (composed->type) {
+        case SQ:
+            type_str[0] = 'S';
+            type_str[1] = 'Q';
+            break;
+        case PL:
+            type_str[0] = 'P';
+            type_str[1] = 'L';
+            break;
+        case IF:
+            type_str[0] = 'I';
+            type_str[1] = 'F';
+            break;
+        default:
+            dprintf(STDERR_FILENO, "Error: Unknown combination type.\n");
+            close(fd);
+            return -1;
+            break;
+    }
+
+    if (write(fd, type_str, 2) != 2) {
         perror("dprintf type");
         close(fd);
         return -1;
