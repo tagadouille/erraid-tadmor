@@ -79,7 +79,7 @@ static int proceed_simple(simple_request_t* req, int* fd_response, pid_t father)
 
 static int proceed_complex(complex_request_t* req, int* fd_response, pid_t father){
 
-    answer_t* ans = complex_request_handle(req, tasksdir);
+    answer_t* ans = complex_request_handle(req);
 
     if(ans == NULL){
         write_log_msg("[daemon servant] Error : an error occured while handling a complex request");

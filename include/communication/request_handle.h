@@ -54,6 +54,6 @@ void *simple_request_handle(simple_request_t *req, char *rundir);
  * @param req the complex_request_t structure
  * @param rundir Base directory of task folders
  */
-answer_t* complex_request_handle(complex_request_t *req, char *rundir);
+answer_t* complex_request_handle(complex_request_t *req);
 
 #endif

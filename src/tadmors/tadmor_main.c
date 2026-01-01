@@ -16,6 +16,7 @@
 #include "communication/request.h"
 #include "communication/communication.h"
 #include "communication/pipes.h"
+#include "types/task.h"
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
@@ -31,7 +32,8 @@
  * @return int 0 on success, -1 on failure
  */
 static int client_handle_command(uint16_t code, const char *input, char *minutes_str,
-     char *hours_str, char *days_of_week_str, int is_abstract){
+    char *hours_str, char *days_of_week_str, int is_abstract,
+    command_type_t combination_type, int argc, char **argv, int optind){
 
     dprintf(STDOUT_FILENO, "the input is %s\n", input);
 
@@ -92,8 +94,8 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
         free(request);
     }
     else{
-        // Handle complex request for task creation
-        dprintf(STDOUT_FILENO, "Handling complex request for task creation (CR)\n");
+        // Handle complex request for task creation or combination
+        dprintf(STDOUT_FILENO, "Handling complex request (CR or CB)\n");
 
         // Initialize timing and command structures
         timing_t* timing = timing_create_from_strings(minutes_str, hours_str, days_of_week_str);
@@ -108,29 +110,72 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
         }
         
         dprintf(STDOUT_FILENO, "Timing structure initialized.\n");
-
         timing_show(timing);
 
-        dprintf(STDOUT_FILENO, "Command to execute: %s  Length %zu\n", input, strlen(input));
-        
-        // Placeholder for command creation
-        command_t* command = command_create_from_string(input);
+        command_t* command = NULL;
+        composed_t* composed = NULL;
 
-        if(command == NULL){
-            dprintf(STDERR_FILENO, "[client_handle_command] Error creating command from string\n");
-            timing_free(timing);
-            return -1;
+        if (code == CR) {
+            dprintf(STDOUT_FILENO, "Command to execute: %s  Length %zu\n", input, strlen(input));
+            command = command_create_from_string(input);
+            if(command == NULL){
+                dprintf(STDERR_FILENO, "[client_handle_command] Error creating command from string\n");
+                timing_free(timing);
+                return -1;
+            }
+        } else { // CB
+            int nb_tasks = argc - optind;
+
+            if (nb_tasks <= 0) {
+                dprintf(STDERR_FILENO, "ERROR: Combination request requires at least one task ID\n");
+                timing_free(timing);
+                return -1;
+            }
+
+            composed = malloc(sizeof(composed_t));
+            if (!composed) {
+                perror("malloc composed");
+                timing_free(timing);
+                return -1;
+            }
+
+            composed->task_ids = malloc(nb_tasks * sizeof(uint64_t));
+            if (!composed->task_ids) {
+                perror("malloc composed->task_id");
+                free(composed);
+                timing_free(timing);
+                return -1;
+            }
+            composed->nb_task = nb_tasks;
+            composed->type = combination_type;
+
+            // Parse task IDs
+            for (int i = 0; i < nb_tasks; i++) {
+                char *end;
+                errno = 0;
+                unsigned long long tmp = strtoull(argv[optind + i], &end, 10);
+
+                if (errno == ERANGE || *end != '\0') {
+                    dprintf(STDERR_FILENO, "ERROR: Invalid task ID: %s\n", argv[optind + i]);
+                    free(composed->task_ids);
+                    free(composed);
+                    timing_free(timing);
+                    return -1;
+                }
+                composed->task_ids[i] = (uint64_t)tmp;
+            }
         }
 
-        dprintf(STDOUT_FILENO, "timing and command variables initialized.\n");
+        dprintf(STDOUT_FILENO, "timing and command/composed variables initialized.\n");
         dprintf(STDOUT_FILENO, "Ready to send the request ! \n");
 
         //Complex request creation and sending
-        complex_request_t* request = create_complex_request(code, timing, command, NULL);
+        complex_request_t* request = create_complex_request(code, timing, command, composed);
 
         if(request == NULL){
             dprintf(STDERR_FILENO, "[client_handle_command] Error creating complex request\n");
-            command_free(command);
+            if (command) command_free(command);
+            // composed is freed inside create_complex_request in case of error
             timing_free(timing);
             return -1;
         }
@@ -232,6 +277,8 @@ static char *reconstruct_arg(int argc, char **argv, int start)
         return NULL;
     }
 
+    // Fill the output string without spaces
+
     size_t pos = 0;
     for (int i = start; i < argc; i++) {
         for (size_t j = 0; j < strlen(argv[i]); j++) {
@@ -257,14 +304,15 @@ static char *reconstruct_arg(int argc, char **argv, int start)
  * @return int 0 on success, -1 on failure
  */
 static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** argv,
-     char *minutes_str, char *hours_str, char *days_of_week_str, int is_abstract){
+    char *minutes_str, char *hours_str, char *days_of_week_str,
+    int is_abstract, command_type_t combination_type){
 
     char* input = NULL;
 
     if(opcode == CR){
         input = reconstruct_command_string(argc, argv, optind);
     } 
-    else {
+    else if (opcode != CB) {
         input = reconstruct_arg(argc, argv, optind);
     }
     
@@ -283,7 +331,8 @@ static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** a
         res = pipe_path_rename(input);
     }
     else{
-        res = client_handle_command(opcode, input, minutes_str, hours_str, days_of_week_str, is_abstract);
+        res = client_handle_command(opcode, input, minutes_str, hours_str,
+             days_of_week_str, is_abstract, combination_type, argc, argv, optind);
     }
     
     free(input);
@@ -293,15 +342,21 @@ static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** a
 /* --------------------------------------------------------------
  * main
  * -------------------------------------------------------------- */
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
+
     int opt;
-    int opcode = 0;
+    uint16_t opcode = 0;
+
     int pipe_rename = 0;
+
+    // Task creation var :
     char *minutes_str = NULL;
     char *hours_str = NULL;
     char *days_of_week_str = NULL;
+
     int is_abstract = 0;
+
+    command_type_t combination_type = 0;
 
     if(pipe_file_read() < 0){
         dprintf(STDERR_FILENO, "LAUNCH ERRAID BEFORE TADMOR !!! \n");
@@ -309,11 +364,23 @@ int main(int argc, char **argv)
     }
 
     // Handle the differents arguments
-    while ((opt = getopt(argc, argv, "cm:H:d:nqlxoreP")) != -1) {
+    while ((opt = getopt(argc, argv, "cm:H:d:nqlxorePsip")) != -1) {
         switch (opt) {
             case 'c': 
                 opcode = CR;
                 // The command is the remaining part of the arguments
+                break;
+            case 's':
+                opcode = CB;
+                combination_type = SQ;
+                break;
+            case 'i':
+                opcode = CB;
+                combination_type = IF;
+                break;
+            case 'p':
+                opcode = CB;
+                combination_type = PL;
                 break;
             case 'm': 
                 minutes_str = optarg;
@@ -348,5 +415,5 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    return argument_handler(opcode, pipe_rename, argc, argv, minutes_str, hours_str, days_of_week_str, is_abstract);
+    return argument_handler(opcode, pipe_rename, argc, argv, minutes_str, hours_str, days_of_week_str, is_abstract, combination_type);
 }

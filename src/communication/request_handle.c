@@ -110,7 +110,7 @@ void* simple_request_handle(simple_request_t *req, char *rundir)
  * @param command The command to execute
  * @return answer_t* The answer structure
  */
-static answer_t* handle_combine(char* rundir, timing_t timing, composed_t* composed){
+static answer_t* handle_combine(timing_t timing, composed_t* composed){
 
     int64_t id = combine_and_destroy_tasks(&timing, composed);
 
@@ -127,17 +127,17 @@ static answer_t* handle_combine(char* rundir, timing_t timing, composed_t* compo
  * @param command The command to execute
  * @return answer_t* The answer structure
  */
-static answer_t* handle_create(char* rundir, timing_t timing, command_t* command){
+static answer_t* handle_create(timing_t timing, command_t* command){
 
     int res = create_task_dir(&timing, command ->args.simple);
     
     return create_answer(OK, res, 0);
 }
 
-answer_t* complex_request_handle(complex_request_t *req, char *rundir) {
+answer_t* complex_request_handle(complex_request_t *req) {
 
-    if (req == NULL || rundir == NULL) {
-        dprintf(2, "Error : the request is NULL or the rundir is NULL");
+    if (req == NULL) {
+        dprintf(2, "Error : the request is NULL");
         return NULL;
     }
 
@@ -145,10 +145,10 @@ answer_t* complex_request_handle(complex_request_t *req, char *rundir) {
     switch (req->opcode) {
 
         case CR:
-            return handle_create(rundir, req->timing, req->u.command);
+            return handle_create(req->timing, req->u.command);
 
         case CB:
-            return handle_combine(rundir, req->timing, req->u.composed);
+            return handle_combine(req->timing, req->u.composed);
 
         default: // unknown opcode
             return create_answer(ERR, 0, NR);
