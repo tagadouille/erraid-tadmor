@@ -153,9 +153,6 @@ static void setup_signal_handler(void) {
         perror("sigaction");
         exit(EXIT_FAILURE);
     }
-    
-    // Put at default after sigaction
-    signal(SIGUSR1, SIG_DFL); 
 }
 
 /**
