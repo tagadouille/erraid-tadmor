@@ -58,7 +58,7 @@ char *timing_to_string(const timing_t *t)
     char *hrs = mask_to_list(t->hours, HOURS_COUNT);
     char *day = mask_to_list(t->daysofweek, DAYS_COUNT);
 
-    size_t size = strlen(min) + strlen(hrs) + strlen(day) + 8;
+    size_t size = strlen(min) + strlen(hrs) + strlen(day) + 3; // spaces + null terminator
     char *out = malloc(size);
 
     snprintf(out, size, "%s %s %s", min, hrs, day);

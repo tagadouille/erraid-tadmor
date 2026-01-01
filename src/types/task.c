@@ -203,3 +203,37 @@ void task_destroy(task_t *task){
 
     free(task);
 }
+
+/**
+ * @brief Cleans up the content of a task (frees internal pointers)
+ * but does not free the task structure itself.
+ * This is useful for tasks allocated in an array.
+ */
+static void task_cleanup(task_t *task) {
+    if (task == NULL) {
+        return;
+    }
+
+    // Free the command
+    if (task->cmd != NULL) {
+        command_free(task->cmd);
+        task->cmd = NULL;
+    }
+
+    if (task->timing != NULL) {
+        free(task->timing);
+        task->timing = NULL;
+    }
+}
+
+void free_all_task(all_task_t* all_task){
+    if(all_task == NULL){
+        return;
+    }
+
+    for(uint32_t i = 0; i < all_task->nbtask; i++){
+        task_cleanup(&all_task->all_task[i]);
+    }
+    free(all_task->all_task);
+    free(all_task);
+}

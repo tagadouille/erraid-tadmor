@@ -89,7 +89,7 @@ static void scan_all_task(void) {
     }
     
     if (scanned_tasks != NULL) {
-        free(scanned_tasks);
+        free_all_task(scanned_tasks);
     }
     
     scanned_tasks = new_tasks;
@@ -117,7 +117,6 @@ static void execute_all_task(time_t minute_now) {
         write_log_msg("Skipping already executed minute");
         return;
     }
-    
 
     // Execution :
     write_log_msg("Executing tasks");

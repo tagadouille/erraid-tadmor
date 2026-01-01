@@ -73,4 +73,10 @@ command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, comma
  */
 void task_destroy(task_t *task);
 
+/**
+ * @brief Free all memory inside an all_task_t structure.
+ * @param all_task Pointer to the all_task_t structure to free.
+ */
+void free_all_task(all_task_t* all_task);
+
 #endif
