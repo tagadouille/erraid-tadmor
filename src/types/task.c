@@ -55,17 +55,28 @@ void task_display(task_t* task){
 static void display_arg(string_t* string){
 
     if(string == NULL){
-        dprintf(STDERR_FILENO, "The string can't be null");
+        dprintf(STDERR_FILENO, "[display_arg] The string can't be null");
+        return;
     }
 
     if(string -> data == NULL){
-        dprintf(STDERR_FILENO, "The data of the string can't be null");
+        dprintf(STDERR_FILENO, "[display_arg] The data of the string can't be null");
+        return;
+    }
+
+    char* data = string_to_cstr(string);
+
+    if(data == NULL){
+        dprintf(STDERR_FILENO, "string_to_cstr failed at display_arg");
+        return;
     }
 
     for (size_t i = 0; i < string -> length; i++)
     {
-        dprintf(STDOUT_FILENO, "%c", string -> data[i]);
+        dprintf(STDOUT_FILENO, "%c", data[i]);
     }
+
+    free(data);
     
 }
 

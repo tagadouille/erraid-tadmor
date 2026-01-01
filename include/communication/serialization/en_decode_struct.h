@@ -1,11 +1,15 @@
 #include "communication/answer.h"
+#include "types/my_string.h"
+#include "types/task.h"
+#include "types/argument.h"
+#include "types/timing.h"
 
 /* ============================================================
  * STRING ENCODING (string_t)
  * format: LENGTH(uint32) + DATA[length]
  * ============================================================ */
 int encode_string(int fd, const string_t *s);
-int decode_string(int fd, string_t *s);
+string_t *decode_string(int fd);
 
 /* ============================================================
  * TIMING ENCODING

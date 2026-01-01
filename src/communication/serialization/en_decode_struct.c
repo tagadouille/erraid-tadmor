@@ -15,97 +15,76 @@
 
 int encode_string(int fd, const string_t *s)
 {
-    if (!s){
-        dprintf(2, "[encode_string] Error: The string can't be null\n");
+    if (!s) {
+        dprintf(STDERR_FILENO, "[encode_string] Error: The string can't be null\n");
         return -1;
     }
 
-    if (s->length > LIMIT_MAX_STR_LEN){
-        dprintf(2, "[encode_string] Error: The length of the string is too big\n");
-        return -1;
-    }
-        
-    if (encode_uint32(fd, s->length) < 0){
-        dprintf(2, "[encode_string] Error : an error occured while encoding uint32\n");
+    if (s->length > LIMIT_MAX_STR_LEN) {
+        dprintf(STDERR_FILENO, "[encode_string] Error: The length of the string is too big\n");
         return -1;
     }
 
-    dprintf(1, "Encoding this string %s of length %u\n", s->data, s->length);
+    // Encode the length first
+    if (encode_uint32(fd, s->length) < 0) {
+        dprintf(STDERR_FILENO, "[encode_string] Error: an error occurred while encoding uint32\n");
+        return -1;
+    }
 
+    // If there is data to write, write it directly from the source string
     if (s->length > 0) {
-        if (write_full(fd, s->data, s->length) < 0){
-            dprintf(2, "[encode_string] Error : an error occured while writing the string into the pipe\n");
-        return -1;
+        if (!s->data) {
+            dprintf(STDERR_FILENO, "[encode_string] Error: string has length > 0 but data is NULL\n");
+            return -1;
+        }
+        // Write the raw data directly, no need for conversion
+        if (write_full(fd, s->data, s->length) < 0) {
+            dprintf(STDERR_FILENO, "[encode_string] Error: an error occurred while writing the string into the pipe\n");
+            return -1;
         }
     }
 
     return 0;
 }
 
-int decode_string(int fd, string_t *s)
+string_t *decode_string(int fd)
 {
+    uint32_t len;
+    if (decode_uint32(fd, &len) < 0) {
+        dprintf(STDERR_FILENO, "[decode_string] Error: can't decode uint32 length\n");
+        return NULL;
+    }
+
+    if (len > LIMIT_MAX_STR_LEN) {
+        dprintf(STDERR_FILENO, "[decode_string] Error: string length %u exceeds limit %u\n", len, LIMIT_MAX_STR_LEN);
+        return NULL;
+    }
+
+    if (len == 0) {
+        return string_create(NULL, 0);
+    }
+
+    char *buf = malloc(len);
+    if (!buf) {
+        dprintf(STDERR_FILENO, "[decode_string] Error: malloc failed for buffer (%u bytes)\n", len);
+        return NULL;
+    }
+
+    if (read_full(fd, buf, len) < 0) {
+        dprintf(STDERR_FILENO, "[decode_string] Error: can't read %u bytes from fd\n", len);
+        free(buf);
+        return NULL;
+    }
+
+    string_t *s = string_create(buf, len);
+    free(buf); // string_create makes a copy
+
     if (!s) {
-        dprintf(STDERR_FILENO,
-                "[decode_string] Error: string_t pointer is NULL\n");
-        return -1;
+        dprintf(STDERR_FILENO, "[decode_string] Error: string_create failed\n");
+        return NULL;
     }
 
-    /* Toujours repartir d’un état propre */
-    if (s->data) {
-        free(s->data);
-        s->data = NULL;
-    }
-    s->length = 0;
-
-    if (decode_uint32(fd, &s->length) < 0) {
-        dprintf(STDERR_FILENO,
-                "[decode_string] Error: can't decode uint32 length\n");
-        return -1;
-    }
-
-    dprintf(STDERR_FILENO,
-            "[decode_string] Decoded length = %u\n", s->length);
-
-    if (s->length > LIMIT_MAX_STR_LEN) {
-        dprintf(STDERR_FILENO,
-                "[decode_string] Error: string length %u exceeds limit %u\n",
-                s->length, LIMIT_MAX_STR_LEN);
-        return -1;
-    }
-
-    if (s->length == 0) {
-        dprintf(STDERR_FILENO,
-                "[decode_string] Empty string\n");
-        s->data = NULL;
-        return 0;
-    }
-
-    s->data = malloc((size_t)s->length + 1);
-    if (!s->data) {
-        dprintf(STDERR_FILENO,
-                "[decode_string] Error: malloc failed (%u bytes)\n",
-                s->length + 1);
-        s->length = 0;
-        return -1;
-    }
-
-    if (read_full(fd, s->data, s->length) < 0) {
-        dprintf(STDERR_FILENO,
-                "[decode_string] Error: can't read %u bytes from fd\n",
-                s->length);
-        free(s->data);
-        s->data = NULL;
-        s->length = 0;
-        return -1;
-    }
-
-    s->data[s->length] = '\0';
-
-    dprintf(STDERR_FILENO,
-            "[decode_string] String decoded: \"%s\"\n",
-            s->data);
-
-    return 0;
+    return s;
 }
 
 /* --------------------- timing encoding --------------------- */
@@ -175,7 +154,7 @@ int encode_arguments(int fd, const arguments_t *args)
 
         if (!args->argv[i]) {
             dprintf(2, "[encode_arguments] WARNING: argv[%u] is NULL, encoding empty string\n", i);
-            string_t empty = { .length = 1, .data = "\0" };
+            string_t empty = { .length = 1, .data = (uint8_t *)0 };
 
             if (encode_string(fd, &empty) < 0){
                 dprintf(2, "[encode_arguments] Error : an error occured while encoding empty string\n");
@@ -193,50 +172,51 @@ int encode_arguments(int fd, const arguments_t *args)
 
 int decode_arguments(int fd, arguments_t *args)
 {
-    if (!args){
-        dprintf(2, "[decode_arguments] Error : the argument can't be NULL\n");
+    if (!args) {
+        dprintf(STDERR_FILENO, "[decode_arguments] Error: the argument can't be NULL\n");
         return -1;
     }
+
+    /* Toujours repartir d’un état propre */
+    memset(args, 0, sizeof(*args));
 
     uint32_t argc;
-
-    if (decode_uint32(fd, &argc) < 0){
-        dprintf(2, "[decode_arguments] Error : an error occured while decoding uint32\n");
+    if (decode_uint32(fd, &argc) < 0) {
+        dprintf(STDERR_FILENO, "[decode_arguments] Error: an error occurred while decoding uint32\n");
         return -1;
     }
-        
-    if (argc == 0 || argc > LIMIT_MAX_ARGC){
-        dprintf(2, "[decode_arguments] Error : the LIMIT_MAX_ARGC has been reached\n");
+
+    if (argc > LIMIT_MAX_ARGC) {
+        dprintf(STDERR_FILENO, "[decode_arguments] Error: the LIMIT_MAX_ARGC has been reached\n");
         return -1;
     }
 
     args->argc = argc;
-    args->argv = calloc((size_t)argc, sizeof(string_t *));
+    if (argc == 0) {
+        args->argv = NULL;
+        return 0;
+    }
 
-    if (!args->argv){
-        perror("calloc");
+    args->argv = calloc((size_t)argc, sizeof(string_t *));
+    if (!args->argv) {
+        perror("[decode_arguments] calloc");
+        args->argc = 0;
         return -1;
     }
-        
+
     for (uint32_t i = 0; i < argc; ++i) {
-        args->argv[i] = malloc(sizeof(string_t));
-
+        args->argv[i] = decode_string(fd);
         if (!args->argv[i]) {
-            perror("malloc");
+            dprintf(STDERR_FILENO, "[decode_arguments] Error: an error occurred while decoding argv[%u]\n", i);
             arguments_free(args);
-            return -1;
-        }
-
-        if (decode_string(fd, args->argv[i]) < 0) {
-            dprintf(2, "[decode_arguments] Error : an error occured while decoding argv\n");
-            arguments_free(args);
+            memset(args, 0, sizeof(*args));
             return -1;
         }
     }
-
     return 0;
 }
 
+/* --------------------- command encoding --------------------- */
 int encode_command(int fd, const command_t *cmd){
 
     if (!cmd) {

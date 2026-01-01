@@ -24,7 +24,7 @@ typedef struct{
 typedef struct{
 
     uint16_t anstype;
-    string_t output;
+    string_t* output;
     uint16_t errcode;
 
 }a_output_t;
@@ -80,7 +80,7 @@ a_timecode_t* create_a_timecode_t(uint16_t anstype, uint32_t nbrun, time_exitcod
  * @param output the output of a task
  * @param errcode the error code if there's an error
  */
-a_output_t* create_a_output_t(uint16_t anstype, string_t output, uint16_t errcode);
+a_output_t* create_a_output_t(uint16_t anstype, string_t* output, uint16_t errcode);
 
 /**
  * @brief free the answer structure

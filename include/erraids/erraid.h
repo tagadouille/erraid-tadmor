@@ -22,7 +22,7 @@
 
 // The current task being processed
 extern task_t* curr_task;
-extern string_t curr_output;
+extern string_t* curr_output;
 extern time_array_t* curr_time;
 
 //The file descriptor of the log file

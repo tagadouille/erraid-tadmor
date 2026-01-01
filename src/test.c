@@ -24,15 +24,15 @@ static void test_output_read(char* task_dir, uint64_t id){
         dprintf(STDOUT_FILENO, "task_reader failed for %lu", id);
         return;
     }
-    dprintf(STDOUT_FILENO, "stdout : %s\n", curr_output.data);
-    string_free(&curr_output);
+    dprintf(STDOUT_FILENO, "stdout : %s\n", curr_output->data);
+    string_free(curr_output);
 
     if(task_reader(task_dir, id, STDERR) < 0){
         dprintf(STDOUT_FILENO, "task_reader failed for %lu", id);
         return;
     }
-    dprintf(STDOUT_FILENO, "stderr : %s\n", curr_output.data);
-    string_free(&curr_output);
+    dprintf(STDOUT_FILENO, "stderr : %s\n", curr_output->data);
+    string_free(curr_output);
 }
 
 void test_all(char* task_dir, uint64_t id){

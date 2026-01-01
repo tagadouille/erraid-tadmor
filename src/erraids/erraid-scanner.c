@@ -11,7 +11,7 @@
 /**
  * All the tasks that was scanned
  */
-static all_task_t* scanned_tasks = NULL;
+static all_task_t *scanned_tasks = NULL;
 
 /**
  * If rescan is needed or not

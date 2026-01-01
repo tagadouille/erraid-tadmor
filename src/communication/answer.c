@@ -84,27 +84,23 @@ a_timecode_t* create_a_timecode_t(uint16_t anstype, uint32_t nbruns, time_exitco
     return time;
 }
 
-a_output_t* create_a_output_t(uint16_t anstype, string_t output, uint16_t errcode) {
-
-    if (anstype != OK && anstype != ERR) {
-        dprintf(STDERR_FILENO, "Invalid anstype\n");
-        return NULL;
-    }
-
-    if (anstype == ERR && (errcode != NF && errcode != NR)) {
-        dprintf(STDERR_FILENO, "Invalid errcode\n");
-        return NULL;
-    }
-
-    a_output_t* a_output = malloc(sizeof(a_output_t));
+a_output_t* create_a_output_t(uint16_t anstype, string_t* output, uint16_t errcode)
+{
+    a_output_t* a_output = calloc(1, sizeof(a_output_t));
     if (!a_output) {
-        perror("malloc");
+        perror("calloc create_a_output_t");
         return NULL;
     }
 
     a_output->anstype = anstype;
     a_output->errcode = errcode;
-    a_output->output = output; // si output est déjà alloué ailleurs
+
+    a_output->output = string_copy(output);
+    if (!a_output->output) {
+        dprintf(STDERR_FILENO, "create_a_output_t: string_copy failed\n");
+        free(a_output);
+        return NULL;
+    }
 
     return a_output;
 }
@@ -145,6 +141,6 @@ void free_a_timecode_t(a_timecode_t* timecode){
 void free_a_output_t(a_output_t* output){
     if(output == NULL) return;
 
-    string_free(&(output -> output));
+    string_free(output->output);
     free(output);
 }

@@ -28,29 +28,11 @@ static string_t *read_one_string(const char *buf, size_t size, size_t *offset)
 
     uint32_t len = be32toh(len_be);
 
-    if (len == 0) {
-        // skip, or return NULL : but NULL is correct (means invalid argument)
-        return NULL;
-    }
-
     if (*offset + len > size)
         return NULL;
 
-    string_t *s = malloc(sizeof(string_t));
-    if (!s)
-        return NULL;
-
-    s->data = malloc(len + 1);
-    if (!s->data)
-    {
-        free(s);
-        return NULL;
-    }
-
-    memcpy(s->data, buf + *offset, len);
-    s->data[len] = '\0';
-    s->length = len;
-
+    string_t *s = string_create(buf + *offset, len);
+    
     *offset += len;
 
     return s;
@@ -77,12 +59,12 @@ bool arguments_parse_struct(const char *buf, unsigned int size, arguments_t *arg
     uint32_t argc = be32toh(argc_be);
     offset += sizeof(uint32_t);
 
-    if (argc == 0) {
-        dprintf(STDERR_FILENO, "[arguments_parse_struct] invalid argc=%u\n", argc);
-        return false;
-    }
-
     args->argc = argc;
+
+    if (argc == 0) {
+        args->argv = NULL;
+        return true;
+    }
 
     args->argv = calloc(argc, sizeof(string_t *));
     if (!args->argv) {
@@ -109,9 +91,8 @@ bool arguments_parse_struct(const char *buf, unsigned int size, arguments_t *arg
     return false;
 }
 
-arguments_t *arguments_parse(const char *buffer,
-                             unsigned int size)
-{
+arguments_t *arguments_parse(const char *buffer, unsigned int size) {
+
     if (!buffer || size < sizeof(uint32_t)) {
         dprintf(STDERR_FILENO,
                 "[arguments_parse] invalid input\n");
@@ -187,8 +168,7 @@ void arguments_free(arguments_t *a) {
         uint32_t n = a->argc;
         for (uint32_t i = 0; i < n; ++i) {
             if (a->argv[i]) {
-                if (a->argv[i]->data) { free(a->argv[i]->data); a->argv[i]->data = NULL; }
-                free(a->argv[i]);
+                string_free(a->argv[i]);
                 a->argv[i] = NULL;
             }
         }
@@ -222,13 +202,13 @@ char **arguments_to_argv(const arguments_t *args)
 
     for (uint32_t i = 0; i < args->argc; i++) {
 
-        argv[i] = strndup(args->argv[i]->data, args->argv[i]->length);
+        argv[i] = string_to_cstr(args->argv[i]);
 
         if (!argv[i]) {
             for (uint32_t j = 0; j < i; j++)
                 free(argv[j]);
             free(argv);
-            dprintf(2, "strndup failed");
+            dprintf(2, "string_to_cstr failed");
             return NULL;
         }
     }
