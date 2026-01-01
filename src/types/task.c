@@ -82,7 +82,7 @@ command_t* add_complex_command(command_t* og_command, command_t* command){
         return NULL;
     }
     if(og_command == NULL){
-        dprintf(STDERR_FILENO, "the original command is NULL or not of type SQ\n");
+        dprintf(STDERR_FILENO, "the original command is NULL or not complex\n");
         return NULL;
     }
 
@@ -114,7 +114,7 @@ command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, comma
 
     if (cmd == NULL) {
 
-        curr_task->cmd = create_command(cmd, type);
+        curr_task->cmd = create_command(type);
 
         if (curr_task->cmd == NULL) {
             dprintf(STDERR_FILENO, "Error while creating command structure\n");
@@ -185,7 +185,7 @@ void task_destroy(task_t *task){
         return;
     }
 
-    // Free the command (SI or SQ)
+    // Free the command
     if (task->cmd != NULL){
         command_free(task->cmd);
         task->cmd = NULL;

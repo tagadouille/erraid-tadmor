@@ -315,6 +315,8 @@ static int execute_any_command_fd(const command_t *cmd, int outfd, int errfd, co
             }
             return final_exitcode;
         }
+
+        //TODO SI AND IF
             
         default:
             write_log_msg("Unknown command type: %d", cmd->type);

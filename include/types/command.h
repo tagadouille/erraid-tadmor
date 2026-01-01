@@ -37,11 +37,10 @@ struct command{
 
 /**
  * @brief Creates a complex command structure.
- * @param command Pointer to the command_t structure to initialize.
  * @param type The type of the complex command.
  * @return Pointer to the initialized command_t structure if success, NULL otherwise.
  */
-command_t* create_command(command_t* command, command_type_t type);
+command_t* create_command(command_type_t type);
 
 /**
  * @brief Create a command from a string representation.

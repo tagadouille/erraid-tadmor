@@ -3,19 +3,30 @@
 #include "types/command.h"
 #include <ctype.h>
 
-command_t* create_command(command_t* command, command_type_t type){
+command_t* create_command(command_type_t type){
 
-    command = malloc(sizeof(command_t));
+    // Verification of type
+    if (type != SI && type != SQ && type != IF && type != PL) {
+        dprintf(STDERR_FILENO, "create_command: Unsupported command type %d\n", type);
+        return NULL;
+    }
 
+    command_t* command = malloc(sizeof(command_t));
     if(command == NULL){
         perror("malloc");
         return NULL;
     }
     command->type = type;
 
-    if(type != SI){ // SQ
+    // Initialisation of the union fields
+    // Simple CMD
+    if(type == SI){
+        command->args.simple = NULL;
+    } 
+    // Composed CMD
+    else {
         command->args.composed.count = 0;
-        command->args.composed.cmds = malloc(sizeof(command_t*) * 10); // Initial allocation for 10 commands
+        command->args.composed.cmds = malloc(sizeof(command_t*) * 10); // Allocation initiale
         
         if(command->args.composed.cmds == NULL){
             perror("malloc");
@@ -34,7 +45,7 @@ void command_free(command_t *cmd){
     {
         arguments_free(cmd->args.simple);
     }
-    else if (cmd->type == SQ)
+    else if (cmd->type == SQ || cmd->type == IF || cmd->type == PL)
     {
         for (uint32_t i = 0; i < cmd->args.composed.count; i++)
         {
@@ -279,6 +290,8 @@ void command_display(command_t *cmd){
             }
             dprintf(STDOUT_FILENO, ")");
             break;
+
+        //TODO DISPLAY OF OTHER TYPES
         default:
             dprintf(STDERR_FILENO, "Unknown command type: %d\n", cmd->type);
             return;

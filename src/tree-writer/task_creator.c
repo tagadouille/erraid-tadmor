@@ -21,7 +21,7 @@
  * @brief Find the next id not already used.
  * @return new uint64_t id or 0 if no tasks.
  */
-static uint64_t find_next_id() {
+uint64_t find_next_id() {
     // Use of the global tasksdir variable
     DIR *dir = opendir(tasksdir);
     if (!dir) {
@@ -61,13 +61,7 @@ static uint64_t find_next_id() {
     }
 }
 
-/**
- * @brief Write the timing file.
- * @param path path for the timing file.
- * @param t timing to put in the file.
- * @return 0 on success and -1 on failure.
- */
-static int write_timing_file(const char *path, const timing_t *t) {
+int write_timing_file(const char *path, const timing_t *t) {
     
     int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0){
