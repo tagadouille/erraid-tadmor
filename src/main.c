@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
 
     default_rundir(rundir, pipedir, PATH_MAX, PATH_MAX);
 
-    while ((opt = getopt(argc, argv, "r:FP:")) != -1) {
+    while ((opt = getopt(argc, argv, "r:fP:")) != -1) {
 
         switch (opt) {
             case 'r':

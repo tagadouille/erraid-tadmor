@@ -68,7 +68,7 @@ answer_t* handle_rm(char *rundir, uint64_t id)
 
 answer_t* handle_tm(void){
 
-    kill(father, SIGKILL); // kill the erraid daemon
+    kill(father, SIGTERM); // kill the erraid daemon
     return create_answer(OK, 0, 0); // return success answer
 }
 

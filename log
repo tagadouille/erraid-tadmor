@@ -1,0 +1,42 @@
+2026-01-02 17:00:12 [erraid] Running in foreground mode
+2026-01-02 17:00:12 Daemon initialized (rundir=/tmp/elias/erraid)
+2026-01-02 17:00:12 Daemon main loop started.
+2026-01-02 17:00:12 Daemon PID: 161379
+2026-01-02 17:00:12 Scanning tasks directory…
+2026-01-02 17:00:12 Scan succeeded! Found 0 tasks
+
+2026-01-02 17:00:12 Current time: 1767373212 (48 seconds until next minute)
+2026-01-02 17:00:12 Creation of the servant is a success
+2026-01-02 17:00:12 [daemon servant] Running start !
+2026-01-02 17:00:12 [daemon servant] Waiting for request...
+2026-01-02 17:00:37 [erraid] Running in foreground mode
+2026-01-02 17:00:37 Daemon initialized (rundir=/home/elias/OS/sy5-marc-catherine-elias/test)
+2026-01-02 17:00:37 Daemon main loop started.
+2026-01-02 17:00:37 Daemon PID: 161386
+2026-01-02 17:00:37 Scanning tasks directory…
+2026-01-02 17:00:37 Creation of the servant is a success
+2026-01-02 17:00:37 [daemon servant] Running start !
+2026-01-02 17:00:37 [daemon servant] Waiting for request...
+2026-01-02 17:00:37 Scan succeeded! Found 1 tasks
+
+2026-01-02 17:00:37 Current time: 1767373237 (23 seconds until next minute)
+2026-01-02 17:00:42 [daemon servant] Received simple request with opcode = 19539
+2026-01-02 17:00:42 [daemon servant] Sent OK
+2026-01-02 17:00:42 [daemon servant] Waiting for request...
+2026-01-02 17:00:54 [daemon servant] Received simple request with opcode = 19273
+2026-01-02 17:00:54 [daemon servant] Sent OK
+2026-01-02 17:00:54 [daemon servant] Waiting for request...
+2026-01-02 17:01:03 [daemon servant] Received simple request with opcode = 19539
+2026-01-02 17:01:03 [daemon servant] Sent OK
+2026-01-02 17:01:03 [daemon servant] Waiting for request...
+2026-01-02 17:02:06 [erraid] Running in foreground mode
+2026-01-02 17:02:06 Daemon initialized (rundir=/home/elias/OS/sy5-marc-catherine-elias/test)
+2026-01-02 17:02:06 Daemon main loop started.
+2026-01-02 17:02:06 Daemon PID: 161414
+2026-01-02 17:02:06 Scanning tasks directory…
+2026-01-02 17:02:06 Scan succeeded! Found 1 tasks
+
+2026-01-02 17:02:06 Current time: 1767373326 (54 seconds until next minute)
+2026-01-02 17:02:06 Creation of the servant is a success
+2026-01-02 17:02:06 [daemon servant] Running start !
+2026-01-02 17:02:06 [daemon servant] Waiting for request...
