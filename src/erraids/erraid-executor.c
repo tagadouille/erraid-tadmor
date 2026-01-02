@@ -2,6 +2,7 @@
 #include "erraids/erraid.h"
 #include "erraids/erraid-helper.h"
 #include "types/time_exitcode.h"
+#include "erraids/executor-sp.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -31,13 +32,7 @@ static inline uint16_t to_be16(uint16_t x) {
     return htons(x);
 }
 
-/**
- * @brief Append one record to times-exitcodes
- * @param path the path to the times-exitcodes file
- * @param exitcode the exitcode
- * @param timestamp the timestamp
- */
-static int append_times_exitcodes(const char *path, uint16_t exitcode, time_t timestamp) {
+int append_times_exitcodes(const char *path, uint16_t exitcode, time_t timestamp) {
 
     int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
 
@@ -278,7 +273,7 @@ static int execute_simple_fd_only(const command_t *cmd, int outfd, int errfd) {
  * @param is_top_level 1 if we are on the top of the command tree, 0 if not
  * @return 0 on success, -1 on failure
  */
-static int execute_any_command_fd(const command_t *cmd, int outfd, int errfd, const char *timespath, time_t minute_now,
+int execute_any_command_fd(const command_t *cmd, int outfd, int errfd, const char *timespath, time_t minute_now,
                                   int is_top_level) {
     
     if (!cmd){
@@ -317,43 +312,7 @@ static int execute_any_command_fd(const command_t *cmd, int outfd, int errfd, co
         }
 
         case IF: {
-            if (cmd->args.composed.count < 2 || cmd->args.composed.count > 3) {
-                write_log_msg("Invalid number of sub-commands for IF");
-                return -1;
-            }
-
-            int condition_exitcode = execute_any_command_fd(
-                cmd->args.composed.cmds[0],
-                outfd, errfd,
-                NULL, minute_now,
-                0
-            );
-
-            int exitcode = 0;
-
-            // Then :
-            if (condition_exitcode == 0) {
-                exitcode = execute_any_command_fd(
-                    cmd->args.composed.cmds[1],
-                    outfd, errfd,
-                    NULL, minute_now,
-                    0
-                );
-            }
-            // Else :
-            else if (cmd->args.composed.count == 3) {
-                exitcode = execute_any_command_fd(
-                    cmd->args.composed.cmds[2],
-                    outfd, errfd,
-                    NULL, minute_now,
-                    0
-                );
-            }
-
-            if (is_top_level && timespath) {
-                append_times_exitcodes(timespath, exitcode, minute_now);
-            }
-            return exitcode;
+            return execute_if(cmd, outfd, errfd, timespath, minute_now, is_top_level);
         }
             
         default:
