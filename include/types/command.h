@@ -10,11 +10,11 @@
  * @brief Represents the type of a command.
  */
 typedef enum{
-    SI,
-    SQ,
-    PL,
-    IF,
-    INVALID
+    SI = 0x5349,
+    SQ = 0x5351,
+    PL = 0x504C,
+    IF = 0x4946,
+    INVALID = 0
 } command_type_t;
 
 typedef struct command command_t;
@@ -34,20 +34,6 @@ struct command{
         } composed;
     } args;
 };
-
-/**
- * @brief Convert command type to uint16.
- * @param type The command type.
- * @return uint16 representation of the command type.
- */
-uint16_t type_to_uint16(command_type_t type);
-
-/**
- * @brief Convert uint16 to command type.
- * @param value The uint16 value.
- * @return command_type_t representation of the value.
- */
-command_type_t uint16_to_type(uint16_t value);
 
 /**
  * @brief Creates a complex command structure.
