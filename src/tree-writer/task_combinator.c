@@ -27,6 +27,16 @@ int64_t combine_and_destroy_tasks(const timing_t *timing, const composed_t *comp
         return -1;
     }
 
+    if(composed->type != SQ && composed->type != PL && composed->type != IF) {
+        dprintf(STDERR_FILENO, "Error: Unsupported combination type.\n");
+        return -1;
+    }
+
+    if(composed->type == IF && (composed->nb_task < 2 || composed->nb_task > 3)) {
+        dprintf(STDERR_FILENO, "Error: IF combination requires exactly 2-3 tasks.\n");
+        return -1;
+    }
+
     // 1. Find a new ID and create the task directory :
     uint64_t new_task_id = find_next_id(tasksdir);
 

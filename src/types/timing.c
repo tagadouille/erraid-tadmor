@@ -76,6 +76,9 @@ bool timing_match_at(const timing_t *t, time_t now)
     time_t minute_now = now - (now % 60);
     localtime_r(&minute_now, &tm_now);
 
+    if(t -> minutes == 0 && t->hours == 0 && t->daysofweek == 0){
+        return false; // timing abstract
+    }
     // minutes
     if (t->minutes != 0 && !mask_is_full(t->minutes, 60)) {
         if (!(t->minutes & (1ULL << tm_now.tm_min))) return false;

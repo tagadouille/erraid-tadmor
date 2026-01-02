@@ -164,6 +164,11 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
                 }
                 composed->task_ids[i] = (uint64_t)tmp;
             }
+
+            if(composed->type == IF && (composed->nb_task < 2 || composed->nb_task > 3)) {
+                dprintf(STDERR_FILENO, "Error: IF combination requires exactly 2-3 tasks.\n");
+                return -1;
+            }
         }
 
         dprintf(STDOUT_FILENO, "timing and command/composed variables initialized.\n");
