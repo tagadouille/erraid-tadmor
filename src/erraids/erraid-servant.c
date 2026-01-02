@@ -12,7 +12,17 @@
 
 static int is_servant_running = 1;
 
-static int proceed_simple(simple_request_t* req, int* fd_response, pid_t father){
+pid_t father = -1 ;
+
+/**
+ * @brief Signal handler to stop the servant gracefully
+ */
+static void servant_handle_signal(int sig) {
+    (void)sig;
+    is_servant_running = 0;
+}
+
+static int proceed_simple(simple_request_t* req, int* fd_response){
 
     // Handling the request :
     void* ans = simple_request_handle(req, tasksdir);
@@ -54,6 +64,10 @@ static int proceed_simple(simple_request_t* req, int* fd_response, pid_t father)
             if(ret < 0){
                 write_log_msg("[servant] Error encoding a_list answer");
             }
+            break;
+        
+        case TM:
+            ret = encode_answer(*fd_response, (answer_t *) ans);
             break;
         
         case RM:
@@ -126,7 +140,7 @@ static int proceed_request(int fd_request, int* fd_response, pid_t father){
     int val = daemon_read(&fd_request, req);
 
     if (val < 0) {
-        dprintf(STDERR_FILENO, "An error occured while reading a simple request\n");
+        write_log_msg("[daemon servant] Error while reading request");
         return -1;
     }
 
@@ -160,14 +174,23 @@ static int proceed_request(int fd_request, int* fd_response, pid_t father){
     return ret;
 }
 
-void start_serve(pid_t father){
+void start_serve(pid_t proc_father) {
 
     write_log_msg("Creation of the servant is a success");
+
+    father = proc_father ;
+    
+    struct sigaction sa = {0};
+    sa.sa_handler = servant_handle_signal;
+
+    sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGINT,  &sa, NULL);
 
     if (daemon_setup_pipes() < 0) {
         write_log_msg("[daemon servant] Error : failed to setup daemon pipes");
         return;
     }
+
     int fd_response = -1;
 
     write_log_msg("[daemon servant] Running start !");
@@ -176,11 +199,12 @@ void start_serve(pid_t father){
 
         int fd_request = -1;
 
-        write_log_msg("[daemon servant] Waiting for simple request...");
+        write_log_msg("[daemon servant] Waiting for request...");
 
-        if(proceed_request(fd_request, &fd_response, father) < 0){
+        if(proceed_request(fd_request, &fd_response) < 0){
             write_log_msg("[daemon servant] Error occured while proceeding the request");
-            break;
+            if (!is_servant_running) break;
+            continue;
         }
         write_log_msg("[daemon servant] Sent OK");
 

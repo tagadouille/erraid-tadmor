@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #ifndef ERRAID_H
 #define ERRAID_H
 
@@ -33,6 +34,8 @@ extern char tasksdir[PATH_MAX];
 extern char g_log_path[PATH_MAX];
 
 extern char g_run_dir[PATH_MAX];
+
+extern int g_foreground_mode;
 
 extern volatile int running;
 
