@@ -295,7 +295,7 @@ static int execute_any_command_fd(const command_t *cmd, int outfd, int errfd, co
             }
             return exitcode;
         }
-            
+        case PL:
         case SQ: {
             int final_exitcode = 0;
             
@@ -316,7 +316,45 @@ static int execute_any_command_fd(const command_t *cmd, int outfd, int errfd, co
             return final_exitcode;
         }
 
-        //TODO SI AND IF
+        case IF: {
+            if (cmd->args.composed.count < 2 || cmd->args.composed.count > 3) {
+                write_log_msg("Invalid number of sub-commands for IF");
+                return -1;
+            }
+
+            int condition_exitcode = execute_any_command_fd(
+                cmd->args.composed.cmds[0],
+                outfd, errfd,
+                NULL, minute_now,
+                0
+            );
+
+            int exitcode = 0;
+
+            // Then :
+            if (condition_exitcode == 0) {
+                exitcode = execute_any_command_fd(
+                    cmd->args.composed.cmds[1],
+                    outfd, errfd,
+                    NULL, minute_now,
+                    0
+                );
+            }
+            // Else :
+            else if (cmd->args.composed.count == 3) {
+                exitcode = execute_any_command_fd(
+                    cmd->args.composed.cmds[2],
+                    outfd, errfd,
+                    NULL, minute_now,
+                    0
+                );
+            }
+
+            if (is_top_level && timespath) {
+                append_times_exitcodes(timespath, exitcode, minute_now);
+            }
+            return exitcode;
+        }
             
         default:
             write_log_msg("Unknown command type: %d", cmd->type);
