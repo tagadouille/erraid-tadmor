@@ -12,10 +12,6 @@
 #include "erraids/erraid.h"
 #include <ctype.h>
 
-/**
- * @brief Create a new empty task with the given ID.
- * ! The internal fields still need to be filled by the tree reader.
- */
 task_t *task_create(uint64_t id){
     task_t *t = calloc(1, sizeof(task_t));
     if (!t){

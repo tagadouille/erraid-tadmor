@@ -3,6 +3,36 @@
 #include "types/command.h"
 #include <ctype.h>
 
+uint16_t type_to_uint16(command_type_t type) {
+    switch (type) {
+        case SI:
+            return 0x5349;
+        case SQ:
+            return 0x5351;
+        case PL:
+            return 0x504C;
+        case IF:
+            return 0x4946;
+        default:
+            return 0;
+    }
+}
+
+command_type_t uint16_to_type(uint16_t value) {
+    switch (value) {
+        case 0x5349:
+            return SI;
+        case 0x5351:
+            return SQ;
+        case 0x504C:
+            return PL;
+        case 0x4946:
+            return IF;
+        default:
+            return INVALID;
+    }
+}
+
 command_t* create_command(command_type_t type){
 
     // Verification of type
@@ -16,7 +46,7 @@ command_t* create_command(command_type_t type){
         perror("malloc");
         return NULL;
     }
-    command->type = type;
+    command->type = type_to_uint16(type);
 
     // Initialisation of the union fields
     // Simple CMD
@@ -167,7 +197,7 @@ command_t* command_create_from_string(const char* str) {
         perror("malloc");
         return NULL;
     }
-    cmd->type = SI;
+    cmd->type = type_to_uint16(SI);
 
     arguments_t *args = malloc(sizeof(arguments_t));
     if (args == NULL) {
@@ -258,14 +288,12 @@ void command_display(command_t *cmd){
         return;
     }
 
-    switch (cmd->type){
+    switch (uint16_to_type(cmd->type)){
         case SI:
             if(cmd->args.simple == NULL){
                 dprintf(STDERR_FILENO, "Error : The simple command can't be null\n");
                 return;
             }
-
-            dprintf(STDOUT_FILENO, " ");
 
             if(cmd->args.simple->argv != NULL){
                 for (uint32_t i = 0; i < cmd->args.simple->argc; i++){
@@ -288,10 +316,45 @@ void command_display(command_t *cmd){
             }
             dprintf(STDOUT_FILENO, ")");
             break;
+        
+        case PL:
+            dprintf(STDOUT_FILENO, "(");
+            for (uint32_t i = 0; i < cmd->args.composed.count; i++){
+                command_display(cmd->args.composed.cmds[i]);
 
-        //TODO DISPLAY OF OTHER TYPES
+                if(i != cmd->args.composed.count - 1){
+                    dprintf(STDOUT_FILENO, " | ");
+                }
+            }
+            dprintf(STDOUT_FILENO, ")");
+            break;
+
+        case IF:
+            dprintf(STDOUT_FILENO, "if ");
+            command_display(cmd->args.composed.cmds[0]);
+            if (cmd->args.composed.cmds[0]->type == type_to_uint16(SI)) {
+                dprintf(STDOUT_FILENO, " ;");
+            }
+
+            dprintf(STDOUT_FILENO, " then ");
+            command_display(cmd->args.composed.cmds[1]);
+
+            if (cmd->args.composed.count == 3) {
+                if (cmd->args.composed.cmds[1]->type == type_to_uint16(SI)) {
+                    dprintf(STDOUT_FILENO, " ;");
+                }
+                dprintf(STDOUT_FILENO, " else ");
+                command_display(cmd->args.composed.cmds[2]);
+            }
+            
+            if (cmd->args.composed.cmds[cmd->args.composed.count - 1]->type == type_to_uint16(SI)) {
+                dprintf(STDOUT_FILENO, " ;");
+            }
+            dprintf(STDOUT_FILENO, " fi");
+            break;
+
         default:
-            dprintf(STDERR_FILENO, "Unknown command type: %d\n", cmd->type);
+            dprintf(STDERR_FILENO, "Unknown command type: %d\n", type_to_uint16(cmd->type));
             return;
     }
 }

@@ -23,7 +23,7 @@ typedef struct command command_t;
  * @brief Represents the command associated with a task.
  */
 struct command{
-    command_type_t type;
+    uint16_t type;
 
     union{
         arguments_t* simple;
@@ -34,6 +34,20 @@ struct command{
         } composed;
     } args;
 };
+
+/**
+ * @brief Convert command type to uint16.
+ * @param type The command type.
+ * @return uint16 representation of the command type.
+ */
+uint16_t type_to_uint16(command_type_t type);
+
+/**
+ * @brief Convert uint16 to command type.
+ * @param value The uint16 value.
+ * @return command_type_t representation of the value.
+ */
+command_type_t uint16_to_type(uint16_t value);
 
 /**
  * @brief Creates a complex command structure.
