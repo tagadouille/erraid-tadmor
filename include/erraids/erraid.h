@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #ifndef ERRAID_H
 #define ERRAID_H
 

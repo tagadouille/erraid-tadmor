@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #define _POSIX_C_SOURCE 200809L /* for PATH_MAX, etc. */
 
 #include <stdio.h>

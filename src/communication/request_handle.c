@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #define _GNU_SOURCE
 
 #include "communication/request_handle.h"
@@ -11,6 +10,7 @@
 #include "tree-writer/task_annihilator.h"
 #include "tree-writer/task_creator.h"
 #include "tree-writer/task_combinator.h"
+#include "erraids/erraid-servant.h"
 
 #include <signal.h>
 

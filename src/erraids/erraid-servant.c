@@ -91,7 +91,7 @@ static int proceed_simple(simple_request_t* req, int* fd_response){
     return ret;
 }
 
-static int proceed_complex(complex_request_t* req, int* fd_response, pid_t father){
+static int proceed_complex(complex_request_t* req, int* fd_response){
 
     answer_t* ans = complex_request_handle(req);
 
@@ -128,7 +128,7 @@ static int proceed_complex(complex_request_t* req, int* fd_response, pid_t fathe
     return ret;
 }
 
-static int proceed_request(int fd_request, int* fd_response, pid_t father){
+static int proceed_request(int fd_request, int* fd_response){
 
     void* req = malloc(sizeof(complex_request_t));
 
@@ -153,7 +153,7 @@ static int proceed_request(int fd_request, int* fd_response, pid_t father){
 
         write_log_msg("[daemon servant] Received simple request with opcode = %u", request->opcode);
 
-        ret = proceed_simple(request, fd_response, father);
+        ret = proceed_simple(request, fd_response);
 
         free(request);
     }
@@ -163,7 +163,7 @@ static int proceed_request(int fd_request, int* fd_response, pid_t father){
 
         write_log_msg("[daemon servant] Received complex request with opcode = %u", request->opcode);
 
-        ret = proceed_complex(request, fd_response, father);
+        ret = proceed_complex(request, fd_response);
 
         free_complex_request(request);
     }

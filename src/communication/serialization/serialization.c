@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /* serialization.c
  *
  * Serialization / deserialization
@@ -166,3 +165,4 @@ int decode_int32(int fd, int32_t *v) {
     if (decode_uint32(fd, &u) < 0) return -1;
     *v = (int32_t)u;
     return 0;
+}
