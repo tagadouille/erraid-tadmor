@@ -171,7 +171,7 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
                 return -1;
             }
 
-            if(composed->type == PL && composed->nb_task < 2) {
+            if(composed->type != IF && composed->nb_task < 2) {
                 dprintf(STDERR_FILENO, "Error: PIPE combination requires at least 2 tasks.\n");
                 return -1;
             }

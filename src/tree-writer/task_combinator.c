@@ -38,7 +38,7 @@ int64_t combine_and_destroy_tasks(const timing_t *timing, const composed_t *comp
         return -1;
     }
 
-    if(composed->type == PL && composed->nb_task < 2) {
+    if(composed->type != IF && composed->nb_task < 2) {
         dprintf(STDERR_FILENO, "Error: PIPE combination requires at least 2 tasks.\n");
         return -1;
     }

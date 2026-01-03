@@ -100,5 +100,9 @@ int execute_pipe(const command_t *cmd, int outfd, int errfd, int infd, const cha
         prev_fd = pipefd[0];
     }
 
+    if(is_top_level && timespath) {
+        append_times_exitcodes(timespath, exitcode, minute_now);
+    }
+
     return exitcode;
 }
