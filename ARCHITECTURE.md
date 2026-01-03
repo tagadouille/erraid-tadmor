@@ -26,4 +26,6 @@ Comme le répertoire 'include/', ce répertoire est séparé en plusieurs sous r
 - **types/** : Structures de données internes (Manipulation des chaînes de caractères, calcul de timing...)
 
 ## Respect du sujet (le titre à revoir)
-- Appels Système : 
+- Appels Système
+- Sérialisation : Les données numériques sont stockées en format Big-Endian pour assurer l'indépendance vis-à-vis de l'architecture matérielle.
+- 
