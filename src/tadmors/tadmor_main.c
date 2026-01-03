@@ -165,8 +165,14 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
                 composed->task_ids[i] = (uint64_t)tmp;
             }
 
+            // Verifications specific to combination type :
             if(composed->type == IF && (composed->nb_task < 2 || composed->nb_task > 3)) {
                 dprintf(STDERR_FILENO, "Error: IF combination requires exactly 2-3 tasks.\n");
+                return -1;
+            }
+
+            if(composed->type == PL && composed->nb_task < 2) {
+                dprintf(STDERR_FILENO, "Error: PIPE combination requires at least 2 tasks.\n");
                 return -1;
             }
         }
