@@ -3,10 +3,9 @@
 #include "types/timing.h"
 
 /**
- * @brief Crée une tâche combinée en déplaçant les commandes des tâches
- *        existantes, puis en détruisant ces dernières.
- * @param timing Le timing pour la nouvelle tâche combinée.
- * @param composed La structure contenant les IDs des tâches à combiner.
- * @return L'ID de la nouvelle tâche en cas de succès, -1 en cas d'erreur.
- */
+* Combines multiple tasks into a single task and destroys the original tasks.
+* @param timing Pointer to the timing structure containing task information.
+* @param composed Pointer to the composed structure containing task details.    
+* @return The ID of the newly created combined task.
+*/
 int64_t combine_and_destroy_tasks(const timing_t *timing, const composed_t *composed);
