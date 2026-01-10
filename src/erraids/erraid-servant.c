@@ -14,12 +14,15 @@ static int is_servant_running = 1;
 
 pid_t father = -1 ;
 
+static int is_terminated = 0 ;
+
 /**
  * @brief Signal handler to stop the servant gracefully
  */
 static void servant_handle_signal(int sig) {
     (void)sig;
     is_servant_running = 0;
+    is_terminated = 1 ;
 }
 
 static int proceed_simple(simple_request_t* req, int* fd_response){
@@ -68,6 +71,7 @@ static int proceed_simple(simple_request_t* req, int* fd_response){
         
         case TM:
             ret = encode_answer(*fd_response, (answer_t *) ans);
+            is_terminated = 1;
             break;
         
         case RM:
@@ -197,6 +201,10 @@ void start_serve(pid_t proc_father) {
 
     while(is_servant_running){
 
+        if(is_terminated == 1){
+            break ;
+        }
+
         int fd_request = -1;
 
         write_log_msg("[daemon servant] Waiting for request...");
@@ -217,4 +225,19 @@ void start_serve(pid_t proc_father) {
         close(fd_response);
 
     write_log_msg("[servant] stopped");
+
+    // Cleanup before exiting
+    if(curr_output){
+        string_free(curr_output);
+        curr_output = NULL;
+    }
+
+    if(curr_time){
+        time_array_free(curr_time);
+        curr_time = NULL;
+    }
+
+    write_log_msg("[servant] cleanup finish.");
+
+    raise(SIGKILL);
 }
