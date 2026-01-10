@@ -60,11 +60,8 @@ static time_t wait_next_minute(void)
         // Interrupted by signal
         else if (result == EINTR) {
             
-            if (need_rescan) {
-                time_t now = time(NULL);
-                return now;
-            }
-            continue;
+            // Check if we need to stop
+            return time(NULL);
         } 
         else {
             perror("clock_nanosleep");
