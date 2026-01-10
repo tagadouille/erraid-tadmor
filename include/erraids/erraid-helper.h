@@ -42,3 +42,15 @@ int mkdir_p(const char *path);
  * @brief helper hton64/ntoh64 (portable) 
  */
 uint64_t hton64(uint64_t x);
+
+/**
+ * @brief Write the current process PID into a pidfile in /tmp/$user/erraid/
+ * @return 0 on success, -1 on failure
+ */
+int write_pid_file();
+
+/**
+ * @brief Read the PID of erraid from the pidfile
+ * @return the PID on success, -1 on failure
+ */
+pid_t read_pid_file();
