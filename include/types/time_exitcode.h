@@ -52,6 +52,6 @@ void all_time_show(time_array_t* te_arr);
  * @brief free the memory allocated for a time_array_t structure
  * @param te_arr a pointer to a time_array_t structure
  */
-void time_array_free(time_array_t* te_arr)
+void time_array_free(time_array_t* te_arr);
 
 #endif

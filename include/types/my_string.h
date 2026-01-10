@@ -9,7 +9,7 @@
 /**
  * @brief Represent a custom string type with dynamic length.
  */
-typedef struct {
+typedef struct string {
     uint8_t* data;
     uint32_t length;
 } string_t;

@@ -3,11 +3,6 @@
 
 #define PIPE_FILE "pipe_file.te"
 
-#ifndef PIPES_H
-#define PIPES_H
-
-#define PIPE_FILE "pipe_file.te"
-
 /**
  * @brief Rename the pipe_path
  * @param new_path the new path name
