@@ -42,8 +42,6 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
     char *hours_str, char *days_of_week_str, int is_abstract,
     command_type_t combination_type, int argc, char **argv, int optind){
 
-    dprintf(STDOUT_FILENO, "the input is %s\n", input);
-
     if(code != CR && code != CB){
 
         uint64_t task_id = 0;
@@ -102,7 +100,6 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
     }
     else{
         // Handle complex request for task creation or combination
-        dprintf(STDOUT_FILENO, "Handling complex request (CR or CB)\n");
 
         // Initialize timing and command structures
         timing_t* timing = timing_create_from_strings(minutes_str, hours_str, days_of_week_str);
@@ -115,15 +112,12 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
         if (is_abstract) {
             timing_set_abstract(timing);
         }
-        
-        dprintf(STDOUT_FILENO, "Timing structure initialized.\n");
-        timing_show(timing);
 
         command_t* command = NULL;
         composed_t* composed = NULL;
 
         if (code == CR) {
-            dprintf(STDOUT_FILENO, "Command to execute: %s  Length %zu\n", input, strlen(input));
+            // Reconstruct the command string from remaining arguments
             command = command_create_from_string(input);
             if(command == NULL){
                 dprintf(STDERR_FILENO, "[client_handle_command] Error creating command from string\n");
@@ -183,9 +177,6 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
                 return -1;
             }
         }
-
-        dprintf(STDOUT_FILENO, "timing and command/composed variables initialized.\n");
-        dprintf(STDOUT_FILENO, "Ready to send the request ! \n");
 
         //Complex request creation and sending
         complex_request_t* request = create_complex_request(code, timing, command, composed);

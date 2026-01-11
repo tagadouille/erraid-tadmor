@@ -36,9 +36,6 @@ answer_t* create_answer(uint16_t anstype, uint64_t task_id, uint16_t errcode){
         answer->task_id = 0;
     }
     
-    dprintf(STDERR_FILENO, "DEBUG: Created answer: anstype=%u, task_id=%lu, errcode=%u\n",
-            answer->anstype, (unsigned long)answer->task_id, answer->errcode);
-    
     return answer;
 }
 

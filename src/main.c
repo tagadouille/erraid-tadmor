@@ -26,8 +26,6 @@ static void default_rundir(char *erraid_path, char* pipe_path, size_t err_size, 
 
     snprintf(erraid_path, err_size, "/tmp/%s/erraid", user);
     snprintf(pipe_path, pipe_size, "%s/pipes", erraid_path);
-
-    dprintf(STDOUT_FILENO, "pipe path : %s", pipe_path);
 }
 
 int main(int argc, char **argv) {

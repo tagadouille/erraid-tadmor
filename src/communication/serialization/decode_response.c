@@ -114,7 +114,6 @@ a_timecode_t* decode_a_timecode(int fd)
 
 a_list_t* decode_a_list(int fd)
 {
-    dprintf(2, "[decode_a_list] enter fd=%d\n", fd);
 
     uint16_t anstype = 0;
     uint32_t nbtask = 0;
@@ -125,7 +124,6 @@ a_list_t* decode_a_list(int fd)
         dprintf(2, "[decode_a_list] ERROR: decode_uint16 failed\n");
         return NULL;
     }
-    dprintf(2, "[decode_a_list] anstype=%u", anstype);
 
     if (anstype != (uint16_t)OK) {
         dprintf(2, "[decode_a_list] ERROR: anstype != OK (%u)\n", anstype);
@@ -137,7 +135,6 @@ a_list_t* decode_a_list(int fd)
         dprintf(2, "[decode_a_list] ERROR: decode_uint32(nbtask) failed\n");
         return NULL;
     }
-    dprintf(2, "[decode_a_list] nbtask=%u", nbtask);
 
     if (nbtask == 0) {
         dprintf(2, "[decode_a_list] nbtask == 0, nothing to decode\n");
@@ -155,14 +152,11 @@ a_list_t* decode_a_list(int fd)
     for (uint32_t i = 0; i < nbtask; ++i) {
         task_t *t = &all_task[i];
 
-        dprintf(2, "[decode_a_list] decoding task #%u\n", i);
-
         /* --- id --- */
         if (decode_uint64(fd, &t->id) < 0) {
             dprintf(2, "[decode_a_list] ERROR: decode_uint64(id) failed (i=%u)\n", i);
             goto error;
         }
-        dprintf(2, "[decode_a_list] task[%u].id=%lu\n", i, t->id);
 
         /* --- timing --- */
         t->timing = malloc(sizeof(timing_t));
@@ -174,17 +168,13 @@ a_list_t* decode_a_list(int fd)
             dprintf(2, "[decode_a_list] ERROR: decode_timing failed (i=%u)\n", i);
             goto error;
         }
-        dprintf(2, "[decode_a_list] timing decoded (i=%u)\n", i);
 
         /* --- command (all types) --- */
         if (decode_command(fd, &t->cmd) < 0) {
             dprintf(2, "[decode_a_list] ERROR: decode_command failed (i=%u)\n", i);
             goto error;
         }
-        dprintf(2, "[decode_a_list] command decoded (i=%u)\n", i);
     }
-
-    dprintf(2, "[decode_a_list] SUCCESS\n");
     return create_a_list(anstype, nbtask, all_task);
 
     error:

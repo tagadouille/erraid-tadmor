@@ -39,7 +39,6 @@ static char* pipe_file_path_creator() {
         return NULL;
     }
     
-    dprintf(STDOUT_FILENO, "DEBUG: pipe_file_path_creator() -> %s\n", pipe_file_path);
     return pipe_file_path;
 }
 
@@ -250,8 +249,6 @@ int client_open_reply(int *rep_rd)
     }
 
     int r = open(rep_path, O_RDONLY);
-
-    dprintf(STDOUT_FILENO, "[client] The pipe reply path is %s\n", rep_path);
 
     if (r < 0){
         perror("open");

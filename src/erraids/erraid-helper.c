@@ -50,7 +50,6 @@ int erraid_set_rundir(const char *rundir, const char* pipedir)
     strncpy(pipe_path, pipedir, sizeof(pipe_path) - 1);
     pipe_path[sizeof(pipe_path) - 1] = '\0';
 
-    dprintf(STDOUT_FILENO, "Pipe_path %s\n", pipe_path);
     return 0;
 }
 
@@ -75,8 +74,6 @@ static int pipe_path_initialization(){
     }
     strncpy(pipe_path, abs_pipe_path, sizeof(pipe_path)-1);
     pipe_path[sizeof(pipe_path)-1] = '\0';
-
-    dprintf(STDOUT_FILENO, "Pipe_path %s\n", pipe_path);
 
     return 0;
 }
@@ -230,75 +227,6 @@ char *my_realpath(const char *path, char *resolved_path) {
     } else {
         return strdup(result);
     }
-}
-
-int write_pid_file() {
-
-    char pidfile_path[PATH_MAX];
-
-    const char *user = getenv("USER");
-    if (!user) user = "nobody";
-    snprintf(pidfile_path, sizeof(pidfile_path), "/tmp/%s/erraid", user);
-
-    if(mkdir_p(pidfile_path) < 0){
-        dprintf(STDERR_FILENO, "Error : can't create the directory for the pid file\n");
-        return -1;
-    }
-
-    char* pidfile_full_path = make_path_no_test(pidfile_path, "erraid_pid");
-
-    if(pidfile_full_path == NULL){
-        dprintf(STDERR_FILENO, "Error : can't create the full path for the pid file\n");
-        return -1;
-    }
-
-    dprintf(1, "%s\n", pidfile_full_path);
-
-    int fd = open(pidfile_full_path, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-
-    free(pidfile_full_path);
-
-    if (fd < 0) {
-        perror("open pidfile");
-        return -1;
-    }
-
-    if(dprintf(fd, "%u\n", (unsigned)getpid()) < 0){
-        perror("dprintf pidfile");
-        close(fd);
-        return -1;
-    }
-    close(fd);
-
-    return 0;
-}
-
-pid_t read_pid_file(){
-
-    char pidfile_path[PATH_MAX];
-
-    const char *user = getenv("USER");
-    if (!user) user = "nobody";
-    snprintf(pidfile_path, sizeof(g_run_dir), "/tmp/%s/erraid/erraid_pid", user);
-
-    dprintf(1, "%s\n", pidfile_path);
-
-    int fd = open(pidfile_path, O_RDONLY);
-
-    if (fd < 0) {
-        perror("open pidfile for reading");
-        return -1;
-    }
-
-    pid_t pid;
-
-    if(read(fd, &pid, sizeof(pid_t)) != sizeof(pid_t)){
-        perror("read pidfile");
-        close(fd);
-        return -1;
-    }
-
-    return pid;
 }
 
 /* ------------------------------ CLEANUP -------------------------------- */

@@ -120,7 +120,6 @@ void tadmor_print_output(a_output_t* output)
             perror("write tadmor_print_output");
         }
     }
-    dprintf(STDOUT_FILENO, "\n");
 }
 
 void tadmor_print_response(uint16_t opcode, void* res)

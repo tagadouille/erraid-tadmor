@@ -18,25 +18,20 @@ int encode_complex_request(int fd, const complex_request_t *r)
         return -1;
     }
 
-    dprintf(STDOUT_FILENO, "[encode_complex_request] Encoding complex request...\n");
-
     // Encode the base fields : 
     if (encode_uint16(fd, r->opcode) < 0) {
         dprintf(STDERR_FILENO, "[encode_complex_request] Error: Failed to encode opcode.\n");
         return -1;
     }
-    dprintf(STDOUT_FILENO, "[encode_complex_request] Opcode: %u\n", r->opcode);
 
     if (encode_timing(fd, &r->timing) < 0) {
         dprintf(STDERR_FILENO, "[encode_complex_request] Error: Failed to encode timing.\n");
         return -1;
     }
-    dprintf(STDOUT_FILENO, "[encode_complex_request] Timing encoded successfully.\n");
 
     // Create :
     if (r->opcode == CR) {
 
-        dprintf(STDOUT_FILENO, "[encode_complex_request] Opcode is CR, encoding command...\n");
         if (!r->u.command) {
             dprintf(STDERR_FILENO, "[encode_complex_request] Error: command is NULL for CR request.\n");
             return -1;
@@ -47,14 +42,12 @@ int encode_complex_request(int fd, const complex_request_t *r)
             dprintf(STDERR_FILENO, "[encode_complex_request] Error: Failed to encode command.\n");
             return -1;
         }
-        dprintf(STDOUT_FILENO, "[encode_complex_request] Command encoded successfully.\n");
         return 0;
 
     }
     // Combine :
     else if (r->opcode == CB) {
         
-        dprintf(STDOUT_FILENO, "[encode_complex_request] Opcode is CB, encoding composed task...\n");
         if (!r->u.composed) {
             dprintf(STDERR_FILENO, "[encode_complex_request] Error: composed is NULL for CB request.\n");
             return -1;
@@ -74,7 +67,6 @@ int encode_complex_request(int fd, const complex_request_t *r)
             dprintf(STDERR_FILENO, "[encode_complex_request] Error: Failed to encode number of tasks.\n");
             return -1;
         }
-        dprintf(STDOUT_FILENO, "[encode_complex_request]  Number of tasks: %u\n", r->u.composed->nb_task);
 
         for (uint32_t i = 0; i < r->u.composed->nb_task; ++i) {
             if (encode_uint64(fd, r->u.composed->task_ids[i]) < 0){
@@ -82,7 +74,6 @@ int encode_complex_request(int fd, const complex_request_t *r)
                 return -1;
             }
         }
-        dprintf(STDOUT_FILENO, "[encode_complex_request]  All task IDs encoded successfully.\n");
         return 0;
     }
 
