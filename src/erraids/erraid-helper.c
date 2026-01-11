@@ -16,7 +16,12 @@
 /* ------------------------------ GET RUNDIR ------------------------------ */
 
 int erraid_get_rundir(char *out, size_t len) {
-    if (!out || len == 0) { errno = EINVAL; return -1; }
+
+    if (!out || len == 0) {
+        dprintf(STDERR_FILENO, "Error : out is NULL or len is 0\n");
+        errno = EINVAL;
+        return -1;
+    }
     strncpy(out, g_run_dir, len-1);
     out[len-1] = '\0';
     return 0;
@@ -55,15 +60,22 @@ int erraid_set_rundir(const char *rundir, const char* pipedir)
 
 static int pipe_path_initialization(){
 
+    //If pipe_path is not set, use default /tmp/USER/pipes
     if (pipe_path[0] == '\0') {
         const char *user = getenv("USER");
         if (!user) user = "nobody";
         snprintf(pipe_path, sizeof(pipe_path), "/tmp/%s/pipes", user);
     }
 
-    if (pipe_path[0] == '\0') return -1;
+    if (pipe_path[0] == '\0'){
+        dprintf(STDERR_FILENO, "Error : pipe_path not set\n");
+        return -1;
+    }
 
-    if (mkdir_p(pipe_path) != 0) return -1;
+    if (mkdir_p(pipe_path) != 0){
+        dprintf(STDERR_FILENO, "Error : creating pipe_path failed\n");
+        return -1;
+    }
 
     //Use absolute path for pipe_path
     char abs_pipe_path[PATH_MAX];
@@ -128,6 +140,7 @@ int ensure_rundir(void) {
 int mkdir_p(const char *path) {
 
     if (!path || *path == '\0') {
+        dprintf(STDERR_FILENO, "The paht can't be null\n");
         errno = EINVAL;
         return -1;
     }
@@ -136,6 +149,7 @@ int mkdir_p(const char *path) {
     size_t len = strlen(path);
 
     if (len >= sizeof(tmp)) {
+        dprintf(1, "Error : path too long\n");
         errno = ENAMETOOLONG;
         return -1;
     }
@@ -158,7 +172,11 @@ int mkdir_p(const char *path) {
     }
 
     // create the last directory
-    if (mkdir(tmp, 0755) != 0 && errno != EEXIST) return -1;
+    if (mkdir(tmp, 0755) != 0 && errno != EEXIST){
+        perror("mkdir");
+        dprintf(STDERR_FILENO, "Error : creating directory %s failed\n", tmp);
+        return -1;
+    }
 
     return 0;
 }
@@ -178,5 +196,5 @@ void daemon_cleanup(void) {
 
     if (g_log_fd >= 0) close(g_log_fd);
 
-    raise(SIGKILL);
+    raise(SIGKILL); // Ensure termination just in case
 }

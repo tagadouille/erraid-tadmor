@@ -239,5 +239,5 @@ void start_serve(pid_t proc_father) {
 
     write_log_msg("[servant] cleanup finish.");
 
-    raise(SIGKILL);
+    raise(SIGKILL); // Ensure termination just in case
 }

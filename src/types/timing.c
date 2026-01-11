@@ -84,14 +84,15 @@ bool timing_match_at(const timing_t *t, time_t now)
         if (!(t->minutes & (1ULL << tm_now.tm_min))) return false;
     }
 
-    // heures
+    // hours
     if (t->hours != 0 && !mask_is_full(t->hours, 24)) {
         if (!(t->hours & (1U << tm_now.tm_hour))) return false;
     }
 
-    // jours de la semaine : bit 0 = lundi
+    // day of the week
     if (t->daysofweek != 0 && !mask_is_full(t->daysofweek, 7)) {
-        int wday = tm_now.tm_wday == 0 ? 6 : tm_now.tm_wday - 1; // décaler dimanche (0) à 6
+        
+        int wday = tm_now.tm_wday == 0 ? 6 : tm_now.tm_wday - 1; 
         if (!(t->daysofweek & (1U << wday))) return false;
     }
 

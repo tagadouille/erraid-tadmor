@@ -132,9 +132,11 @@ string_t *string_copy(const string_t *src) {
 }
 
 void string_free(string_t* src){
+
     if(src == NULL){
         return;
     }
+    
     free(src -> data);
     src -> data = NULL;
     src -> length = 0;
