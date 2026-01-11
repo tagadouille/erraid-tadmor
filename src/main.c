@@ -25,6 +25,13 @@ static void default_rundir(char *erraid_path, char* pipe_path, size_t err_size, 
     if (!user) user = "nobody";
 
     snprintf(erraid_path, err_size, "/tmp/%s/erraid", user);
+
+    size_t required_size = strlen(erraid_path) + strlen("/pipes") + 1;
+    if (required_size > pipe_size) {
+        dprintf(2, "Error: Path too long. Required: %zu, Available: %zu\n", required_size, pipe_size);
+        return;
+    }
+
     snprintf(pipe_path, pipe_size, "%s/pipes", erraid_path);
 }
 
@@ -48,6 +55,13 @@ int main(int argc, char **argv) {
 
                     if (!have_P) {
                         // Set the pipe directory relative to the run directory
+                        size_t required_size = strlen(rundir) + strlen("/pipes") + 1;
+
+                        if (required_size > sizeof(pipedir)) {
+
+                            dprintf(2, "Path too long: %zu bytes, maximum is %zu\n",  required_size, sizeof(pipedir));
+                            return EXIT_FAILURE;
+                        }
                         snprintf(pipedir, sizeof(pipedir), "%s/pipes", rundir);
                     }
                 }

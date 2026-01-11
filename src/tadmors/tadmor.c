@@ -131,12 +131,12 @@ void tadmor_print_response(uint16_t opcode, void* res)
             break;
         case TX:
             tadmor_print_timecode((a_timecode_t*)res);
-            free_a_timecode_t((a_timecode_t*) res);
+            free_a_timecode((a_timecode_t*) res);
             break;
         case SO: // same treatment for STDOUT and STDERR
         case SE:
             tadmor_print_output((a_output_t*)res);
-            free_a_output_t((a_output_t*)res);
+            free_a_output((a_output_t*)res);
             break;
         default:
             tadmor_print_answer((answer_t*)res);

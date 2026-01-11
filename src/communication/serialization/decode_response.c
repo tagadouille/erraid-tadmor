@@ -28,7 +28,7 @@ a_output_t* decode_a_output(int fd)
             return NULL;
         }
 
-        a_output_t *a_output = create_a_output_t(anstype, output_ptr, errcode);
+        a_output_t *a_output = create_a_output(anstype, output_ptr, errcode);
         string_free(output_ptr);
         return a_output;
 
@@ -40,7 +40,7 @@ a_output_t* decode_a_output(int fd)
             return NULL;
         }
 
-        a_output_t *a_output = create_a_output_t(anstype, output_ptr, 0);
+        a_output_t *a_output = create_a_output(anstype, output_ptr, 0);
         string_free(output_ptr);
         return a_output;
     }
@@ -66,7 +66,7 @@ a_timecode_t* decode_a_timecode(int fd)
         anstype = (uint16_t)ERR;
         nbruns = 0;
 
-        return create_a_timecode_t(anstype, nbruns, all_timecode);
+        return create_a_timecode(anstype, nbruns, all_timecode);
     }
     else if (anstype == (uint16_t)OK) {
 
@@ -106,7 +106,7 @@ a_timecode_t* decode_a_timecode(int fd)
             all_timecode = NULL;
         }
 
-        return create_a_timecode_t(anstype, nbruns, all_timecode);
+        return create_a_timecode(anstype, nbruns, all_timecode);
     }
 
     return NULL;
@@ -137,7 +137,6 @@ a_list_t* decode_a_list(int fd)
     }
 
     if (nbtask == 0) {
-        dprintf(2, "[decode_a_list] nbtask == 0, nothing to decode\n");
         return create_a_list(anstype, nbtask, NULL);
     }
 

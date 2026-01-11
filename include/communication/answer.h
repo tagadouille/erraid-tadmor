@@ -72,7 +72,7 @@ a_list_t* create_a_list(uint16_t anstype, uint32_t nbtask, task_t* all_task);
  * @param nbrun the number of time exitcode
  * @param all_timecode an array of time_exitcode_t of size nbrun
  */
-a_timecode_t* create_a_timecode_t(uint16_t anstype, uint32_t nbrun, time_exitcode_t* all_timecode);
+a_timecode_t* create_a_timecode(uint16_t anstype, uint32_t nbrun, time_exitcode_t* all_timecode);
 
 /**
  * @brief fill and create the answer output structure
@@ -80,7 +80,7 @@ a_timecode_t* create_a_timecode_t(uint16_t anstype, uint32_t nbrun, time_exitcod
  * @param output the output of a task
  * @param errcode the error code if there's an error
  */
-a_output_t* create_a_output_t(uint16_t anstype, string_t* output, uint16_t errcode);
+a_output_t* create_a_output(uint16_t anstype, string_t* output, uint16_t errcode);
 
 /**
  * @brief free the answer structure
@@ -95,11 +95,11 @@ void free_a_list(a_list_t* list);
 /**
  * @brief free the answer timecode structure
  */
-void free_a_timecode_t(a_timecode_t* timecode);
+void free_a_timecode(a_timecode_t* timecode);
 
 /**
  * @brief free the answer output structure
  */
-void free_a_output_t(a_output_t* output);
+void free_a_output(a_output_t* output);
 
 #endif

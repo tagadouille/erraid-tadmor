@@ -47,6 +47,7 @@ static int proceed_simple(simple_request_t* req, int* fd_response){
         case SE:
         case SO:
             ret = encode_a_output(*fd_response, (a_output_t *)ans);
+            free_a_output((a_output_t *) ans);
 
             if(ret < 0){
                 write_log_msg("[servant] Error encoding a_output answer");
@@ -55,6 +56,7 @@ static int proceed_simple(simple_request_t* req, int* fd_response){
 
         case TX:
             ret = encode_a_timecode(*fd_response, (a_timecode_t *) ans);
+            free_a_timecode((a_timecode_t *) ans);
 
             if(ret < 0){
                 write_log_msg("[servant] Error encoding a_timecode answer");
@@ -63,6 +65,7 @@ static int proceed_simple(simple_request_t* req, int* fd_response){
 
         case LS:
             ret = encode_a_list(*fd_response, (a_list_t *) ans);
+            free_a_list((a_list_t *) ans);
 
             if(ret < 0){
                 write_log_msg("[servant] Error encoding a_list answer");
@@ -71,11 +74,13 @@ static int proceed_simple(simple_request_t* req, int* fd_response){
         
         case TM:
             ret = encode_answer(*fd_response, (answer_t *) ans);
+            free_answer((answer_t *) ans);
             is_terminated = 1;
             break;
         
         case RM:
             ret = encode_answer(*fd_response, (answer_t *) ans);
+            free_answer((answer_t *) ans);
 
             if(ret < 0){
                 write_log_msg("[servant] Error encoding answer");
@@ -92,6 +97,7 @@ static int proceed_simple(simple_request_t* req, int* fd_response){
             ret = -1;
             break;
     }
+    free_simple_request(req);
     return ret;
 }
 
@@ -115,6 +121,7 @@ static int proceed_complex(complex_request_t* req, int* fd_response){
         case CR:
         case CB:
             ret = encode_answer(*fd_response, ans);
+            free_answer(ans);
 
             if(ret < 0){
                 write_log_msg("[servant] Error encoding answer");
@@ -158,8 +165,6 @@ static int proceed_request(int fd_request, int* fd_response){
         write_log_msg("[daemon servant] Received simple request with opcode = %u", request->opcode);
 
         ret = proceed_simple(request, fd_response);
-
-        free(request);
     }
     // Complex :
     else{

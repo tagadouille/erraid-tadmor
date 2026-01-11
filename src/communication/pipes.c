@@ -141,10 +141,10 @@ int pipe_path_rename(char* new_path) {
     
     //Build the path with /pipes
     char new_pipe_path[PATH_MAX];
-    snprintf(new_pipe_path, sizeof(new_pipe_path), "%s/pipes", resolved_path);
+    int ret = snprintf(new_pipe_path, sizeof(new_pipe_path), "%s/pipes", resolved_path);
     
-    if (strlen(new_pipe_path) >= PATH_MAX) {
-        dprintf(STDERR_FILENO, "Error: path too long\n");
+    if (ret < 0 || (size_t)ret >= sizeof(new_pipe_path)) {
+        dprintf(STDERR_FILENO, "Error: path too long or snprintf failed\n");
         return -1;
     }
     
@@ -203,8 +203,6 @@ int daemon_open_reply(int *rep_wr)
 
     char *rep_path = make_path(pipe_path, REPLY_PIPE);
     if (!rep_path)return -1;
-
-    dprintf(STDOUT_FILENO, "[daemon] The pipe reply path is %s\n", rep_path);
 
     int w = open(rep_path, O_WRONLY);
 
