@@ -97,7 +97,6 @@ static int proceed_simple(simple_request_t* req, int* fd_response){
             ret = -1;
             break;
     }
-    free_simple_request(req);
     return ret;
 }
 
@@ -165,6 +164,8 @@ static int proceed_request(int fd_request, int* fd_response){
         write_log_msg("[daemon servant] Received simple request with opcode = %u", request->opcode);
 
         ret = proceed_simple(request, fd_response);
+
+        free_simple_request(request);
     }
     // Complex :
     else{
