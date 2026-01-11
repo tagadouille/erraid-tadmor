@@ -193,20 +193,26 @@ int extract_task_information(const char* path, Action_type action){
                 result = -1;
             }
             break;
+
         case TIME_EXIT:
             if(aux_extract_time(path, "times-exitcodes") < 0){
                 dprintf(STDERR_FILENO, "Error while reading times_exitcodes file of task at path %s\n", path);
                 result = -1;
             }break;
+
         case OUTPUT:
-            if(aux_extract_output(path, "stdout", output_reader, false) < 0){
+            result = aux_extract_output(path, "stdout", output_reader, false);
+
+            if(result == -1){
                 dprintf(STDERR_FILENO, "Error while reading stdout file of task at path %s\n", path);
-                result = -1;
-            }break;
+            }
+            break;
+
         case STDERR:
-            if(aux_extract_output(path, "stderr", output_reader, true) < 0){
+            result = aux_extract_output(path, "stderr", output_reader, true);
+
+            if(result == -1){
                 dprintf(STDERR_FILENO, "Error while reading stderr file of task at path %s\n", path);
-                result = -1;
             }
         default:
             break;
@@ -215,17 +221,21 @@ int extract_task_information(const char* path, Action_type action){
 }
 
 int aux_extract_cmd(const char* path){
+
     int result = 0;
+
     //Construction of the path to the file
     char* new_path = make_path(path, "cmd");
     if(new_path == NULL){
         result = -1;
         goto error;
     }
+
     if(cmd_reader(new_path) == -1){
         result = -1;
         goto error;
     }
+
     error:
     free(new_path);
     new_path = NULL;
@@ -237,15 +247,15 @@ int aux_extract_output(const char* path, char* folder_name, int (*func)(const ch
     int result = 0;
     //Construction of the path to the file
     char* new_path = make_path(path, folder_name);
+
     if(new_path == NULL){
         dprintf(STDERR_FILENO, "The task hasn't been executed yet\n");
         result = -1;
         goto error;
     }
-    if(func(new_path, is_stderr) == -1){
-        result = -1;
-        goto error;
-    }
+
+    result = func(new_path, is_stderr);
+
     error:
     free(new_path);
     new_path = NULL;

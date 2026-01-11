@@ -37,10 +37,20 @@ a_timecode_t* handle_tx(char *rundir, uint64_t id)
 
 a_output_t* handle_output(char *rundir, uint64_t id, bool is_stderr)
 {
-    if (task_reader(rundir, id, is_stderr ? STDERR : OUTPUT) < 0) {
+    int res = task_reader(rundir, id, is_stderr ? STDERR : OUTPUT);
+
+    if (res < 0) {
 
         string_t* empty_string = string_create(NULL, 0);
-        a_output_t* err_output = create_a_output(ERR, empty_string, NF);
+
+        a_output_t* err_output = NULL;
+
+        if(res == -2){ // output file is empty
+            err_output = create_a_output(ERR, empty_string, NR);
+        }
+        else{
+            err_output = create_a_output(ERR, empty_string, NF);
+        }
         string_free(empty_string);
         return err_output;
     }

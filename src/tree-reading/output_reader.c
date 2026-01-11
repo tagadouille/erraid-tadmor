@@ -26,8 +26,17 @@ int output_reader(const char* path, bool is_stderr) {
         return -1;
     }
 
+    // Determine if the file exist : 
+    if(access(path, F_OK) != 0) {
+        free(buffer);
+        dprintf(STDERR_FILENO, "The output file does not exist\n");
+        return -2;
+    }
+
+    // Open the file
     fd = open(path, O_RDONLY);
     if (fd < 0) {
+
         if (is_stderr)
             perror("open standard error file");
         else
@@ -75,6 +84,9 @@ int output_reader(const char* path, bool is_stderr) {
         if (!curr_output) {
             dprintf(STDERR_FILENO, "output_reader: string_create failed\n");
             result = -1;
+        }
+        if(size == 0){
+            result = -2; // Indicate empty output
         }
     }
 

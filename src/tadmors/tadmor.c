@@ -98,18 +98,16 @@ void tadmor_print_timecode(a_timecode_t* timecode)
 
 void tadmor_print_output(a_output_t* output)
 {
-    if (output == NULL)
-    {
+    if (output == NULL) {
         dprintf(STDERR_FILENO, "NULL output");
         return;
     }
 
-    if (output->anstype == ERR)
-    {
+    if (output->anstype == ERR) {
         if (output->errcode == NF)
             dprintf(STDERR_FILENO, "Error: task not found\n");
         else if (output->errcode == NR)
-            dprintf(STDERR_FILENO, "Error: no run available\n");
+            dprintf(STDERR_FILENO, "Error: The task has never been executed\n");
         return;
     }
 
