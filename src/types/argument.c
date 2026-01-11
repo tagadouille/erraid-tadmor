@@ -19,8 +19,10 @@
  */
 static string_t *read_one_string(const char *buf, size_t size, size_t *offset)
 {
-    if (*offset + sizeof(uint32_t) > size)
+    if (*offset + sizeof(uint32_t) > size) {
+        dprintf(STDERR_FILENO, "[read_one_string] buffer too small for length\n");
         return NULL;
+    }
 
     uint32_t len_be;
     memcpy(&len_be, buf + *offset, sizeof(uint32_t));
@@ -28,8 +30,10 @@ static string_t *read_one_string(const char *buf, size_t size, size_t *offset)
 
     uint32_t len = be32toh(len_be);
 
-    if (*offset + len > size)
+    if (*offset + len > size) {
+        dprintf(STDERR_FILENO, "[read_one_string] buffer too small for string data\n");
         return NULL;
+    }
 
     string_t *s = string_create(buf + *offset, len);
     
@@ -66,6 +70,7 @@ bool arguments_parse_struct(const char *buf, unsigned int size, arguments_t *arg
         return true;
     }
 
+    // --- allocate argv --- */
     args->argv = calloc(argc, sizeof(string_t *));
     if (!args->argv) {
         perror("[arguments_parse_struct] calloc argv");
@@ -160,11 +165,10 @@ arguments_t *copy_arguments(const arguments_t *src) {
     return dst;
 }
 
-void arguments_free(arguments_t *a) {
+void arguments_cleanup(arguments_t *a) {
     if (!a) return;
 
     if (a->argv) {
-        // argv length may be a->argc (or a->argc-1 depending on your convention)
         uint32_t n = a->argc;
         for (uint32_t i = 0; i < n; ++i) {
             if (a->argv[i]) {
@@ -176,6 +180,12 @@ void arguments_free(arguments_t *a) {
         a->argv = NULL;
     }
     a->argc = 0;
+}
+
+void arguments_free(arguments_t *a) {
+    if (!a) return;
+    arguments_cleanup(a);
+    free(a);
 }
 
 char **arguments_to_argv(const arguments_t *args)

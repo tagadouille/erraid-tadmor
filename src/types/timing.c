@@ -76,26 +76,18 @@ bool timing_match_at(const timing_t *t, time_t now)
     time_t minute_now = now - (now % 60);
     localtime_r(&minute_now, &tm_now);
 
-    if(t -> minutes == 0 && t->hours == 0 && t->daysofweek == 0){
-        return false; // timing abstract
-    }
-    // minutes
-    if (t->minutes != 0 && !mask_is_full(t->minutes, 60)) {
-        if (!(t->minutes & (1ULL << tm_now.tm_min))) return false;
-    }
+    // Match minutes: must be wildcard OR the specific bit must be set.
+    bool min_match = mask_is_full(t->minutes, 60) || (t->minutes & (1ULL << tm_now.tm_min));
 
-    // heures
-    if (t->hours != 0 && !mask_is_full(t->hours, 24)) {
-        if (!(t->hours & (1U << tm_now.tm_hour))) return false;
-    }
+    // Match hours: must be wildcard OR the specific bit must be set.
+    bool hour_match = mask_is_full(t->hours, 24) || (t->hours & (1U << tm_now.tm_hour));
 
-    // jours de la semaine : bit 0 = lundi
-    if (t->daysofweek != 0 && !mask_is_full(t->daysofweek, 7)) {
-        int wday = tm_now.tm_wday == 0 ? 6 : tm_now.tm_wday - 1; // décaler dimanche (0) à 6
-        if (!(t->daysofweek & (1U << wday))) return false;
-    }
+    // Match day of week: must be wildcard OR the specific bit must be set.
+    int wday = tm_now.tm_wday == 0 ? 6 : tm_now.tm_wday - 1;
+    bool day_match = mask_is_full(t->daysofweek, 7) || (t->daysofweek & (1U << wday));
 
-    return true;
+    // The task runs if AND ONLY IF all three fields match.
+    return min_match && hour_match && day_match;
 }
 
 

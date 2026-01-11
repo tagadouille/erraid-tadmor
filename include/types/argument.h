@@ -37,15 +37,19 @@ arguments_t *arguments_parse(const char *buffer, unsigned int size);
 arguments_t* copy_arguments(const arguments_t* src);
 
 /**
- * @brief Free the memory allocated for the arguments structure.
- * @param args Pointer to the arguments structure to free.
+ * @brief Frees the content of an arguments_t struct, but not the struct itself.
  */
-void arguments_free(arguments_t *args);
+void arguments_cleanup(arguments_t *a);
+
+/**
+ * @brief Frees an arguments_t struct and all its content.
+ */
+void arguments_free(arguments_t *a);
+
 /**
  * @brief Convert an arguments_t structure to a NULL-terminated argv array.
  * @param args Pointer to the arguments_t structure.
  */
 char **arguments_to_argv(const arguments_t *args);
 
-
-#endif
+#endif /* _ARGUMENT_H_ */

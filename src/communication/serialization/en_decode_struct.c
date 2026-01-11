@@ -148,8 +148,6 @@ int encode_arguments(int fd, const arguments_t *args)
         return -1;
     }
 
-    dprintf(1, "argc : %u\n", args->argc);
-
     for (uint32_t i = 0; i < args->argc; ++i) {
 
         if (!args->argv[i]) {
@@ -230,8 +228,6 @@ int encode_command(int fd, const command_t *cmd){
         return -1;
     }
 
-    dprintf(2, "[encode_command] type=%u\n", cmd->type);
-
     if(cmd->type == SI){
         if (!cmd->args.simple) {
             dprintf(2, "[encode_command] ERROR: simple args NULL\n");
@@ -285,8 +281,6 @@ int decode_command(int fd, command_t **out){
 
     cmd->type = (command_type_t)type;
 
-    dprintf(2, "[decode_command] type=%u\n", cmd->type);
-
     if (cmd->type == SI) {
         cmd->args.simple = calloc(1, sizeof(arguments_t));
         if (!cmd->args.simple) {
@@ -308,8 +302,6 @@ int decode_command(int fd, command_t **out){
             dprintf(2, "[decode_command] ERROR: decode_uint32(count) failed\n");
             goto error;
         }
-
-        dprintf(2, "[decode_command] composed count=%u\n", count);
 
         if (count == 0) {
             dprintf(2, "[decode_command] ERROR: invalid composed count=%u\n", count);

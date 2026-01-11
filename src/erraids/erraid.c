@@ -112,11 +112,6 @@ int daemon_init(void) {
 
     if (ensure_rundir() != 0) return -1;
 
-    if(write_pid_file() < 0){
-        dprintf(STDERR_FILENO, "Error : can't write the pid file\n");
-        return -1;
-    }
-
     if (mkdir_p(pipe_path) != 0) {
         perror("mkdir_p(pipe_path)");
         return -1;

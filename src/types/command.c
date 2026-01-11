@@ -37,24 +37,26 @@ command_t* create_command(command_type_t type){
     return command;
 }
 
-void command_free(command_t *cmd){
-
-    if (cmd == NULL)
+void command_free(command_t *cmd) {
+    
+    if (cmd == NULL) {
         return;
+    }
 
     if (cmd->type == SI) {
-        arguments_free(cmd->args.simple);
+        arguments_cleanup(cmd->args.simple);
     }
     else if (cmd->type == SQ || cmd->type == IF || cmd->type == PL) {
 
-        for (uint32_t i = 0; i < cmd->args.composed.count; i++) {
-            command_free(cmd->args.composed.cmds[i]);
-            cmd->args.composed.cmds[i] = NULL;
+        if (cmd->args.composed.cmds != NULL) {
+
+            for (uint32_t i = 0; i < cmd->args.composed.count; i++) {
+                command_free(cmd->args.composed.cmds[i]);
+            }
+            free(cmd->args.composed.cmds);
         }
-        free(cmd->args.composed.cmds);
-        cmd->args.composed.cmds = NULL;
-        cmd->args.composed.count = 0;
     }
+    
     free(cmd);
 }
 

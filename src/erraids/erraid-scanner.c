@@ -77,19 +77,18 @@ static void scan_all_task(void) {
 
     write_log_msg("Scanning tasks directory…");
 
-    all_task_t* new_tasks = all_task_listing(tasksdir);
+    if (scanned_tasks != NULL) {
+        free_all_task(scanned_tasks);
+    }
+
+    scanned_tasks = all_task_listing(tasksdir);
     
-    if (new_tasks == NULL) {
+    if (scanned_tasks == NULL) {
         write_log_msg("Error: an error occurred while scanning all the tasks of path %s", tasksdir);
         running = 0;
         return;
     }
     
-    if (scanned_tasks != NULL) {
-        free_all_task(scanned_tasks);
-    }
-    
-    scanned_tasks = new_tasks;
     write_log_msg("Scan succeeded! Found %u tasks\n", scanned_tasks->nbtask);
 }
 
@@ -175,32 +174,19 @@ void erraid_scan_loop(void) {
         
         write_log_msg("Woke up");
         
-        // Handle rescan if requested
+        // If a rescan is needed, do it
         if (need_rescan) {
             write_log_msg("Rescan requested by signal");
             scan_all_task();
             need_rescan = 0;
-            
-            // Check if we missed an execution during rescan
-            time_t now = time(NULL);
-            time_t current_minute = now - (now % 60);
-            
-            // If we're at exact minute :00 and haven't executed it yet
-            if (now % 60 == 0 && current_minute != last_executed_minute) {
-                write_log_msg("Executing missed minute after rescan: %ld", current_minute);
-                execute_all_task(current_minute);
-            }
-            
-            // Continue to wait for next minute
-            continue;
         }
 
-        // Execute tasks for this minute
+        // Execute task
         execute_all_task(wake_time);
     }
 
     if (scanned_tasks != NULL) {
-        free(scanned_tasks);
+        free_all_task(scanned_tasks);
         scanned_tasks = NULL;
     }
     

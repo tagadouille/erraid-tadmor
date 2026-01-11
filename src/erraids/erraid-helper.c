@@ -1,3 +1,5 @@
+#define _XOPEN_SOURCE 500
+
 #include "erraids/erraid.h"
 #include "erraids/erraid-helper.h"
 #include "communication/communication.h"
@@ -16,7 +18,12 @@
 /* ------------------------------ GET RUNDIR ------------------------------ */
 
 int erraid_get_rundir(char *out, size_t len) {
-    if (!out || len == 0) { errno = EINVAL; return -1; }
+
+    if (!out || len == 0) {
+        dprintf(STDERR_FILENO, "Error : out is NULL or len is 0\n");
+        errno = EINVAL;
+        return -1;
+    }
     strncpy(out, g_run_dir, len-1);
     out[len-1] = '\0';
     return 0;
@@ -50,46 +57,57 @@ int erraid_set_rundir(const char *rundir, const char* pipedir)
     strncpy(pipe_path, pipedir, sizeof(pipe_path) - 1);
     pipe_path[sizeof(pipe_path) - 1] = '\0';
 
-    dprintf(STDOUT_FILENO, "Pipe_path %s\n", pipe_path);
     return 0;
 }
 
 static int pipe_path_initialization(){
 
+    //If pipe_path is not set, use default /tmp/USER/pipes
     if (pipe_path[0] == '\0') {
         const char *user = getenv("USER");
         if (!user) user = "nobody";
         snprintf(pipe_path, sizeof(pipe_path), "/tmp/%s/pipes", user);
     }
 
-    if (pipe_path[0] == '\0') return -1;
+    if (pipe_path[0] == '\0'){
+        dprintf(STDERR_FILENO, "Error : pipe_path not set\n");
+        return -1;
+    }
 
-    if (mkdir_p(pipe_path) != 0) return -1;
+    if (mkdir_p(pipe_path) != 0){
+        dprintf(STDERR_FILENO, "Error : creating pipe_path failed\n");
+        return -1;
+    }
 
     //Use absolute path for pipe_path
     char abs_pipe_path[PATH_MAX];
 
-    if (!my_realpath(pipe_path, abs_pipe_path)) {
+    if (!realpath(pipe_path, abs_pipe_path)) {
         perror("realpath");
         return -1;
     }
     strncpy(pipe_path, abs_pipe_path, sizeof(pipe_path)-1);
     pipe_path[sizeof(pipe_path)-1] = '\0';
 
-    dprintf(STDOUT_FILENO, "Pipe_path %s\n", pipe_path);
-
     return 0;
 }
 
 int ensure_rundir(void) {
-    if (g_run_dir[0] == '\0') return -1;
+
+    if (g_run_dir[0] == '\0'){
+        dprintf(STDERR_FILENO, "Error : rundir not set\n");
+        return -1;
+    }
     
-    if (mkdir_p(g_run_dir) != 0) return -1;
+    if (mkdir_p(g_run_dir) != 0){
+        dprintf(STDERR_FILENO, "Error : creating rundir failed\n");
+        return -1;
+    }
 
     //Use absolute path for g_run_dir
     char abs_rundir[PATH_MAX];
 
-    if (!my_realpath(g_run_dir, abs_rundir)) {
+    if (!realpath(g_run_dir, abs_rundir)) {
         perror("realpath");
         return -1;
     }
@@ -122,14 +140,18 @@ int ensure_rundir(void) {
 }
 
 int mkdir_p(const char *path) {
+
     if (!path || *path == '\0') {
+        dprintf(STDERR_FILENO, "The paht can't be null\n");
         errno = EINVAL;
         return -1;
     }
 
     char tmp[PATH_MAX];
     size_t len = strlen(path);
+
     if (len >= sizeof(tmp)) {
+        dprintf(1, "Error : path too long\n");
         errno = ENAMETOOLONG;
         return -1;
     }
@@ -152,7 +174,11 @@ int mkdir_p(const char *path) {
     }
 
     // create the last directory
-    if (mkdir(tmp, 0755) != 0 && errno != EEXIST) return -1;
+    if (mkdir(tmp, 0755) != 0 && errno != EEXIST){
+        perror("mkdir");
+        dprintf(STDERR_FILENO, "Error : creating directory %s failed\n", tmp);
+        return -1;
+    }
 
     return 0;
 }
@@ -164,142 +190,6 @@ uint64_t hton64(uint64_t x) {
         return x;
     #endif
 }
-//TODO refaire struct de cette fnct
-/**
- * equivalent of realpath
- */
-char *my_realpath(const char *path, char *resolved_path) {
-    if (!path) { errno = EINVAL; return NULL; }
-
-    char temp[PATH_MAX];
-    if (path[0] != '/') {
-        if (!getcwd(temp, sizeof(temp))) return NULL;
-        size_t need = strlen(temp) + 1 + strlen(path) + 1;
-        if (need > sizeof(temp)) { errno = ENAMETOOLONG; return NULL; }
-        strcat(temp, "/");
-        strcat(temp, path);
-    } else {
-        if (strlen(path) >= sizeof(temp)) { errno = ENAMETOOLONG; return NULL; }
-        strncpy(temp, path, sizeof(temp));
-        temp[sizeof(temp)-1] = '\0';
-    }
-
-    /* split and normalize */
-    char *copy = strdup(temp);
-    if (!copy) return NULL;
-
-    char *components[PATH_MAX];
-    int top = -1;
-
-    char *saveptr = NULL;
-    for (char *tok = strtok_r(copy, "/", &saveptr); tok; tok = strtok_r(NULL, "/", &saveptr)) {
-        if (strcmp(tok, ".") == 0) continue;
-        if (strcmp(tok, "..") == 0) {
-            if (top >= 0) top--;
-            continue;
-        }
-        components[++top] = tok;
-    }
-
-    /* build result */
-    char result[PATH_MAX];
-    if (top == -1) {
-        /* root */
-        strncpy(result, "/", sizeof(result));
-        result[sizeof(result)-1] = '\0';
-    } else {
-        result[0] = '\0';
-        for (int i = 0; i <= top; ++i) {
-            size_t need = strlen(result) + 1 + strlen(components[i]) + 1;
-            if (need > sizeof(result)) {
-                free(copy);
-                errno = ENAMETOOLONG;
-                return NULL;
-            }
-            strcat(result, "/");
-            strcat(result, components[i]);
-        }
-    }
-
-    free(copy);
-
-    if (resolved_path) {
-        strncpy(resolved_path, result, PATH_MAX);
-        resolved_path[PATH_MAX - 1] = '\0';
-        return resolved_path;
-    } else {
-        return strdup(result);
-    }
-}
-
-int write_pid_file() {
-
-    char pidfile_path[PATH_MAX];
-
-    const char *user = getenv("USER");
-    if (!user) user = "nobody";
-    snprintf(pidfile_path, sizeof(pidfile_path), "/tmp/%s/erraid", user);
-
-    if(mkdir_p(pidfile_path) < 0){
-        dprintf(STDERR_FILENO, "Error : can't create the directory for the pid file\n");
-        return -1;
-    }
-
-    char* pidfile_full_path = make_path_no_test(pidfile_path, "erraid_pid");
-
-    if(pidfile_full_path == NULL){
-        dprintf(STDERR_FILENO, "Error : can't create the full path for the pid file\n");
-        return -1;
-    }
-
-    dprintf(1, "%s\n", pidfile_full_path);
-
-    int fd = open(pidfile_full_path, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-
-    free(pidfile_full_path);
-
-    if (fd < 0) {
-        perror("open pidfile");
-        return -1;
-    }
-
-    if(dprintf(fd, "%u\n", (unsigned)getpid()) < 0){
-        perror("dprintf pidfile");
-        close(fd);
-        return -1;
-    }
-    close(fd);
-
-    return 0;
-}
-
-pid_t read_pid_file(){
-
-    char pidfile_path[PATH_MAX];
-
-    const char *user = getenv("USER");
-    if (!user) user = "nobody";
-    snprintf(pidfile_path, sizeof(g_run_dir), "/tmp/%s/erraid/erraid_pid", user);
-
-    dprintf(1, "%s\n", pidfile_path);
-
-    int fd = open(pidfile_path, O_RDONLY);
-
-    if (fd < 0) {
-        perror("open pidfile for reading");
-        return -1;
-    }
-
-    pid_t pid;
-
-    if(read(fd, &pid, sizeof(pid_t)) != sizeof(pid_t)){
-        perror("read pidfile");
-        close(fd);
-        return -1;
-    }
-
-    return pid;
-}
 
 /* ------------------------------ CLEANUP -------------------------------- */
 
@@ -308,5 +198,5 @@ void daemon_cleanup(void) {
 
     if (g_log_fd >= 0) close(g_log_fd);
 
-    raise(SIGKILL);
+    raise(SIGKILL); // Ensure termination just in case
 }

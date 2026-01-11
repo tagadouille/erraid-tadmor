@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE 500
 #include "communication/pipes.h"
 #include "communication/communication.h"
 #include "erraids/erraid-helper.h"
@@ -14,32 +15,30 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
+#include <libgen.h>
 
 /**
  * @brief create a string that contains the default pipe_path 
  * @return the string
  */
 static char* pipe_file_path_creator() {
-
-    const char *user = getenv("USER");
-    if (!user) user = "nobody";
-
-    char* path = make_path_no_test("/home", user);
-
-    if(path == NULL){
-        dprintf(STDERR_FILENO, "The path is NULL at pipe_file_read\n");
+    
+    char path[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
+    if (len == -1) {
+        perror("readlink");
         return NULL;
     }
-    
-    char* pipe_file_path = make_path_no_test(path, PIPE_FILE);
-    free(path);
+    path[len] = '\0';
+
+    char *dir = dirname(path);
+    char* pipe_file_path = make_path_no_test(dir, PIPE_FILE);
     
     if(pipe_file_path == NULL){
         dprintf(STDERR_FILENO, "The pipe_file_path is NULL at pipe_file_read\n");
         return NULL;
     }
     
-    dprintf(STDOUT_FILENO, "DEBUG: pipe_file_path_creator() -> %s\n", pipe_file_path);
     return pipe_file_path;
 }
 
@@ -142,10 +141,10 @@ int pipe_path_rename(char* new_path) {
     
     //Build the path with /pipes
     char new_pipe_path[PATH_MAX];
-    snprintf(new_pipe_path, sizeof(new_pipe_path), "%s/pipes", resolved_path);
+    int ret = snprintf(new_pipe_path, sizeof(new_pipe_path), "%s/pipes", resolved_path);
     
-    if (strlen(new_pipe_path) >= PATH_MAX) {
-        dprintf(STDERR_FILENO, "Error: path too long\n");
+    if (ret < 0 || (size_t)ret >= sizeof(new_pipe_path)) {
+        dprintf(STDERR_FILENO, "Error: path too long or snprintf failed\n");
         return -1;
     }
     
@@ -205,8 +204,6 @@ int daemon_open_reply(int *rep_wr)
     char *rep_path = make_path(pipe_path, REPLY_PIPE);
     if (!rep_path)return -1;
 
-    dprintf(STDOUT_FILENO, "[daemon] The pipe reply path is %s\n", rep_path);
-
     int w = open(rep_path, O_WRONLY);
 
     if (w < 0){
@@ -250,8 +247,6 @@ int client_open_reply(int *rep_rd)
     }
 
     int r = open(rep_path, O_RDONLY);
-
-    dprintf(STDOUT_FILENO, "[client] The pipe reply path is %s\n", rep_path);
 
     if (r < 0){
         perror("open");

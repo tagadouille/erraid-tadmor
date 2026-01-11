@@ -25,9 +25,14 @@ static void default_rundir(char *erraid_path, char* pipe_path, size_t err_size, 
     if (!user) user = "nobody";
 
     snprintf(erraid_path, err_size, "/tmp/%s/erraid", user);
-    snprintf(pipe_path, pipe_size, "%s/pipes", erraid_path);
 
-    dprintf(STDOUT_FILENO, "pipe path : %s", pipe_path);
+    size_t required_size = strlen(erraid_path) + strlen("/pipes") + 1;
+    if (required_size > pipe_size) {
+        dprintf(2, "Error: Path too long. Required: %zu, Available: %zu\n", required_size, pipe_size);
+        return;
+    }
+
+    snprintf(pipe_path, pipe_size, "%s/pipes", erraid_path);
 }
 
 int main(int argc, char **argv) {
@@ -38,10 +43,10 @@ int main(int argc, char **argv) {
 
     default_rundir(rundir, pipedir, PATH_MAX, PATH_MAX);
 
-    while ((opt = getopt(argc, argv, "r:fP:")) != -1) {
+    while ((opt = getopt(argc, argv, "R:FP:")) != -1) {
 
         switch (opt) {
-            case 'r':
+            case 'R':
                 // If it's valid -> copy the arguments in the pathes
                 if (optarg && strlen(optarg) < sizeof(rundir)) {
 
@@ -50,6 +55,13 @@ int main(int argc, char **argv) {
 
                     if (!have_P) {
                         // Set the pipe directory relative to the run directory
+                        size_t required_size = strlen(rundir) + strlen("/pipes") + 1;
+
+                        if (required_size > sizeof(pipedir)) {
+
+                            dprintf(2, "Path too long: %zu bytes, maximum is %zu\n",  required_size, sizeof(pipedir));
+                            return EXIT_FAILURE;
+                        }
                         snprintf(pipedir, sizeof(pipedir), "%s/pipes", rundir);
                     }
                 }
@@ -59,7 +71,7 @@ int main(int argc, char **argv) {
                 }
                 break;
 
-            case 'f':
+            case 'F':
                 g_foreground_mode = 1;
                 break;
 

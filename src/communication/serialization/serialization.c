@@ -54,7 +54,7 @@ int read_full(int fd, void *buf, size_t size)
     size_t off = 0;
 
     while (off < size) {
-        dprintf(2, "[read_full] reading %zu bytes (off=%zu size=%zu)\n", size - off, off, size);
+
         ssize_t r = read(fd, p + off, size - off);
         
         if (r < 0) {

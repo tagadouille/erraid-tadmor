@@ -29,20 +29,24 @@
 #define PATH_MAX 4096
 #endif
 
+    // Task creation var :
+static char *minutes_str = NULL;
+static char *hours_str = NULL;
+static char *days_of_week_str = NULL;
+
+static int is_abstract = 0;
+static command_type_t combination_type = 0;
+static int combination_flag = 0;
+
 /** @brief Mini-parser: take the full command line and dispatch it
  * @param code the operation code
  * @param input the input string (argument)
- * @param minutes_str string representing minutes
- * @param hours_str string representing hours
- * @param days_of_week_str string representing days of the week
- * @param is_abstract whether the task is abstract
+ * @param argc number of arguments
+ * @param argv array of arguments
+ * @param optind index of the first non-option argument
  * @return int 0 on success, -1 on failure
  */
-static int client_handle_command(uint16_t code, const char *input, char *minutes_str,
-    char *hours_str, char *days_of_week_str, int is_abstract,
-    command_type_t combination_type, int argc, char **argv, int optind){
-
-    dprintf(STDOUT_FILENO, "the input is %s\n", input);
+static int client_handle_command(uint16_t code, const char *input, int argc, char **argv, int optind){
 
     if(code != CR && code != CB){
 
@@ -85,9 +89,11 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
 
         // Sending the request : 
         if(client_send_simple(request) < 0){
+            free_simple_request(request);
             dprintf(STDERR_FILENO, "Error : an error occured while sending an simple request\n");
             return -1;
         }
+        free_simple_request(request);
 
         // Get the response
         void* ans = client_recv_answer(code);
@@ -98,11 +104,9 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
         }
         // Print the answer
         tadmor_print_response(code, ans);
-        free(request);
     }
     else{
         // Handle complex request for task creation or combination
-        dprintf(STDOUT_FILENO, "Handling complex request (CR or CB)\n");
 
         // Initialize timing and command structures
         timing_t* timing = timing_create_from_strings(minutes_str, hours_str, days_of_week_str);
@@ -115,16 +119,14 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
         if (is_abstract) {
             timing_set_abstract(timing);
         }
-        
-        dprintf(STDOUT_FILENO, "Timing structure initialized.\n");
-        timing_show(timing);
 
         command_t* command = NULL;
         composed_t* composed = NULL;
 
         if (code == CR) {
-            dprintf(STDOUT_FILENO, "Command to execute: %s  Length %zu\n", input, strlen(input));
+            // Reconstruct the command string from remaining arguments
             command = command_create_from_string(input);
+
             if(command == NULL){
                 dprintf(STDERR_FILENO, "[client_handle_command] Error creating command from string\n");
                 timing_free(timing);
@@ -174,18 +176,19 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
 
             // Verifications specific to combination type :
             if(composed->type == IF && (composed->nb_task < 2 || composed->nb_task > 3)) {
+                if (command) command_free(command);
+                timing_free(timing);
                 dprintf(STDERR_FILENO, "Error: IF combination requires exactly 2-3 tasks.\n");
                 return -1;
             }
 
             if(composed->type != IF && composed->nb_task < 2) {
+                if (command) command_free(command);
+                timing_free(timing);
                 dprintf(STDERR_FILENO, "Error: PIPE combination requires at least 2 tasks.\n");
                 return -1;
             }
         }
-
-        dprintf(STDOUT_FILENO, "timing and command/composed variables initialized.\n");
-        dprintf(STDOUT_FILENO, "Ready to send the request ! \n");
 
         //Complex request creation and sending
         complex_request_t* request = create_complex_request(code, timing, command, composed);
@@ -193,16 +196,18 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
         if(request == NULL){
             dprintf(STDERR_FILENO, "[client_handle_command] Error creating complex request\n");
             if (command) command_free(command);
-            // composed is freed inside create_complex_request in case of error
             timing_free(timing);
             return -1;
         }
 
         // Sending the request : 
         if(client_send_complex(request) < 0){
+            free_complex_request(request);
             dprintf(STDERR_FILENO, "Error : an error occured while sending an simple request\n");
             return -1;
         }
+        free_complex_request(request);
+        timing_free(timing);
 
         // Get the response
         void* ans = client_recv_answer(code);
@@ -213,7 +218,6 @@ static int client_handle_command(uint16_t code, const char *input, char *minutes
         }
         // Print the answer
         tadmor_print_response(code, ans);
-        free(request);
     }
     return 0;
 }
@@ -315,15 +319,9 @@ static char *reconstruct_arg(int argc, char **argv, int start)
  * @param pipe_rename whether to rename the pipe
  * @param argc number of arguments
  * @param argv array of arguments
- * @param minutes_str string representing minutes
- * @param hours_str string representing hours
- * @param days_of_week_str string representing days of the week
- * @param is_abstract whether the task is abstract
  * @return int 0 on success, -1 on failure
  */
-static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** argv,
-    char *minutes_str, char *hours_str, char *days_of_week_str,
-    int is_abstract, command_type_t combination_type){
+static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** argv){
 
     char* input = NULL;
 
@@ -363,8 +361,7 @@ static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** a
         wait(NULL);
     }
     else{
-        res = client_handle_command(opcode, input, minutes_str, hours_str,
-             days_of_week_str, is_abstract, combination_type, argc, argv, optind);
+        res = client_handle_command(opcode, input, argc, argv, optind);
     }
     
     free(input);
@@ -380,15 +377,6 @@ int main(int argc, char **argv) {
     uint16_t opcode = 0;
 
     int pipe_rename = 0;
-
-    // Task creation var :
-    char *minutes_str = NULL;
-    char *hours_str = NULL;
-    char *days_of_week_str = NULL;
-
-    int is_abstract = 0;
-    command_type_t combination_type = 0;
-    int combination_flag = 0;
 
     if(pipe_file_read() < 0){
         dprintf(STDERR_FILENO, "You must launch erraid before tadmor. \n");
@@ -470,5 +458,5 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    return argument_handler(opcode, pipe_rename, argc, argv, minutes_str, hours_str, days_of_week_str, is_abstract, combination_type);
+    return argument_handler(opcode, pipe_rename, argc, argv);
 }

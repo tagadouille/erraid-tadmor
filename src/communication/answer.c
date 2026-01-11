@@ -36,13 +36,10 @@ answer_t* create_answer(uint16_t anstype, uint64_t task_id, uint16_t errcode){
         answer->task_id = 0;
     }
     
-    dprintf(STDERR_FILENO, "DEBUG: Created answer: anstype=%u, task_id=%lu, errcode=%u\n",
-            answer->anstype, (unsigned long)answer->task_id, answer->errcode);
-    
     return answer;
 }
 
-a_list_t* create_a_list(uint16_t anstype, uint32_t nbtask, task_t* all_task){
+a_list_t* create_a_list(uint16_t anstype, all_task_t* all_task_data){
 
     if(anstype != OK){
         dprintf(STDERR_FILENO, "The anstype must be OK\n");
@@ -54,13 +51,19 @@ a_list_t* create_a_list(uint16_t anstype, uint32_t nbtask, task_t* all_task){
         perror("malloc");
         return NULL;
     }
-    a_list -> all_task.nbtask = nbtask;
-    a_list -> all_task.all_task = all_task;
+    
+    if (all_task_data != NULL) {
+        a_list->all_task = *all_task_data;
+        free(all_task_data);
+    } else {
+        a_list->all_task.nbtask = 0;
+        a_list->all_task.all_task = NULL;
+    }
 
     return a_list;
 }
 
-a_timecode_t* create_a_timecode_t(uint16_t anstype, uint32_t nbruns, time_exitcode_t* all_timecode){
+a_timecode_t* create_a_timecode(uint16_t anstype, uint32_t nbruns, time_exitcode_t* all_timecode){
 
     if(anstype != ERR && anstype != OK){
         dprintf(STDERR_FILENO, "The anstype is incorrect\n");
@@ -84,7 +87,7 @@ a_timecode_t* create_a_timecode_t(uint16_t anstype, uint32_t nbruns, time_exitco
     return time;
 }
 
-a_output_t* create_a_output_t(uint16_t anstype, string_t* output, uint16_t errcode)
+a_output_t* create_a_output(uint16_t anstype, string_t* output, uint16_t errcode)
 {
     a_output_t* a_output = calloc(1, sizeof(a_output_t));
     if (!a_output) {
@@ -112,33 +115,25 @@ void free_answer(answer_t* answer){
 }
 
 void free_a_list(a_list_t* list) {
-    if (!list || !list->all_task.all_task)
+    if (!list)
         return;
 
-    for (uint32_t i = 0; i < list->all_task.nbtask; ++i) {
-        free(list->all_task.all_task[i].timing);
+    if (list->all_task.all_task) {
+        free(list->all_task.all_task);
     }
-
-    free(list->all_task.all_task);
-    list->all_task.all_task = NULL;
-    list->all_task.nbtask = 0;
+    free(list);
 }
 
-
-
-void free_a_timecode_t(a_timecode_t* timecode){
+void free_a_timecode(a_timecode_t* timecode){
     if(timecode == NULL) return;
 
-    for (size_t i = 0; i < timecode -> time_arr.nbruns; i++){
-
-        if(timecode -> time_arr.all_timecode != NULL){
-            free(timecode -> time_arr.all_timecode);
-        }
+    if(timecode->time_arr.all_timecode != NULL){
+        free(timecode->time_arr.all_timecode);
     }
     free(timecode);
 }
 
-void free_a_output_t(a_output_t* output){
+void free_a_output(a_output_t* output){
     if(output == NULL) return;
 
     string_free(output->output);

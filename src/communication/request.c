@@ -95,15 +95,11 @@ void free_complex_request(complex_request_t* request){
 
     // The timing struct is part of the request, no need to free it separately.
 
-    // Free the correct member of the union based on the opcode
-    if (request->opcode == CR) {
-        if(request->u.command){
-            command_free(request->u.command);
-        }
-    } else if (request->opcode == CB) {
-        if(request->u.composed){
-            composed_free(request->u.composed);
-        }
+    if (request->u.command) {
+        command_free(request->u.command);
+    } else if (request->u.composed) {
+        composed_free(request->u.composed);
     }
+
     free(request);
 }
