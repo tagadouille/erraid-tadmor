@@ -29,18 +29,24 @@
 #define PATH_MAX 4096
 #endif
 
+    // Task creation var :
+static char *minutes_str = NULL;
+static char *hours_str = NULL;
+static char *days_of_week_str = NULL;
+
+static int is_abstract = 0;
+static command_type_t combination_type = 0;
+static int combination_flag = 0;
+
 /** @brief Mini-parser: take the full command line and dispatch it
  * @param code the operation code
  * @param input the input string (argument)
- * @param minutes_str string representing minutes
- * @param hours_str string representing hours
- * @param days_of_week_str string representing days of the week
- * @param is_abstract whether the task is abstract
+ * @param argc number of arguments
+ * @param argv array of arguments
+ * @param optind index of the first non-option argument
  * @return int 0 on success, -1 on failure
  */
-static int client_handle_command(uint16_t code, const char *input, char *minutes_str,
-    char *hours_str, char *days_of_week_str, int is_abstract,
-    command_type_t combination_type, int argc, char **argv, int optind){
+static int client_handle_command(uint16_t code, const char *input, int argc, char **argv, int optind){
 
     if(code != CR && code != CB){
 
@@ -306,15 +312,9 @@ static char *reconstruct_arg(int argc, char **argv, int start)
  * @param pipe_rename whether to rename the pipe
  * @param argc number of arguments
  * @param argv array of arguments
- * @param minutes_str string representing minutes
- * @param hours_str string representing hours
- * @param days_of_week_str string representing days of the week
- * @param is_abstract whether the task is abstract
  * @return int 0 on success, -1 on failure
  */
-static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** argv,
-    char *minutes_str, char *hours_str, char *days_of_week_str,
-    int is_abstract, command_type_t combination_type){
+static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** argv){
 
     char* input = NULL;
 
@@ -354,8 +354,7 @@ static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** a
         wait(NULL);
     }
     else{
-        res = client_handle_command(opcode, input, minutes_str, hours_str,
-             days_of_week_str, is_abstract, combination_type, argc, argv, optind);
+        res = client_handle_command(opcode, input, argc, argv, optind);
     }
     
     free(input);
@@ -371,15 +370,6 @@ int main(int argc, char **argv) {
     uint16_t opcode = 0;
 
     int pipe_rename = 0;
-
-    // Task creation var :
-    char *minutes_str = NULL;
-    char *hours_str = NULL;
-    char *days_of_week_str = NULL;
-
-    int is_abstract = 0;
-    command_type_t combination_type = 0;
-    int combination_flag = 0;
 
     if(pipe_file_read() < 0){
         dprintf(STDERR_FILENO, "You must launch erraid before tadmor. \n");
@@ -461,5 +451,5 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    return argument_handler(opcode, pipe_rename, argc, argv, minutes_str, hours_str, days_of_week_str, is_abstract, combination_type);
+    return argument_handler(opcode, pipe_rename, argc, argv);
 }

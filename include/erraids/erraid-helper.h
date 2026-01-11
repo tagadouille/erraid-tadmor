@@ -1,23 +1,27 @@
 #include <stdint.h>
 
 /**
- * Set the run directory of the daemon.
+ * @brief Set the run directory of the daemon.
  * Must be called before daemon_init() or erraid_init_foreground().
  * 
  * Example: erraid_set_rundir("/tmp/marc/erraid");
  *
- * Returns 0 on success, -1 on failure (errno is set).
+ * @param rundir the path of the run directory
+ * @param pipedir the path of the pipe directory
+ * @return 0 on success, -1 on failure (errno is set).
  */
 int erraid_set_rundir(const char *rundir, const char* pipedir);
 
 /**
- * Get the current run directory into `out` (size: outlen).
- * Returns 0 on success, -1 on failure.
+ * @brief Get the current run directory into `out` (size: outlen).
+ * @param out buffer to store the run directory path
+ * @param outlen size of the output buffer
+ * @return 0 on success, -1 on failure.
  */
 int erraid_get_rundir(char *out, size_t outlen);
 
 /**
- * Cleanup at daemon termination:
+ * @brief Cleanup at daemon termination:
  *   - close logs
  */
 void daemon_cleanup(void);
@@ -28,13 +32,9 @@ void daemon_cleanup(void);
 int ensure_rundir(void);
 
 /**
- * @brief it's the equivalent of the function realpath
- */
-char *my_realpath(const char *path, char *resolved_path);
-
-/**
  * @brief create of the folder of the specified path
  * @param the path to create
+ * @return 0 on success, -1 on failure
  */
 int mkdir_p(const char *path);
 

@@ -68,7 +68,7 @@ static int pipe_path_initialization(){
     //Use absolute path for pipe_path
     char abs_pipe_path[PATH_MAX];
 
-    if (!my_realpath(pipe_path, abs_pipe_path)) {
+    if (!realpath(pipe_path, abs_pipe_path)) {
         perror("realpath");
         return -1;
     }
@@ -79,14 +79,21 @@ static int pipe_path_initialization(){
 }
 
 int ensure_rundir(void) {
-    if (g_run_dir[0] == '\0') return -1;
+
+    if (g_run_dir[0] == '\0'){
+        dprintf(STDERR_FILENO, "Error : rundir not set\n");
+        return -1;
+    }
     
-    if (mkdir_p(g_run_dir) != 0) return -1;
+    if (mkdir_p(g_run_dir) != 0){
+        dprintf(STDERR_FILENO, "Error : creating rundir failed\n");
+        return -1;
+    }
 
     //Use absolute path for g_run_dir
     char abs_rundir[PATH_MAX];
 
-    if (!my_realpath(g_run_dir, abs_rundir)) {
+    if (!realpath(g_run_dir, abs_rundir)) {
         perror("realpath");
         return -1;
     }
@@ -119,6 +126,7 @@ int ensure_rundir(void) {
 }
 
 int mkdir_p(const char *path) {
+
     if (!path || *path == '\0') {
         errno = EINVAL;
         return -1;
@@ -126,6 +134,7 @@ int mkdir_p(const char *path) {
 
     char tmp[PATH_MAX];
     size_t len = strlen(path);
+
     if (len >= sizeof(tmp)) {
         errno = ENAMETOOLONG;
         return -1;
@@ -160,73 +169,6 @@ uint64_t hton64(uint64_t x) {
     #else
         return x;
     #endif
-}
-//TODO refaire struct de cette fnct
-/**
- * equivalent of realpath
- */
-char *my_realpath(const char *path, char *resolved_path) {
-    if (!path) { errno = EINVAL; return NULL; }
-
-    char temp[PATH_MAX];
-    if (path[0] != '/') {
-        if (!getcwd(temp, sizeof(temp))) return NULL;
-        size_t need = strlen(temp) + 1 + strlen(path) + 1;
-        if (need > sizeof(temp)) { errno = ENAMETOOLONG; return NULL; }
-        strcat(temp, "/");
-        strcat(temp, path);
-    } else {
-        if (strlen(path) >= sizeof(temp)) { errno = ENAMETOOLONG; return NULL; }
-        strncpy(temp, path, sizeof(temp));
-        temp[sizeof(temp)-1] = '\0';
-    }
-
-    /* split and normalize */
-    char *copy = strdup(temp);
-    if (!copy) return NULL;
-
-    char *components[PATH_MAX];
-    int top = -1;
-
-    char *saveptr = NULL;
-    for (char *tok = strtok_r(copy, "/", &saveptr); tok; tok = strtok_r(NULL, "/", &saveptr)) {
-        if (strcmp(tok, ".") == 0) continue;
-        if (strcmp(tok, "..") == 0) {
-            if (top >= 0) top--;
-            continue;
-        }
-        components[++top] = tok;
-    }
-
-    /* build result */
-    char result[PATH_MAX];
-    if (top == -1) {
-        /* root */
-        strncpy(result, "/", sizeof(result));
-        result[sizeof(result)-1] = '\0';
-    } else {
-        result[0] = '\0';
-        for (int i = 0; i <= top; ++i) {
-            size_t need = strlen(result) + 1 + strlen(components[i]) + 1;
-            if (need > sizeof(result)) {
-                free(copy);
-                errno = ENAMETOOLONG;
-                return NULL;
-            }
-            strcat(result, "/");
-            strcat(result, components[i]);
-        }
-    }
-
-    free(copy);
-
-    if (resolved_path) {
-        strncpy(resolved_path, result, PATH_MAX);
-        resolved_path[PATH_MAX - 1] = '\0';
-        return resolved_path;
-    } else {
-        return strdup(result);
-    }
 }
 
 /* ------------------------------ CLEANUP -------------------------------- */
