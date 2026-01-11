@@ -10,6 +10,9 @@
 #include "tree-writer/task_annihilator.h"
 #include "tree-writer/task_creator.h"
 #include "tree-writer/task_combinator.h"
+#include "erraids/erraid-servant.h"
+
+#include <signal.h>
 
 a_list_t* handle_ls(char *rundir)
 {
@@ -63,11 +66,9 @@ answer_t* handle_rm(char *rundir, uint64_t id)
     return create_answer(OK, id, 0);
 }
 
-answer_t* handle_tm(void)
-{
-    //return create_answer(ERR, 0, NR); Si le daemon n'est pas lancé je mettrai cette ligne en plus.
-    
-    //terminate_daemon();
+answer_t* handle_tm(void){
+
+    kill(father, SIGTERM); // kill the erraid daemon
     return create_answer(OK, 0, 0); // return success answer
 }
 

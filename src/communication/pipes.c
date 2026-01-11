@@ -117,21 +117,32 @@ int pipe_path_rename(char* new_path) {
         return -1;
     }
     
-    // Convert "." in absolute path
     char base_path[PATH_MAX];
-    if (strcmp(new_path, ".") == 0) {
+
+    // Convert to absolute path
+    if (new_path[0] == '/') {
+        // It's already an absolute path
+        strncpy(base_path, new_path, sizeof(base_path) - 1);
+    } else {
+        // It's a relative path, prepend current working directory
         if (getcwd(base_path, sizeof(base_path)) == NULL) {
             perror("getcwd");
             return -1;
         }
-    } else {
-        strncpy(base_path, new_path, sizeof(base_path) - 1);
-        base_path[sizeof(base_path) - 1] = '\0';
+        strncat(base_path, "/", sizeof(base_path) - strlen(base_path) - 1);
+        strncat(base_path, new_path, sizeof(base_path) - strlen(base_path) - 1);
+    }
+    base_path[sizeof(base_path) - 1] = '\0';
+
+    // Use realpath to resolve ".." and "."
+    char resolved_path[PATH_MAX];
+    if (realpath(base_path, resolved_path) == NULL) {
+        strncpy(resolved_path, base_path, sizeof(resolved_path));
     }
     
     //Build the path with /pipes
     char new_pipe_path[PATH_MAX];
-    snprintf(new_pipe_path, sizeof(new_pipe_path), "%s/pipes", base_path);
+    snprintf(new_pipe_path, sizeof(new_pipe_path), "%s/pipes", resolved_path);
     
     if (strlen(new_pipe_path) >= PATH_MAX) {
         dprintf(STDERR_FILENO, "Error: path too long\n");

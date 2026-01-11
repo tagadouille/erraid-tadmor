@@ -9,6 +9,12 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "tadmor.h"
 #include "communication/answer.h"
@@ -17,6 +23,7 @@
 #include "communication/communication.h"
 #include "communication/pipes.h"
 #include "types/task.h"
+#include "erraids/erraid-helper.h"
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
@@ -340,6 +347,20 @@ static int argument_handler(uint16_t opcode, int pipe_rename, int argc, char** a
 
     if(pipe_rename == 1){
         res = pipe_path_rename(input);
+
+        switch (fork())
+        {
+        case -1:
+            perror("fork");
+            return -1;
+        
+        case 0:
+            execlp("killall", "killall", "-SIGCHLD", "erraid", NULL);
+            perror("execlp");
+            return -1;
+            break;
+        }
+        wait(NULL);
     }
     else{
         res = client_handle_command(opcode, input, minutes_str, hours_str,
@@ -421,15 +442,13 @@ int main(int argc, char **argv) {
                 is_abstract = 1;
                 break;
             case 'r': opcode = RM; break;
-            case 'q': //TODO jalon-3
-                opcode = TM; break;
-
+            case 'q': opcode = TM; break;
             case 'l': opcode = LS; break;
             case 'x': opcode = TX; break;
             case 'o': opcode = SO; break;
             case 'e': opcode = SE; break;
             case 'P': pipe_rename = 1; break;
-            
+
             default:
                 dprintf(STDERR_FILENO, "Invalid option \n");
                 return EXIT_FAILURE;
@@ -443,6 +462,11 @@ int main(int argc, char **argv) {
 
     if (is_abstract && (minutes_str || hours_str || days_of_week_str)) {
         dprintf(STDERR_FILENO, "ERROR: -n option cannot be used with -m, -H, or -d\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!pipe_rename && opcode == 0) {
+        dprintf(STDERR_FILENO, "No command specified\n");
         return EXIT_FAILURE;
     }
 
