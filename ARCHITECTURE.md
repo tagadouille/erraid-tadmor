@@ -27,11 +27,6 @@ Comme le répertoire 'include/', ce répertoire est séparé en plusieurs sous r
 - **tree-reading/** et **tree-writer** : Gère la création et la lecture d'arborescence des tâches.
 - **types/** : Structures de données internes liés aux tâches (Manipulation des chaînes de caractères, calcul de timing...)
 
-## Respect du sujet (le titre à revoir)
-- Appels Système
-- Sérialisation : Les données numériques sont stockées en format Big-Endian pour assurer l'indépendance vis-à-vis de l'architecture matérielle.
-- 
-
 ## Explication détaillé des différents répertoires sources :
 
 #### erraids
@@ -46,9 +41,14 @@ Il contient les fonctions qu'utilisent erraid pour mener à bien ses objectifs.
 - **erraid_helper** contient des fonctions helper pour l'initialisation du démon et du répertoires de pipes et cleanup du démon.
 - **erraid** Contient les gestionnaires de signaux, `daemon_init` pour l'initialisation du démon et `daemon_run` pour lancer la partie du démon qui fait le scan de l'arborescence et `erraid-servant` pour gérer les requêtes
 
+------------------
+
 #### tadmors
 
 Il contient les fonctions d'interprétation et parsing des commandes de tadmor et d'envoie et réception de requêtes dans **tadmor_main** et aussi d'affichage des réponses ennvoyé par erraid dans **tadmor**.
+
+------------------
+
 #### tree-reading
 
 Il contient des fonctions de lecture d'arborescence de tâches. Il y a des fichiers C pour lire les données spécifiques des tâches. Comme le timing et times-exitcodes avec **times_reader** ou les sorties avec **output_reader**.
@@ -58,6 +58,9 @@ Il y a aussi un fichie plus globale qui permet de faire tout cela à la fois en 
 - `all_task_listing` permet de lister toutes les tâches de tasks dans un tableau de tâche pour l'éxécution.
 
 Le reste des fonctions sont des helpers pour mené à bien ce but là.
+
+------------------
+
 #### tree-writer
 
 Il contient des fonctions de modifications d'arborescence de tâches. Que cela soit de la suppression avec **task_annihilator** ou de la création de tâche avec **task_creator**
@@ -66,6 +69,7 @@ Il contient des fonctions de modifications d'arborescence de tâches. Que cela s
 - **task_creator** permet de créer des arborescences de tâches SI. Il y a des fonctions de créations et de remplissage des fichiers timing, argv, type et etc. Et une fonction de création de tâche.
 - **task_combinator** permet de combiner des tâches. Il utilise les fichiers mentionner précédemment pour cela dans une seule fonction qui est `combine_and_destroy_tasks`. Elle créer une nouvelle tâche et dans cmd met les arborescences des tâches voulues en omettant le fichier timing et supprime l'arborescence ensuite.
 
+------------------
 #### types
 
 Il contient ce qui concerne les différents types de données concernant les tâches. Il y a des fonctions de copie, de free et de création de structure.
@@ -77,6 +81,7 @@ Il contient ce qui concerne les différents types de données concernant les tâ
 - **time-exitcode** pour times-exitcodes
 - **timing** pour le timing
 
+------------------
 #### communication
 
 Ce dossier contient ce qui concerne la communication entre le client et erraid. 
@@ -95,6 +100,7 @@ Pour que les processus déterminent où se trouvent les tubes un fichier pipe_pa
 
 - **request-handle** est un fichier permettant à `erraid-servant` de répondre aux requêtes. Il y a diverses fonctions qui permettent de faire ce que la requête qui lui a été envoyé demande. Les deux fonctions principales pour cela sont : `complex_request_handle` pour les requêtes complexes et `simple_request_handle` pour les requêtes simples.
 
+------------------
 #### serialization
 
 C'est un sous-dossier contenu dans communication qui contient des fichiers qui permettent la sérialisation des données et l'envoie des données sérialisés dans les tubes mais aussi leur récupération.

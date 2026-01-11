@@ -5,7 +5,7 @@
 * @brief Read the standard output file and write the content to STDOUT_FILENO
 * @param path the path to the standard output file
 * @param is_stderr specify if the file to read is stderr or stdout
-* @return 0 if succes, -1 otherwise*/
+* @return 0 if succes, -2 if the file is empty, -1 otherwise*/
 int output_reader(const char* path, bool is_stderr);
 
 #endif

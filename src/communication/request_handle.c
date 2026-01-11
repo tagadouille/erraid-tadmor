@@ -16,7 +16,7 @@
 
 a_list_t* handle_ls(char *rundir)
 {
-    all_task_t *list = all_task_listing(rundir); // get list of all tasks
+    all_task_t *list = all_task_listing(rundir);
     
     if (list == NULL) {
         return create_a_list(OK, NULL);
@@ -32,16 +32,25 @@ a_timecode_t* handle_tx(char *rundir, uint64_t id)
         return create_a_timecode(ERR, 0, NULL);
     }
 
-    return create_a_timecode(OK, curr_time->nbruns, curr_time->all_timecode
-    );
+    return create_a_timecode(OK, curr_time->nbruns, curr_time->all_timecode);
 }
 
 a_output_t* handle_output(char *rundir, uint64_t id, bool is_stderr)
 {
-    if (task_reader(rundir, id, is_stderr ? STDERR : OUTPUT) < 0) {
+    int res = task_reader(rundir, id, is_stderr ? STDERR : OUTPUT);
+
+    if (res < 0) {
 
         string_t* empty_string = string_create(NULL, 0);
-        a_output_t* err_output = create_a_output(ERR, empty_string, NF);
+
+        a_output_t* err_output = NULL;
+
+        if(res == -2){ // output file is empty
+            err_output = create_a_output(ERR, empty_string, NR);
+        }
+        else{
+            err_output = create_a_output(ERR, empty_string, NF);
+        }
         string_free(empty_string);
         return err_output;
     }
@@ -57,7 +66,7 @@ answer_t* handle_rm(char *rundir, uint64_t id)
     int ret = delete_directory(path);
 
     if (ret < 0) {
-        return create_answer(ERR, id, NF);
+        return create_answer(ERR, 0, NF);
     }
 
     return create_answer(OK, id, 0);
@@ -65,8 +74,8 @@ answer_t* handle_rm(char *rundir, uint64_t id)
 
 answer_t* handle_tm(void){
 
-    kill(father, SIGTERM); // kill the erraid daemon
-    return create_answer(OK, 0, 0); // return success answer
+    kill(father, SIGTERM);
+    return create_answer(OK, 0, 0);
 }
 
 void* simple_request_handle(simple_request_t *req, char *rundir)
