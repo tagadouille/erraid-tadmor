@@ -1,3 +1,5 @@
+#define _XOPEN_SOURCE 500
+
 #include "erraids/erraid.h"
 #include "erraids/erraid-helper.h"
 #include "communication/communication.h"

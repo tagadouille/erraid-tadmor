@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE 500
 #include "communication/pipes.h"
 #include "communication/communication.h"
 #include "erraids/erraid-helper.h"
