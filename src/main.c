@@ -43,10 +43,10 @@ int main(int argc, char **argv) {
 
     default_rundir(rundir, pipedir, PATH_MAX, PATH_MAX);
 
-    while ((opt = getopt(argc, argv, "r:fP:")) != -1) {
+    while ((opt = getopt(argc, argv, "R:FP:")) != -1) {
 
         switch (opt) {
-            case 'r':
+            case 'R':
                 // If it's valid -> copy the arguments in the pathes
                 if (optarg && strlen(optarg) < sizeof(rundir)) {
 
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
                 }
                 break;
 
-            case 'f':
+            case 'F':
                 g_foreground_mode = 1;
                 break;
 
