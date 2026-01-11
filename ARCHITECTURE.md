@@ -78,4 +78,30 @@ Il contient ce qui concerne les différents types de données concernant les tâ
 - **timing** pour le timing
 
 #### communication
+
+Ce dossier contient ce qui concerne la communication entre le client et erraid. 
+Il y a les structures de communications qui y sont définies avec bien sûr des méthodes de créations
+et de libération de mémoire.
+
+- **answer** pour les structures de réponses
+- **request** pour les structures de requête
+
+Il y a aussi des fonctions qui gèrent la communication entre processus
+
+- **pipes** pour la gestion des tubes de communication. Il y a des fonctions d'ouvertures de tubes et des fonctions d'initialisation des tubes et de récupération du chemin des tubes. 
+- **communication** contient les fonctions principales de communication pour écrire dans les tubes et lire depuis les tubes de requêtes et de réponses pour le démon et pour le client.
+
+Pour que les processus déterminent où se trouvent les tubes un fichier pipe_path.te est créer et remplis dans le répertoire du projet. Les processus le lisent et le modifie au besoin.
+
+- **request-handle** est un fichier permettant à `erraid-servant` de répondre aux requêtes. Il y a diverses fonctions qui permettent de faire ce que la requête qui lui a été envoyé demande. Les deux fonctions principales pour cela sont : `complex_request_handle` pour les requêtes complexes et `simple_request_handle` pour les requêtes simples.
+
 #### serialization
+
+C'est un sous-dossier contenu dans communication qui contient des fichiers qui permettent la sérialisation des données et l'envoie des données sérialisés dans les tubes mais aussi leur récupération.
+
+- **decode-request** contient toutes les fonctions permettant de décoder les requêtes.
+- **decode-response** contient toutes les fonctions permettant de décoder les réponses.
+- **encode-request** contient toutes les fonctions permettant d'encoder les requêtes.
+- **encode-response** contient toutes les fonctions permettant d'encoder les réponses.
+- **en_decode_struct** contient toutes les fonctions permettant le décodage et l'encodage des structures de données dans les tubes.
+- **serialization** contient toutes les fonctions de sérialisation de données (les uint8/16/32/64 et etc) et d'envoie de ces données dans les tubes avec `write_full` et de réception avec `read_full`.
