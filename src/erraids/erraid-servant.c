@@ -49,6 +49,11 @@ static int proceed_simple(simple_request_t* req, int* fd_response){
             ret = encode_a_output(*fd_response, (a_output_t *)ans);
             free_a_output((a_output_t *) ans);
 
+            if(curr_output != NULL){
+                free(curr_output);
+                curr_output = NULL;
+            }
+
             if(ret < 0){
                 write_log_msg("[servant] Error encoding a_output answer");
             }
@@ -57,6 +62,11 @@ static int proceed_simple(simple_request_t* req, int* fd_response){
         case TX:
             ret = encode_a_timecode(*fd_response, (a_timecode_t *) ans);
             free_a_timecode((a_timecode_t *) ans);
+
+            /*if(curr_time != NULL){
+                time_array_free(curr_time);
+                curr_time = NULL;
+            }*/
 
             if(ret < 0){
                 write_log_msg("[servant] Error encoding a_timecode answer");

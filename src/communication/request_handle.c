@@ -19,10 +19,11 @@ a_list_t* handle_ls(char *rundir)
     all_task_t *list = all_task_listing(rundir); // get list of all tasks
     
     if (list == NULL) {
-        return create_a_list(OK, 0, NULL);
+        return create_a_list(OK, NULL);
     }
 
-    return create_a_list(OK, list->nbtask, list->all_task); // return list of tasks
+    a_list_t* a_list = create_a_list(OK, list);
+    return a_list;
 }
 
 a_timecode_t* handle_tx(char *rundir, uint64_t id)

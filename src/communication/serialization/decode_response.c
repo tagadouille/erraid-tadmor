@@ -137,7 +137,7 @@ a_list_t* decode_a_list(int fd)
     }
 
     if (nbtask == 0) {
-        return create_a_list(anstype, nbtask, NULL);
+        return create_a_list(anstype, NULL);
     }
 
     /* ---------- allocate tasks ---------- */
@@ -174,7 +174,14 @@ a_list_t* decode_a_list(int fd)
             goto error;
         }
     }
-    return create_a_list(anstype, nbtask, all_task);
+    all_task_t* all_task_struct = malloc(sizeof(all_task_t));
+    if (!all_task_struct) {
+        perror("malloc");
+        goto error;
+    }
+    all_task_struct->nbtask = nbtask;
+    all_task_struct->all_task = all_task;
+    return create_a_list(anstype, all_task_struct);
 
     error:
     dprintf(2, "[decode_a_list] CLEANUP after error\n");

@@ -54,14 +54,14 @@ void tadmor_print_list(a_list_t* list)
         return;
     }
 
-    if(list->all_task->nbtask == 0){
+    if(list->all_task.nbtask == 0){
         dprintf(STDOUT_FILENO, "No task found\n");
         return;
     }
 
-    for (uint32_t i = 0; i < list->all_task->nbtask; i++) // Iterate through all tasks
+    for (uint32_t i = 0; i < list->all_task.nbtask; i++) // Iterate through all tasks
     {
-        task_t* t = &(list->all_task->all_task[i]);
+        task_t* t = &(list->all_task.all_task[i]);
 
         // check for NULL task
         if (t == NULL)

@@ -46,7 +46,7 @@ typedef struct{
 typedef struct{
 
     uint16_t anstype;
-    all_task_t* all_task;
+    all_task_t all_task;
 
 }a_list_t;
 
@@ -64,7 +64,7 @@ answer_t* create_answer(uint16_t anstype, uint64_t task_id, uint16_t errcode);
  * @param nbtask the number of task
  * @param all_task an array of task of size nbtask
  */
-a_list_t* create_a_list(uint16_t anstype, uint32_t nbtask, task_t* all_task);
+a_list_t* create_a_list(uint16_t anstype, all_task_t* all_task_data);
 
 /**
  * @brief fill and create the answer timecode structure
