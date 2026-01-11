@@ -44,7 +44,7 @@ void command_free(command_t *cmd) {
     }
 
     if (cmd->type == SI) {
-        arguments_free(cmd->args.simple);
+        arguments_cleanup(cmd->args.simple);
     }
     else if (cmd->type == SQ || cmd->type == IF || cmd->type == PL) {
 

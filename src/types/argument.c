@@ -165,11 +165,10 @@ arguments_t *copy_arguments(const arguments_t *src) {
     return dst;
 }
 
-void arguments_free(arguments_t *a) {
+void arguments_cleanup(arguments_t *a) {
     if (!a) return;
 
     if (a->argv) {
-        // argv length may be a->argc (or a->argc-1 depending on your convention)
         uint32_t n = a->argc;
         for (uint32_t i = 0; i < n; ++i) {
             if (a->argv[i]) {
@@ -181,6 +180,12 @@ void arguments_free(arguments_t *a) {
         a->argv = NULL;
     }
     a->argc = 0;
+}
+
+void arguments_free(arguments_t *a) {
+    if (!a) return;
+    arguments_cleanup(a);
+    free(a);
 }
 
 char **arguments_to_argv(const arguments_t *args)
