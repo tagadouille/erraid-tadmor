@@ -32,8 +32,7 @@ a_timecode_t* handle_tx(char *rundir, uint64_t id)
         return create_a_timecode(ERR, 0, NULL);
     }
 
-    return create_a_timecode(OK, curr_time->nbruns, curr_time->all_timecode
-    );
+    return create_a_timecode(OK, curr_time->nbruns, curr_time->all_timecode);
 }
 
 a_output_t* handle_output(char *rundir, uint64_t id, bool is_stderr)
@@ -57,7 +56,7 @@ answer_t* handle_rm(char *rundir, uint64_t id)
     int ret = delete_directory(path);
 
     if (ret < 0) {
-        return create_answer(ERR, id, NF);
+        return create_answer(ERR, 0, NF);
     }
 
     return create_answer(OK, id, 0);
