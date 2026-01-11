@@ -15,25 +15,24 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
+#include <libgen.h>
 
 /**
  * @brief create a string that contains the default pipe_path 
  * @return the string
  */
 static char* pipe_file_path_creator() {
-
-    const char *user = getenv("USER");
-    if (!user) user = "nobody";
-
-    char* path = make_path_no_test("/home", user);
-
-    if(path == NULL){
-        dprintf(STDERR_FILENO, "The path is NULL at pipe_file_read\n");
+    
+    char path[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
+    if (len == -1) {
+        perror("readlink");
         return NULL;
     }
-    
-    char* pipe_file_path = make_path_no_test(path, PIPE_FILE);
-    free(path);
+    path[len] = '\0';
+
+    char *dir = dirname(path);
+    char* pipe_file_path = make_path_no_test(dir, PIPE_FILE);
     
     if(pipe_file_path == NULL){
         dprintf(STDERR_FILENO, "The pipe_file_path is NULL at pipe_file_read\n");
