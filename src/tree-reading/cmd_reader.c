@@ -46,7 +46,7 @@ int cmd_reader(const char *path){
         }
     } // Else command_parser is used
     else{
-        command_t *cmd = create_command(curr_task->cmd, type);
+        command_t *cmd = create_command(type);
 
         if(cmd == NULL){
             result = -1;
@@ -283,7 +283,7 @@ command_t *command_parser(const char *path, command_t *cmd) {
             goto child_error;
         }
 
-        son_cmd = create_command(NULL, son_type);
+        son_cmd = create_command(son_type);
         if(son_cmd == NULL){
             dprintf(STDERR_FILENO, "create_command failed for path %s\n", sub_path);
             goto child_error;
@@ -502,6 +502,12 @@ command_type_t type_interpreter(char *buffer){
     else if(strcmp(buffer, "SQ") == 0){
         return SQ;
     }
+    else if(strcmp(buffer, "IF") == 0){
+        return IF;
+    }
+    else if(strcmp(buffer, "PL") == 0){
+        return PL;
+    }
     else{
         dprintf(STDERR_FILENO, "Unknown command type : %s\n", buffer);
         return INVALID;
@@ -510,23 +516,22 @@ command_type_t type_interpreter(char *buffer){
 
 command_t *type_processor(const char *path, command_type_t type, command_t *og_command, command_t *cmd){
 
-    switch (type){
-        case SI:
-            og_command = argv_reader(path, og_command);
-            return og_command;
+    if(type == SI){
+        og_command = argv_reader(path, og_command);
+        return og_command;
 
-        case SQ:
-            og_command = add_complex_command(og_command, cmd);
-            if (og_command == NULL)
-            {
-                dprintf(STDERR_FILENO, "Error while adding command to composed command at path %s\n", path);
-                goto error;
-            }
-            return og_command;
+    } else if(type == SQ || type == IF || type == PL){
+        og_command = add_complex_command(og_command, cmd);
 
-        default:
-            dprintf(STDERR_FILENO, "Error : invalid command type");
+        if (og_command == NULL) {
+            dprintf(STDERR_FILENO, "Error while adding command to composed command at path %s\n", path);
             goto error;
+        }
+        return og_command;
+
+    }else{
+        dprintf(STDERR_FILENO, "Error : invalid command type");
+        goto error;
     }
     error:
     if(og_command != NULL){

@@ -58,7 +58,7 @@ char *timing_to_string(const timing_t *t)
     char *hrs = mask_to_list(t->hours, HOURS_COUNT);
     char *day = mask_to_list(t->daysofweek, DAYS_COUNT);
 
-    size_t size = strlen(min) + strlen(hrs) + strlen(day) + 8;
+    size_t size = strlen(min) + strlen(hrs) + strlen(day) + 3; // spaces + null terminator
     char *out = malloc(size);
 
     snprintf(out, size, "%s %s %s", min, hrs, day);
@@ -76,6 +76,9 @@ bool timing_match_at(const timing_t *t, time_t now)
     time_t minute_now = now - (now % 60);
     localtime_r(&minute_now, &tm_now);
 
+    if(t -> minutes == 0 && t->hours == 0 && t->daysofweek == 0){
+        return false; // timing abstract
+    }
     // minutes
     if (t->minutes != 0 && !mask_is_full(t->minutes, 60)) {
         if (!(t->minutes & (1ULL << tm_now.tm_min))) return false;
@@ -96,7 +99,6 @@ bool timing_match_at(const timing_t *t, time_t now)
 }
 
 
-//TODO Refaire ça
 timing_t* timing_create(const char *data, ssize_t size)
 {
     // A timing is exactly 13 bytes (8 + 4 + 1)
@@ -146,4 +148,112 @@ timing_t* timing_copy(const timing_t* src){
 
     memcpy(t, src, sizeof(timing_t));
     return t;
+}
+
+timing_t* timing_create_from_strings(const char *minutes_str, const char *hours_str, const char *days_of_week_str){
+
+    timing_t* t = malloc(sizeof(timing_t));
+    
+    if (!t) {
+        perror("malloc");
+        return NULL;
+    }
+
+    // Minutes
+    if (minutes_str == NULL || strcmp(minutes_str, "*") == 0) {
+        t->minutes = ALL_MINUTES;
+    }
+    else if (strcmp(minutes_str, "-") == 0) {
+        t->minutes = 0;
+    }
+    else {
+        t->minutes = 0;
+        char *token;
+        char *str_copy = strdup(minutes_str);
+        char *rest = str_copy;
+
+        while ((token = strtok_r(rest, ",", &rest))) {
+            int minute = atoi(token);
+
+            if (minute < 0 || minute >= MINUTES_COUNT) {
+                dprintf(STDERR_FILENO, "Invalid minute value: %s\n", token);
+                free(str_copy);
+                free(t);
+                return NULL;
+            }
+            t->minutes |= (1ULL << minute);
+        }
+        free(str_copy);
+    }
+
+    // Hours
+    if (hours_str == NULL || strcmp(hours_str, "*") == 0) {
+        t->hours = ALL_HOURS;
+    }
+    else if (strcmp(hours_str, "-") == 0) {
+        t->hours = 0;
+    }
+    else {
+        t->hours = 0;
+        char *token;
+        char *str_copy = strdup(hours_str);
+        char *rest = str_copy;
+
+        while ((token = strtok_r(rest, ",", &rest))) {
+            int hour = atoi(token);
+
+            if (hour < 0 || hour >= HOURS_COUNT) {
+
+                dprintf(STDERR_FILENO, "Invalid hour value: %s\n", token);
+                free(str_copy);
+                free(t);
+                return NULL;
+            }
+            t->hours |= (1U << hour);
+        }
+        free(str_copy);
+    }
+
+    // Days of the week
+    if (days_of_week_str == NULL || strcmp(days_of_week_str, "*") == 0) {
+        t->daysofweek = ALL_DAYS;
+    }
+    else if (strcmp(days_of_week_str, "-") == 0) {
+        t->daysofweek = 0;
+    }
+    else {
+        t->daysofweek = 0;
+        char *token;
+        char *str_copy = strdup(days_of_week_str);
+        char *rest = str_copy;
+
+        while ((token = strtok_r(rest, ",", &rest))) {
+
+            int day = atoi(token);
+            if (day < 0 || day >= DAYS_COUNT) {
+
+                dprintf(STDERR_FILENO, "Invalid day value: %s\n", token);
+                free(str_copy);
+                free(t);
+                return NULL;
+            }
+            t->daysofweek |= (1U << day);
+        }
+        free(str_copy);
+    }
+    return t;
+}
+
+void timing_free(timing_t* t){
+    if(t){
+        free(t);
+    }
+}
+
+void timing_set_abstract(timing_t* t){
+    if(t){
+        t->minutes = 0;
+        t->hours = 0;
+        t->daysofweek = 0;
+    }
 }

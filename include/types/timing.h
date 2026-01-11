@@ -66,4 +66,25 @@ timing_t* timing_copy(const timing_t* src);
  */
 void timing_show(const timing_t *t);
 
+/** 
+ * @brief Create a timing_t structure from string representations.
+ * @param minutes_str string representing minutes
+ * @param hours_str string representing hours
+ * @param days_of_week_str string representing days of the week
+ * @return the timing_t structure if success, NULL otherwise
+ */
+timing_t* timing_create_from_strings(const char *minutes_str, const char *hours_str, const char *days_of_week_str);
+
+/**
+ * @brief Free the memory allocated for a timing_t structure.
+ * @param t Pointer to timing_t to free
+ */
+void timing_free(timing_t* t);
+
+/** 
+ * @brief Set the timing_t structure to represent an abstract task (always true).
+ * @param t Pointer to the timing_t structure to modify.
+ */
+void timing_set_abstract(timing_t* t);
+
 #endif

@@ -91,3 +91,13 @@ void all_time_show(time_array_t* te_arr){
     }
     
 }
+
+void time_array_free(time_array_t* te_arr){
+    
+    if(te_arr != NULL){
+        if(te_arr -> all_timecode != NULL){
+            free(te_arr -> all_timecode);
+        }
+        free(te_arr);
+    }
+}

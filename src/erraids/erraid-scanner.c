@@ -60,11 +60,8 @@ static time_t wait_next_minute(void)
         // Interrupted by signal
         else if (result == EINTR) {
             
-            if (need_rescan) {
-                time_t now = time(NULL);
-                return now;
-            }
-            continue;
+            // Check if we need to stop
+            return time(NULL);
         } 
         else {
             perror("clock_nanosleep");
@@ -89,7 +86,7 @@ static void scan_all_task(void) {
     }
     
     if (scanned_tasks != NULL) {
-        free(scanned_tasks);
+        free_all_task(scanned_tasks);
     }
     
     scanned_tasks = new_tasks;
@@ -117,7 +114,6 @@ static void execute_all_task(time_t minute_now) {
         write_log_msg("Skipping already executed minute");
         return;
     }
-    
 
     // Execution :
     write_log_msg("Executing tasks");
@@ -154,9 +150,6 @@ static void setup_signal_handler(void) {
         perror("sigaction");
         exit(EXIT_FAILURE);
     }
-    
-    // Put at default after sigaction
-    signal(SIGUSR1, SIG_DFL); 
 }
 
 /**

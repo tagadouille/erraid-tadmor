@@ -50,7 +50,12 @@ void tadmor_print_list(a_list_t* list)
 {
     if (list == NULL)
     {
-        dprintf(STDERR_FILENO, "NULL list");
+        dprintf(STDERR_FILENO, "No task found\n");
+        return;
+    }
+
+    if(list->all_task.nbtask == 0){
+        dprintf(STDOUT_FILENO, "No task found\n");
         return;
     }
 

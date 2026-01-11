@@ -1,10 +1,10 @@
 #include "communication/request.h"
 
-/* ============================================================
- * SIMPLE REQUEST (LS, RM, SO, SE, TX, TM)
- * OPCODE(uint16) + TASKID(optional uint64)
- * ============================================================ */
-
-int decode_simple_request(int fd, simple_request_t *req);
-
-int decode_complex_request(int fd, complex_request_t *req);
+/**
+ * @brief Decode a request from a file descriptor, determining if it's simple or complex.
+ * @param fd The file descriptor to read from.
+ * @param r Pointer to the request structure to populate.
+ * @return 1 or 2 on success, -1 on failure. 
+ * If it returns 1 the request is simple, if 2 complex.
+ */
+int decode_request(int fd, void *r);

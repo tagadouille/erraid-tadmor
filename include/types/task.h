@@ -9,31 +9,7 @@
 #include "types/timing.h"
 #include "types/time_exitcode.h"
 #include "types/argument.h"
-
-//! maybe modify that because that's already exist in cmd
-typedef enum{
-    SI,
-    SQ,
-    INVALID // On pourra ajouter d'autres types plus tard
-} command_type_t;
-
-typedef struct command command_t;
-
-/**
- * @brief Represents the command associated with a task.
- */
-struct command{
-    command_type_t type;
-
-    union{
-        arguments_t* simple;
-        struct
-        {
-            uint32_t count;
-            command_t **cmds; // Array of pointers to commands
-        } composed;
-    } args;
-};
+#include "types/command.h"
 
 /**
  * @brief Represents a task that can be executed by the scheduler.
@@ -62,31 +38,11 @@ task_t *task_create(uint64_t id);
 task_t* task_copy(task_t* og_task);
 
 /**
- * @brief copy a command
- * @param src the command to be copied
- * @return a pointer to the copy, NULL if failure
- */
-command_t* command_copy(const command_t* src);
-
-/**
  * @brief Display the task information.
  * @param task Pointer to the task_t structure to display.
  */
 void task_display(task_t* task);
 
-/**
- * @brief Display the command information.
- * @param cmd Pointer to the command_t structure to display.
- */
-void command_display(command_t *cmd);
-
-/**
- * @brief Creates a complex command structure.
- * @param command Pointer to the command_t structure to initialize.
- * @param type The type of the complex command.
- * @return Pointer to the initialized command_t structure if success, NULL otherwise.
- */
-command_t* create_command(command_t* command, command_type_t type);
 /**
  * @brief Adds a simple command to the given command structure.
  * @param command Pointer to the command_t structure to add the simple command to.
@@ -113,20 +69,14 @@ command_t* add_complex_command(command_t* og_command, command_t* command);
 command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, command_type_t type);
 
 /**
- * @brief Helper to recursively free a command structure.
- *        Works for both SI and SQ commands.
- */
-void command_free(command_t *cmd);
-
-/**
  * @brief Free all memory inside a task.
  */
 void task_destroy(task_t *task);
 
 /**
- * @brief Executes the given command.
- * @param cmd Pointer to the command_t structure representing the command to execute.
+ * @brief Free all memory inside an all_task_t structure.
+ * @param all_task Pointer to the all_task_t structure to free.
  */
-void command_execute(const command_t *cmd);
+void free_all_task(all_task_t* all_task);
 
 #endif

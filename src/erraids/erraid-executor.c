@@ -2,6 +2,7 @@
 #include "erraids/erraid.h"
 #include "erraids/erraid-helper.h"
 #include "types/time_exitcode.h"
+#include "erraids/executor-sp.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -31,13 +32,7 @@ static inline uint16_t to_be16(uint16_t x) {
     return htons(x);
 }
 
-/**
- * @brief Append one record to times-exitcodes
- * @param path the path to the times-exitcodes file
- * @param exitcode the exitcode
- * @param timestamp the timestamp
- */
-static int append_times_exitcodes(const char *path, uint16_t exitcode, time_t timestamp) {
+int append_times_exitcodes(const char *path, uint16_t exitcode, time_t timestamp) {
 
     int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0644);
 
@@ -133,9 +128,10 @@ static int needs_shell(const char *cmd) {
  * @brief Execute a command using argv (simple command)
  * @param outfd the file descriptor of the stdout file
  * @param errfd the file descriptor of the stderr file
+ * @param infd the file descriptor of the input
  * @return the exit code
  */
-static int execute_simple_fd(char **argv, int outfd, int errfd) {
+static int execute_simple_fd(char **argv, int outfd, int errfd, int infd) {
 
     if (!argv){
         write_log_msg("The argv can't be null");
@@ -156,6 +152,7 @@ static int execute_simple_fd(char **argv, int outfd, int errfd) {
     if (pid == 0) {
         dup2(outfd, STDOUT_FILENO);
         dup2(errfd, STDERR_FILENO);
+        dup2(infd, STDIN_FILENO);
 
         execvp(argv[0], argv);
         perror("execvp");
@@ -171,9 +168,10 @@ static int execute_simple_fd(char **argv, int outfd, int errfd) {
  * @brief Execute a shell line (supports ;, |, &&, ||, redirections)
  * @param outfd the file descriptor of the stdout file
  * @param errfd the file descriptor of the stderr file
+ * @param infd the file descriptor of the input
  * @return the exit code
  */
-static int execute_shell_line(const char *line, int outfd, int errfd) {
+static int execute_shell_line(const char *line, int outfd, int errfd, int infd) {
 
     if (!line){
         write_log_msg("The line can't be null");
@@ -189,6 +187,7 @@ static int execute_shell_line(const char *line, int outfd, int errfd) {
     if (pid == 0) {
         dup2(outfd, STDOUT_FILENO);
         dup2(errfd, STDERR_FILENO);
+        dup2(infd, STDIN_FILENO);
 
         char *argv[] = { "sh", "-c", (char *)line, NULL };
         execvp(argv[0], argv);
@@ -207,8 +206,10 @@ static int execute_shell_line(const char *line, int outfd, int errfd) {
  * @param cmd the command to execute
  * @param outfd the file descriptor of the stdout file
  * @param errfd the file descriptor of the stderr file
+ * @param infd the file descriptor of the input
+ * @return 0 if success, -1 on failure
  */
-static int execute_simple_fd_only(const command_t *cmd, int outfd, int errfd) {
+static int execute_simple_fd_only(const command_t *cmd, int outfd, int errfd, int infd) {
 
     // Some verifications
     if(!cmd){
@@ -246,7 +247,7 @@ static int execute_simple_fd_only(const command_t *cmd, int outfd, int errfd) {
         {
             return -1;
         }
-        exitcode = execute_shell_line(cmd_str, outfd, errfd);
+        exitcode = execute_shell_line(cmd_str, outfd, errfd, infd);
     }
     else {
         char **argv = arguments_to_argv(cmd->args.simple);
@@ -255,7 +256,7 @@ static int execute_simple_fd_only(const command_t *cmd, int outfd, int errfd) {
             return -1;
         }
         
-        exitcode = execute_simple_fd(argv, outfd, errfd);
+        exitcode = execute_simple_fd(argv, outfd, errfd, infd);
         
         if (argv) {
 
@@ -269,16 +270,7 @@ static int execute_simple_fd_only(const command_t *cmd, int outfd, int errfd) {
     return exitcode;
 }
 
-/** @brief Execute any command with given file descriptors
- * @param cmd the command to execute
- * @param outfd the file descriptor of the stdout file
- * @param errfd the file descriptor of the stderr file
- * @param timespath the path to the times-exitcodes file
- * @param minute_now the minute to execute the task
- * @param is_top_level 1 if we are on the top of the command tree, 0 if not
- * @return 0 on success, -1 on failure
- */
-static int execute_any_command_fd(const command_t *cmd, int outfd, int errfd, const char *timespath, time_t minute_now,
+int execute_any_command_fd(const command_t *cmd, int outfd, int errfd, int infd, const char *timespath, time_t minute_now,
                                   int is_top_level) {
     
     if (!cmd){
@@ -288,14 +280,15 @@ static int execute_any_command_fd(const command_t *cmd, int outfd, int errfd, co
     
     switch (cmd->type) {
         case SI: {
-            int exitcode = execute_simple_fd_only(cmd, outfd, errfd);
+            int exitcode = execute_simple_fd_only(cmd, outfd, errfd, infd);
             
             if (is_top_level && timespath) {
                 append_times_exitcodes(timespath, exitcode, minute_now);
             }
             return exitcode;
         }
-            
+        case PL:
+            return execute_pipe(cmd, outfd, errfd, infd, timespath, minute_now, is_top_level);
         case SQ: {
             int final_exitcode = 0;
             
@@ -304,6 +297,7 @@ static int execute_any_command_fd(const command_t *cmd, int outfd, int errfd, co
                 int exitcode = execute_any_command_fd(
                     cmd->args.composed.cmds[i], 
                     outfd, errfd, 
+                    infd,
                     NULL, minute_now,
                     0  // No top-level for sub-command
                 );
@@ -314,6 +308,10 @@ static int execute_any_command_fd(const command_t *cmd, int outfd, int errfd, co
                 append_times_exitcodes(timespath, final_exitcode, minute_now);
             }
             return final_exitcode;
+        }
+
+        case IF: {
+            return execute_if(cmd, outfd, errfd, infd, timespath, minute_now, is_top_level);
         }
             
         default:
@@ -348,7 +346,7 @@ static int execute_command(const command_t *cmd, const char *timespath, const ch
     }
 
     // Execute
-    int exitcode = execute_any_command_fd(cmd, outfd, errfd, timespath, minute_now, 1);
+    int exitcode = execute_any_command_fd(cmd, outfd, errfd, STDIN_FILENO, timespath, minute_now, 1);
     
     close(outfd);
     close(errfd);

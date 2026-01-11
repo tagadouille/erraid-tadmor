@@ -14,6 +14,8 @@
 #define PATH_MAX 4096
 #endif
 
+int have_P = 0;
+
 /**
  * @brief Create the default run directory for erraid and the pipes: /tmp/$USER/erraid and /tmp/$USER/erraid/pipes
 */
@@ -23,7 +25,7 @@ static void default_rundir(char *erraid_path, char* pipe_path, size_t err_size, 
     if (!user) user = "nobody";
 
     snprintf(erraid_path, err_size, "/tmp/%s/erraid", user);
-    snprintf(pipe_path, pipe_size, "/tmp/%s/pipes", user);
+    snprintf(pipe_path, pipe_size, "%s/pipes", erraid_path);
 
     dprintf(STDOUT_FILENO, "pipe path : %s", pipe_path);
 }
@@ -36,7 +38,7 @@ int main(int argc, char **argv) {
 
     default_rundir(rundir, pipedir, PATH_MAX, PATH_MAX);
 
-    while ((opt = getopt(argc, argv, "r:FP:")) != -1) {
+    while ((opt = getopt(argc, argv, "r:fP:")) != -1) {
 
         switch (opt) {
             case 'r':
@@ -44,9 +46,12 @@ int main(int argc, char **argv) {
                 if (optarg && strlen(optarg) < sizeof(rundir)) {
 
                     strncpy(rundir, optarg, sizeof(rundir)-1);
-                    strncpy(pipedir, optarg, sizeof(pipedir)-1);
                     rundir[sizeof(rundir)-1] = '\0';
-                    pipedir[sizeof(rundir)-1] = '\0';
+
+                    if (!have_P) {
+                        // Set the pipe directory relative to the run directory
+                        snprintf(pipedir, sizeof(pipedir), "%s/pipes", rundir);
+                    }
                 }
                 else {
                     dprintf(STDERR_FILENO, "Error : Invalid run directory\n");
@@ -54,14 +59,16 @@ int main(int argc, char **argv) {
                 }
                 break;
 
-            case 'F':
-                //TODO foreground
+            case 'f':
+                g_foreground_mode = 1;
                 break;
+
             case 'P':
                 if (optarg && strlen(optarg) < sizeof(pipedir)) {
 
                     strncpy(pipedir, optarg, sizeof(pipedir)-1);
                     pipedir[sizeof(pipedir)-1] = '\0';
+                    have_P = 1;
                 }
                 else {
                     dprintf(STDERR_FILENO, "Error : Invalid pipe directory\n");
