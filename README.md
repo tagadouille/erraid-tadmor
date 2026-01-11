@@ -129,7 +129,7 @@ $ ./erraid # Lancement dans le répertoire par défaut
 $ ./erraid -F -R /home/toto/task -P /home/toto/document/tubes # Lancement en avant-plan et définition du répertoire de travail dans /home/toto/task et création des tubes dans /home/toto/document/tubes
 ```
 
-⚠️ ##Attention : 
+## Attention : ⚠️
 
 - on peut faire mettre comme option -FR mais pas -RF et ni -RP ou -PR. Il est préférable de le faire comme dans l'exemple.
 - Tuez le démon avec tadmor -q plutôt qu'avec un SIGKILL. SIGKILL ne va pas laisser le démon le temps de libérer sa mémoire. Faire ainsi peut entraîner des fuites.

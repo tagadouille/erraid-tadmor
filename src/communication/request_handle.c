@@ -16,7 +16,7 @@
 
 a_list_t* handle_ls(char *rundir)
 {
-    all_task_t *list = all_task_listing(rundir); // get list of all tasks
+    all_task_t *list = all_task_listing(rundir);
     
     if (list == NULL) {
         return create_a_list(OK, NULL);
@@ -65,8 +65,8 @@ answer_t* handle_rm(char *rundir, uint64_t id)
 
 answer_t* handle_tm(void){
 
-    kill(father, SIGTERM); // kill the erraid daemon
-    return create_answer(OK, 0, 0); // return success answer
+    kill(father, SIGTERM);
+    return create_answer(OK, 0, 0);
 }
 
 void* simple_request_handle(simple_request_t *req, char *rundir)
