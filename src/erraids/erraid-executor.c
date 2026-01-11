@@ -239,6 +239,7 @@ static int execute_simple_fd_only(const command_t *cmd, int outfd, int errfd, in
         }
         
         use_shell = needs_shell(cmd_str);
+        free((void*)cmd_str);
     }
 
     if (use_shell) {
@@ -248,6 +249,7 @@ static int execute_simple_fd_only(const command_t *cmd, int outfd, int errfd, in
             return -1;
         }
         exitcode = execute_shell_line(cmd_str, outfd, errfd, infd);
+        free((void*)cmd_str);
     }
     else {
         char **argv = arguments_to_argv(cmd->args.simple);

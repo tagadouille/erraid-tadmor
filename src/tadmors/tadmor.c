@@ -54,14 +54,14 @@ void tadmor_print_list(a_list_t* list)
         return;
     }
 
-    if(list->all_task.nbtask == 0){
+    if(list->all_task->nbtask == 0){
         dprintf(STDOUT_FILENO, "No task found\n");
         return;
     }
 
-    for (uint32_t i = 0; i < list->all_task.nbtask; i++) // Iterate through all tasks
+    for (uint32_t i = 0; i < list->all_task->nbtask; i++) // Iterate through all tasks
     {
-        task_t* t = &(list->all_task.all_task[i]);
+        task_t* t = &(list->all_task->all_task[i]);
 
         // check for NULL task
         if (t == NULL)
@@ -127,16 +127,20 @@ void tadmor_print_response(uint16_t opcode, void* res)
     switch (opcode) {
         case LS:
             tadmor_print_list((a_list_t*)res);
+            free_a_list((a_list_t*) res);
             break;
         case TX:
             tadmor_print_timecode((a_timecode_t*)res);
+            free_a_timecode_t((a_timecode_t*) res);
             break;
         case SO: // same treatment for STDOUT and STDERR
         case SE:
             tadmor_print_output((a_output_t*)res);
+            free_a_output_t((a_output_t*)res);
             break;
         default:
             tadmor_print_answer((answer_t*)res);
+            free_answer((answer_t*) res);
             break;
     }
 }

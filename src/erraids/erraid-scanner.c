@@ -77,19 +77,18 @@ static void scan_all_task(void) {
 
     write_log_msg("Scanning tasks directory…");
 
-    all_task_t* new_tasks = all_task_listing(tasksdir);
+    if (scanned_tasks != NULL) {
+        free_all_task(scanned_tasks);
+    }
+
+    scanned_tasks = all_task_listing(tasksdir);
     
-    if (new_tasks == NULL) {
+    if (scanned_tasks == NULL) {
         write_log_msg("Error: an error occurred while scanning all the tasks of path %s", tasksdir);
         running = 0;
         return;
     }
     
-    if (scanned_tasks != NULL) {
-        free_all_task(scanned_tasks);
-    }
-    
-    scanned_tasks = new_tasks;
     write_log_msg("Scan succeeded! Found %u tasks\n", scanned_tasks->nbtask);
 }
 
@@ -200,7 +199,7 @@ void erraid_scan_loop(void) {
     }
 
     if (scanned_tasks != NULL) {
-        free(scanned_tasks);
+        free_all_task(scanned_tasks);
         scanned_tasks = NULL;
     }
     

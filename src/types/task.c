@@ -124,13 +124,17 @@ command_t* command_filler(char* buffer, unsigned int size, command_t* cmd, comma
 
     if(type == SI){
         command_t *new_cmd = add_simple_command(cmd, arg);
+        arguments_free(arg);
 
         if(new_cmd == NULL){
             dprintf(STDERR_FILENO, "Error while creating simple command\n");
-            arguments_free(arg);
+            // If cmd was allocated in this function, free it
+            if (curr_task->cmd == cmd) {
+                command_free(cmd);
+                curr_task->cmd = NULL;
+            }
             return NULL;
         }
-        arguments_free(arg);
         return new_cmd;
     }
     else {
@@ -177,6 +181,7 @@ task_t* task_copy(task_t* og_task){
  * @brief Destroy an entire task and free all associated memory.
  */
 void task_destroy(task_t *task){
+
     if (task == NULL){
         return;
     }
@@ -188,7 +193,7 @@ void task_destroy(task_t *task){
     }
 
     if (task->timing != NULL) {
-        free(task->timing);
+        timing_free(task->timing);
         task->timing = NULL;
     }
 
@@ -223,6 +228,7 @@ static void task_cleanup(task_t *task) {
 }
 
 void free_all_task(all_task_t* all_task){
+    
     if(all_task == NULL){
         return;
     }

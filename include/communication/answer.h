@@ -46,7 +46,7 @@ typedef struct{
 typedef struct{
 
     uint16_t anstype;
-    all_task_t all_task;
+    all_task_t* all_task;
 
 }a_list_t;
 

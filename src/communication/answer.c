@@ -51,8 +51,16 @@ a_list_t* create_a_list(uint16_t anstype, uint32_t nbtask, task_t* all_task){
         perror("malloc");
         return NULL;
     }
-    a_list -> all_task.nbtask = nbtask;
-    a_list -> all_task.all_task = all_task;
+
+    a_list->all_task = malloc(sizeof(all_task_t));
+    if (a_list->all_task == NULL) {
+        perror("malloc");
+        free(a_list);
+        return NULL;
+    }
+
+    a_list->all_task->nbtask = nbtask;
+    a_list->all_task->all_task = all_task;
 
     return a_list;
 }
@@ -109,29 +117,25 @@ void free_answer(answer_t* answer){
 }
 
 void free_a_list(a_list_t* list) {
-    if (!list || !list->all_task.all_task)
+
+    if (!list || !list->all_task->all_task)
         return;
 
-    for (uint32_t i = 0; i < list->all_task.nbtask; ++i) {
-        free(list->all_task.all_task[i].timing);
-    }
+    free_all_task(list->all_task);
 
-    free(list->all_task.all_task);
-    list->all_task.all_task = NULL;
-    list->all_task.nbtask = 0;
+    free(list);
 }
 
-
-
 void free_a_timecode_t(a_timecode_t* timecode){
-    if(timecode == NULL) return;
 
-    for (size_t i = 0; i < timecode -> time_arr.nbruns; i++){
-
-        if(timecode -> time_arr.all_timecode != NULL){
-            free(timecode -> time_arr.all_timecode);
-        }
+    if (timecode == NULL) {
+        return;
     }
+
+    if (timecode->time_arr.all_timecode != NULL) {
+        free(timecode->time_arr.all_timecode);
+    }
+    
     free(timecode);
 }
 

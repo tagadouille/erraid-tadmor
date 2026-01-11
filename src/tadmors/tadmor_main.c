@@ -89,9 +89,11 @@ static int client_handle_command(uint16_t code, const char *input, int argc, cha
 
         // Sending the request : 
         if(client_send_simple(request) < 0){
+            free_simple_request(request);
             dprintf(STDERR_FILENO, "Error : an error occured while sending an simple request\n");
             return -1;
         }
+        free_simple_request(request);
 
         // Get the response
         void* ans = client_recv_answer(code);
@@ -102,7 +104,6 @@ static int client_handle_command(uint16_t code, const char *input, int argc, cha
         }
         // Print the answer
         tadmor_print_response(code, ans);
-        free(request);
     }
     else{
         // Handle complex request for task creation or combination
@@ -125,6 +126,7 @@ static int client_handle_command(uint16_t code, const char *input, int argc, cha
         if (code == CR) {
             // Reconstruct the command string from remaining arguments
             command = command_create_from_string(input);
+
             if(command == NULL){
                 dprintf(STDERR_FILENO, "[client_handle_command] Error creating command from string\n");
                 timing_free(timing);
@@ -174,11 +176,15 @@ static int client_handle_command(uint16_t code, const char *input, int argc, cha
 
             // Verifications specific to combination type :
             if(composed->type == IF && (composed->nb_task < 2 || composed->nb_task > 3)) {
+                if (command) command_free(command);
+                timing_free(timing);
                 dprintf(STDERR_FILENO, "Error: IF combination requires exactly 2-3 tasks.\n");
                 return -1;
             }
 
             if(composed->type != IF && composed->nb_task < 2) {
+                if (command) command_free(command);
+                timing_free(timing);
                 dprintf(STDERR_FILENO, "Error: PIPE combination requires at least 2 tasks.\n");
                 return -1;
             }
@@ -190,16 +196,18 @@ static int client_handle_command(uint16_t code, const char *input, int argc, cha
         if(request == NULL){
             dprintf(STDERR_FILENO, "[client_handle_command] Error creating complex request\n");
             if (command) command_free(command);
-            // composed is freed inside create_complex_request in case of error
             timing_free(timing);
             return -1;
         }
 
         // Sending the request : 
         if(client_send_complex(request) < 0){
+            free_complex_request(request);
             dprintf(STDERR_FILENO, "Error : an error occured while sending an simple request\n");
             return -1;
         }
+        free_complex_request(request);
+        timing_free(timing);
 
         // Get the response
         void* ans = client_recv_answer(code);
@@ -210,7 +218,6 @@ static int client_handle_command(uint16_t code, const char *input, int argc, cha
         }
         // Print the answer
         tadmor_print_response(code, ans);
-        free(request);
     }
     return 0;
 }

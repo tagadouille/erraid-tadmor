@@ -79,15 +79,15 @@ int encode_a_timecode(int fd, const a_timecode_t *a)
 /* LIST OK: ANSTYPE='OK' + NBTASKS(uint32) +
    for each task: TASKID(uint64), TIMING, COMMANDLINE(string)
 */
-int encode_a_list(int fd, const a_list_t *ans)
-{
-    if (!ans) {
-        dprintf(2, "[encode_a_list] ERROR: ans is NULL\n");
+int encode_a_list(int fd, const a_list_t *ans) {
+    
+    if (!ans || !ans->all_task) {
+        dprintf(2, "[encode_a_list] ERROR: ans or ans->all_task is NULL\n");
         return -1;
     }
 
-    const uint32_t nbtask = ans->all_task.nbtask;
-    const task_t *tasks = ans->all_task.all_task;
+    const uint32_t nbtask = ans->all_task->nbtask;
+    const task_t *tasks = ans->all_task->all_task;
 
     dprintf(2, "[encode_a_list] nbtask=%u\n", nbtask);
 
