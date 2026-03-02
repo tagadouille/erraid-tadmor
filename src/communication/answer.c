@@ -79,6 +79,7 @@ a_timecode_t* create_a_timecode(uint16_t anstype, uint32_t nbruns, time_exitcode
 
     if(anstype == ERR){
         time -> errcode = NF;
+        time -> time_arr = {0};
         return time;
     }
     time -> time_arr.nbruns = nbruns;
